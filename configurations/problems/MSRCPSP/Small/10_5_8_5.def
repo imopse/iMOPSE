@@ -1,0 +1,34 @@
+========================================================== 
+File name: 10_5_8_5.def
+Creation date: Thu Oct 30 17:39:39 CET 2014
+Website: http://imopse.ii.pwr.edu.pl/ 
+Reference: 
+Myszkowski P. B., Skowronski M. E., Olech L., Oslizlo K., 
+Hybrid Ant Colony Optimization in solving Multi-Skill Resource-Constrained Project Scheduling Problem, 
+Soft Computing, DOI: DOI 10.1007/s00500-014-1455-x 
+========================================================== 
+General characteristics: 
+Tasks: 10
+Resources: 5
+Precedence relations: 7
+Number of skill types: 5
+========================================================== 
+ResourceID 	 Salary 	 Skills 
+1	 	 	59.7	 	 Q0: 2 	  Q3: 1 	  Q1: 1 	 
+2	 	 	75.9	 	 Q0: 1 	  Q4: 1 	  Q1: 1 	 
+3	 	 	69.8	 	 Q2: 1 	  Q4: 2 	  Q1: 0 	 
+4	 	 	22.4	 	 Q4: 1 	  Q0: 1 	  Q3: 0 	 
+5	 	 	32.6	 	 Q4: 1 	  Q1: 2 	  Q3: 1 	 
+========================================================== 
+TaskID 	 Duration 	 Skill 	 Predecessor IDs 
+1	 	 	37	 Q1: 0	 	
+2	 	 	8	 Q1: 0	 	
+3	 	 	9	 Q4: 2	 	1	
+4	 	 	26	 Q1: 2	 	
+5	 	 	30	 Q1: 2	 	4	3	
+6	 	 	18	 Q4: 2	 	
+7	 	 	27	 Q2: 1	 	6	
+8	 	 	24	 Q1: 2	 	2	
+9	 	 	10	 Q3: 0	 	4	
+10	 	 	29	 Q3: 1	 	1	
+========================================================== 
