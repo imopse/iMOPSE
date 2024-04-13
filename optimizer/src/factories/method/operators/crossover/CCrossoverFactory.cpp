@@ -19,7 +19,7 @@ ACrossover *CCrossoverFactory::Create(SConfigMap *configMap, const std::string& 
     const char *opName = vec[0].c_str();
 
     const std::set<EEncodingType> &encodingTypes = GetAllEncodingTypes(problem.GetProblemEncoding().m_Encoding);
-    if (strcmp(opName, "UniformCX" ) == 0 && encodingTypes.find(EEncodingType::ASSOCIATION) != encodingTypes.end())
+    if (strcmp(opName, "UniformCX" ) == 0 && (encodingTypes.find(EEncodingType::ASSOCIATION) != encodingTypes.end() || encodingTypes.find(EEncodingType::PERMUTATION) != encodingTypes.end()))
     {
         float cxProb = std::stof(vec[1]);
         return new CUniformCX(cxProb);

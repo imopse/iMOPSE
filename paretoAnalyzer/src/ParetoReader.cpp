@@ -9,7 +9,7 @@ void ParetoReader::ReadConfigParetos(const char* directoryPath, ConfigResults& c
 {
 	const std::filesystem::path resultsPath(directoryPath);
 
-	for (const auto& runDirEntry : std::filesystem::directory_iterator(resultsPath))
+	for (const auto& runDirEntry : std::filesystem::directory_iterator(resultsPath / instanceName))
 	{
 		auto instancePath = runDirEntry.path() / "results.csv";
 		ParetoFront paretoFront;

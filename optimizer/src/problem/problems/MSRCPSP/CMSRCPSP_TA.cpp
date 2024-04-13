@@ -7,23 +7,21 @@ CMSRCPSP_TA::CMSRCPSP_TA(CScheduler& scheduler, size_t objCount)
 {
     CreateProblemEncoding();
 
-    const std::vector<float> maxValues = {
+    m_MaxObjectiveValues = {
             m_Scheduler.GetMaxDuration(),
             m_Scheduler.GetMaxCost(),
             m_Scheduler.GetMaxAvgCashFlowDev(),
             m_Scheduler.GetMaxSkillOveruse(),
             m_Scheduler.GetMaxAvgUseOfResTime()
     };
-    m_MaxObjectiveValues = std::vector<float>(maxValues.begin(), maxValues.begin() + objCount);
 
-    const std::vector<float> minValues = {
+    m_MinObjectiveValues = {
             m_Scheduler.GetMinDuration(),
             m_Scheduler.GetMinCost(),
             m_Scheduler.GetMinAvgCashFlowDev(),
             m_Scheduler.GetMinSkillOveruse(),
             m_Scheduler.GetMinAvgUseOfResTime()
     };
-    m_MinObjectiveValues = std::vector<float>(minValues.begin(), minValues.begin() + objCount);
 }
 
 SProblemEncoding &CMSRCPSP_TA::GetProblemEncoding()
@@ -42,15 +40,17 @@ void CMSRCPSP_TA::Evaluate(AIndividual& individual)
 
     m_Scheduler.BuildTimestamps_TA();
 
-    individual.m_Evaluation.resize(m_ObjCount);
-    if (m_ObjCount > 0) { individual.m_Evaluation[0] = m_Scheduler.EvaluateDuration(); }
-    if (m_ObjCount > 1) { individual.m_Evaluation[1] = m_Scheduler.EvaluateCost(); }
-    if (m_ObjCount > 2) { individual.m_Evaluation[1] = m_Scheduler.EvaluateAvgCashFlowDev(); }
-    if (m_ObjCount > 3) { individual.m_Evaluation[1] = m_Scheduler.EvaluateSkillOveruse(); }
-    if (m_ObjCount > 4) { individual.m_Evaluation[1] = m_Scheduler.EvaluateAvgUseOfResTime(); }
+    individual.m_Evaluation =
+            {
+                    m_Scheduler.EvaluateDuration(),
+                    m_Scheduler.EvaluateCost(),
+                    m_Scheduler.EvaluateAvgCashFlowDev(),
+                    m_Scheduler.EvaluateSkillOveruse(),
+                    m_Scheduler.EvaluateAvgUseOfResTime()
+            };
 
     // Normalize
-    for (int i = 0; i < individual.m_Evaluation.size(); ++i)
+    for (int i = 0; i < m_ObjCount; i++)
     {
         individual.m_NormalizedEvaluation[i] = (individual.m_Evaluation[i] - m_MinObjectiveValues[i]) / (m_MaxObjectiveValues[i] - m_MinObjectiveValues[i]);
     }

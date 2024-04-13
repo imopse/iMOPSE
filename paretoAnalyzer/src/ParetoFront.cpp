@@ -114,7 +114,7 @@ bool IsDominatedBy(const std::vector<float>& sol1, const std::vector<float>& sol
 	size_t sol1Size = sol1.size();
 
 	// If this has any better value
-	for (int i = 0; i < 2; ++i)
+	for (int i = 0; i < sol1Size; ++i)
 	{
 		if (sol1[i] + EPS_ACCURACY < sol2[i])
 		{
@@ -125,7 +125,7 @@ bool IsDominatedBy(const std::vector<float>& sol1, const std::vector<float>& sol
 	// Now we are sure we have worse or equal values
 
 	// If other has at least one better value
-	for (int i = 0; i < 2; ++i)
+	for (int i = 0; i < sol1Size; ++i)
 	{
 		if (sol2[i] + EPS_ACCURACY < sol1[i])
 		{

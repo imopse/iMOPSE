@@ -44,15 +44,6 @@ AMethod* CMethodFactory::CreateMethod(
 
     // Create initialization strategy based on the configuration map.
     initialization = CInitializationFactory::Create(configMap);
-    // TODO - we should not assume that each methods uses mutation/crossover (or exactly one)
-    crossover = CCrossoverFactory::Create(configMap, "Crossover", problem);
-    if (crossover == nullptr) {
-        throw std::runtime_error("Error while reading crossover configuration");
-    }
-    mutation = CMutationFactory::Create(configMap, "Mutation", problem);
-    if (mutation == nullptr) {
-        throw std::runtime_error("Error while reading mutation configuration");
-    }
 
     // Create and return a specific optimization method based on the method name.
     if (strcmp(methodName.c_str(), "ACO") == 0)
@@ -65,6 +56,16 @@ AMethod* CMethodFactory::CreateMethod(
         return CDEFactory::CreateDE(configMap, problem, initialization);
     if (strcmp(methodName.c_str(), "PSO") == 0)
         return CPSOFactory::CreatePSO(configMap, problem, initialization);
+
+    // Create crossover and mutation strategies based on the configuration map.
+    crossover = CCrossoverFactory::Create(configMap, "Crossover", problem);
+    if (crossover == nullptr) {
+        throw std::runtime_error("Error while reading crossover configuration");
+    }
+    mutation = CMutationFactory::Create(configMap, "Mutation", problem);
+    if (mutation == nullptr) {
+        throw std::runtime_error("Error while reading mutation configuration");
+    }
     
     if (strcmp(methodName.c_str(), "GA") == 0)
         return CGAFactory::CreateGA(configMap, problem, initialization, crossover, mutation);

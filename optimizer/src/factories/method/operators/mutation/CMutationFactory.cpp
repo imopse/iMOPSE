@@ -21,7 +21,7 @@ AMutation *CMutationFactory::Create(SConfigMap *configMap, const std::string& co
     const char *opName = vec[0].c_str();
 
     const std::set<EEncodingType> &encodingTypes = GetAllEncodingTypes(problem.GetProblemEncoding().m_Encoding);
-    if (strcmp(opName, "RandomBit") == 0 && encodingTypes.find(EEncodingType::ASSOCIATION) != encodingTypes.end())
+    if (strcmp(opName, "RandomBit") == 0 && (encodingTypes.find(EEncodingType::ASSOCIATION) != encodingTypes.end() || encodingTypes.find(EEncodingType::PERMUTATION) != encodingTypes.end()))
     {
         float mutProb = std::stof(vec[1]);
         return new CRandomBit(mutProb);

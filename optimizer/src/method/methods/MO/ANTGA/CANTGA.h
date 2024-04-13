@@ -5,6 +5,7 @@
 #include "method/methods/MO/AMOGeneticMethod.h"
 #include "method/operators/selection/selections/CRankedTournament.h"
 #include "method/operators/selection/selections/CGapSelectionByRandomDim.h"
+#include "method/multiOperator/AMultiOperator.h"
 
 template <typename T> class CCSV;
 
@@ -28,7 +29,8 @@ public:
 private:
     int m_Generation = 0;
     CGapSelectionByRandomDim& m_GapSelection;
-    
+    AMultiOperator<AMutation>* m_MultiMutation = nullptr;
+
     void EvolveToNextGeneration();
     void CrossoverAndMutate(SMOIndividual* firstParent, SMOIndividual* secondParent);
     void LogIndividualsToCSV(CCSV<float>& csv, const std::vector<SMOIndividual*>& individuals) const;

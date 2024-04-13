@@ -3,6 +3,7 @@
 #include "CANTGA.h"
 #include "method/methods/MO/utils/archive/ArchiveUtils.h"
 #include "utils/logger/ErrorUtils.h"
+#include "factories/method/operators/mutation/CMultiMutationFactory.h"
 #include "factories/method/CMethodFactory.h"
 #include "utils/dataStructures/CCSV.h"
 #include "utils/logger/CExperimentLogger.h"
@@ -19,12 +20,16 @@ CANTGA::CANTGA(AProblem& evaluator, AInitialization& initialization,
 
     configMap->TakeValue("GenerationLimit", m_GenerationLimit);
     ErrorUtils::LowerThanZeroI("ANTGA", "GenerationLimit", m_GenerationLimit);
-    
+
+    m_MultiMutation = CMultiMutationFactory::Create(configMap, evaluator);
 }
 
 CANTGA::~CANTGA()
 {
-
+    if (m_MultiMutation)
+    {
+        delete m_MultiMutation;
+    }
 }
 
 void CANTGA::RunOptimization()
@@ -92,8 +97,21 @@ void CANTGA::CrossoverAndMutate(SMOIndividual* firstParent, SMOIndividual* secon
         *firstChild,
         *secondChild
     );
-    
 
+    CAtomicOperator<AMutation>* atomicMutation = m_MultiMutation->SelectOperator();
+    AMutation* mutation = atomicMutation->Get();
+    mutation->Mutate(m_Problem.GetProblemEncoding(), *firstChild);
+    mutation->Mutate(m_Problem.GetProblemEncoding(), *secondChild);
+    // TODO - update mutation with feedback
+
+    size_t operatorId = atomicMutation->GetId();
+    secondChild->m_MetaInfo = firstChild->m_MetaInfo = {
+        (float)operatorId,
+        firstParent->m_Evaluation[0], firstParent->m_Evaluation[1],
+        secondParent->m_Evaluation[0], secondParent->m_Evaluation[1]
+    };
+
+    m_Problem.Evaluate(*firstChild);
     m_Problem.Evaluate(*secondChild);
 
     m_NextPopulation.emplace_back(firstChild);

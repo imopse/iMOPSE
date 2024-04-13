@@ -2,15 +2,14 @@
 
 #include <fstream>
 #include "../../../problem/problems/MSRCPSP/CMSRCPSP_TA.h"
-#include "../../../problem/problems/MSRCPSP/CMSRCPSP_TO_A.h"
-#include "../../../problem/problems/MSRCPSP/CMSRCPSP_TO_P.h"
+#include "../../../problem/problems/MSRCPSP/CMSRCPSP_TO.h"
 
 class CMSRCPSP_Factory
 {
 public:
     static CMSRCPSP_TA *CreateMSRCPSP_TA(const char *problemConfigurationPath, size_t objCount);
-    static CMSRCPSP_TO_P *CreateMSRCPSP_TO_P(const char* problemConfigurationPath);
-    static CMSRCPSP_TO_A* CreateMSRCPSP_TO_A(const char* problemConfigurationPath);
+    static CMSRCPSP_TO *CreateMSRCPSP_TO(const char* problemConfigurationPath, size_t objCount);
+    
     static void DeleteObjects();
 private:
     static const std::string s_Delimiter;

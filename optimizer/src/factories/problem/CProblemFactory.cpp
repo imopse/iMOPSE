@@ -12,8 +12,8 @@ AProblem *CProblemFactory::CreateProblem(const char *problemName, const char *pr
 {
     if (strcmp(problemName, "MSRCPSP_TA") == 0) return CMSRCPSP_Factory::CreateMSRCPSP_TA(problemConfigurationPath, 5);
     if (strcmp(problemName, "MSRCPSP_TA2") == 0) return CMSRCPSP_Factory::CreateMSRCPSP_TA(problemConfigurationPath, 2);
-    if (strcmp(problemName, "MSRCPSP_TO_A") == 0) return CMSRCPSP_Factory::CreateMSRCPSP_TO_A(problemConfigurationPath);
-    if (strcmp(problemName, "MSRCPSP_TO_P") == 0) return CMSRCPSP_Factory::CreateMSRCPSP_TO_P(problemConfigurationPath);
+    if (strcmp(problemName, "MSRCPSP_TO") == 0) return CMSRCPSP_Factory::CreateMSRCPSP_TO(problemConfigurationPath, 5);
+    if (strcmp(problemName, "MSRCPSP_TO2") == 0) return CMSRCPSP_Factory::CreateMSRCPSP_TO(problemConfigurationPath, 2);
     if (strcmp(problemName, "TSP") == 0) return CTSPFactory::CreateTSP(problemConfigurationPath);
     if (strcmp(problemName, "TTP1") == 0) return CTTPFactory::CreateTTP1(problemConfigurationPath);
     if (strcmp(problemName, "TTP2") == 0) return CTTPFactory::CreateTTP2(problemConfigurationPath);

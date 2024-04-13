@@ -1,7 +1,9 @@
 #pragma once
 
 #include <string>
+#include <stack>
 #include "CTask.h"
+#include "method/individual/AIndividual.h"
 
 class CScheduler
 {
@@ -19,17 +21,13 @@ public:
     void SetCapableResources(const std::vector<std::vector<TResourceID>>& capableResources);
     void SetTasks(const std::vector<CTask> &tasks);
     void SetResources(const std::vector<CResource> &resources);
-    void InitUnassignedTasks();
 
     const CTask* GetTaskById(TTaskID taskId) const;
     const CResource* GetResourceById(TResourceID resourceId) const;
 
     void Assign(size_t taskIndex, TResourceID resourceId);
     void BuildTimestamps_TA();
-
-    void BuildTimestamps_TO_P(std::vector<int>& tasksIndexes);
-    void BuildTimestamps_TO_A(std::vector<float>& priorities);
-    void CheckUnassignedTask(size_t taskIndex);
+    void BuildTimestamps_TO(std::vector<int>& tasksIndexes);
 
     void BuildTimestampForTask_TA(CTask &task);
     void BuildTimestampForTask_TO(size_t taskIndex);
@@ -62,8 +60,8 @@ private:
     std::vector<std::vector<TResourceID>> m_CapableResources;
     std::vector<CTask> m_Tasks;
     std::vector<CResource> m_Resources;
-    std::vector<std::vector<size_t>> m_UnassignedTasksIndexes;
 
     TTime GetBestCapableResourceId(size_t taskIndex, TTime earliestTime);
     std::vector<size_t> GetTasksIndexes(std::vector<float>& priorities);
+    void AssignTask(size_t taskIndex);
 };

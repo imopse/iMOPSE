@@ -2,6 +2,7 @@
 #include <numeric>
 #include <algorithm>
 #include <limits>
+#include <stack>
 
 void CScheduler::SetCapableResources(const std::vector<std::vector<TResourceID>>& capableResources)
 {
@@ -16,11 +17,6 @@ void CScheduler::SetTasks(const std::vector<CTask> &tasks)
 void CScheduler::SetResources(const std::vector<CResource> &resources)
 {
     m_Resources = resources;
-}
-
-void CScheduler::InitUnassignedTasks()
-{
-    m_UnassignedTasksIndexes = std::vector<std::vector<size_t>>(m_Tasks.size());
 }
 
 const CTask* CScheduler::GetTaskById(TTaskID taskId) const
@@ -71,7 +67,7 @@ void CScheduler::BuildTimestamps_TA()
     }
 }
 
-void CScheduler::BuildTimestamps_TO_P(std::vector<int>& tasksIndexes)
+void CScheduler::BuildTimestamps_TO(std::vector<int>& tasksIndexes)
 {
     for (CResource& resource : m_Resources)
     {
@@ -84,90 +80,25 @@ void CScheduler::BuildTimestamps_TO_P(std::vector<int>& tasksIndexes)
         m_Tasks[i].SetStart(-1);
     }
 
-    for (size_t i = 0; i < m_Tasks.size(); ++i)
+    for (size_t i = 0; i < tasksIndexes.size(); ++i)
     {
-        int taskIndex = tasksIndexes[i];
-
-        bool canBeDone = true;
-        for (TTaskID predecessorId : m_Tasks[taskIndex].GetPredecessors())
-        {
-            if (m_Tasks[predecessorId - 1].GetResourceID() == -1)
-            {
-                canBeDone = false;
-                m_UnassignedTasksIndexes[predecessorId - 1].push_back(taskIndex);
-            }
-        }
-
-        if (canBeDone)
-        {
-            BuildTimestampForTask_TO(taskIndex);
-            CheckUnassignedTask(taskIndex);
-        }
+        AssignTask(tasksIndexes[i]);
     }
 }
 
-void CScheduler::CheckUnassignedTask(size_t taskIndex)
+void CScheduler::AssignTask(size_t taskIndex)
 {
-    for (size_t j = 0; j < m_UnassignedTasksIndexes[taskIndex].size(); j++)
+    if (m_Tasks[taskIndex].GetStart() == -1)
     {
-        size_t taskId = m_UnassignedTasksIndexes[taskIndex][j];
-
-        bool canBeDone = true;
-        for (TTaskID predecessorId : m_Tasks[taskId].GetPredecessors())
+        for (TTaskID predecessorId: m_Tasks[taskIndex].GetPredecessors())
         {
             if (m_Tasks[predecessorId - 1].GetResourceID() == -1)
             {
-                canBeDone = false;
-                break;
+                AssignTask(predecessorId - 1);
             }
         }
 
-        if (canBeDone)
-        {
-            BuildTimestampForTask_TO(taskId);
-            CheckUnassignedTask(taskId);
-        }
-    }
-
-    m_UnassignedTasksIndexes[taskIndex].clear();
-}
-
-
-void CScheduler::BuildTimestamps_TO_A(std::vector<float>& priorities)
-{
-    std::vector<size_t> tasksIndexes = GetTasksIndexes(priorities);
-
-    for (CResource& resource : m_Resources)
-    {
-        resource.SetFinish(0);
-        resource.SetWorkingTime(0);
-    }
-
-    // Reset tasks start
-    for (size_t i = 0; i < m_Tasks.size(); ++i)
-    {
-        m_Tasks[i].SetStart(0);
-    }
-
-    for (size_t i = 0; i < m_Tasks.size(); ++i)
-    {
-        size_t taskIndex = tasksIndexes[i];
-
-        bool canBeDone = true;
-        for (TTaskID predecessorId : m_Tasks[taskIndex].GetPredecessors())
-        {
-            if (m_Tasks[predecessorId - 1].GetResourceID() == -1)
-            {
-                canBeDone = false;
-                m_UnassignedTasksIndexes[predecessorId - 1].push_back(taskIndex);
-            }
-        }
-
-        if (canBeDone)
-        {
-            BuildTimestampForTask_TO(taskIndex);
-            CheckUnassignedTask(taskIndex);
-        }
+        BuildTimestampForTask_TO(taskIndex);
     }
 }
 

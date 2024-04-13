@@ -1,11 +1,10 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
+solution_file_path = '../optimizer/experiments/GA/run_0/best_solution.sol' # Input path to solution file
 
 def read_and_format_data(filename):
     all_tasks = []
-    project_info = {}
-    instance_name = ""
     with open(filename, 'r') as file:
         lines = file.readlines()
 
@@ -34,8 +33,7 @@ def read_and_format_data(filename):
                         resource, task_id, duration = map(int, [resource, task_id, duration])
                     except ValueError:
                         raise ValueError("Not all tasks are assigned to resources")
-                    predecessors = [int(pred) for pred in preds.split(',') if
-                                    pred]  # Convert each predecessor to an integer
+                    predecessors = [int(pred) for pred in preds.split(',') if pred]
                     all_tasks.append({
                         'Time': time,
                         'Resource': resource,
@@ -51,8 +49,8 @@ def read_and_format_data(filename):
 
 def validate_tasks(tasks_df):
     task_end_times = {}
-    incorrect_order_reasons = {}  # Changed from a set to a dict to store reasons
-    overlapping_tasks_reasons = {}  # Similarly, store reasons for overlaps
+    incorrect_order_reasons = {}
+    overlapping_tasks_reasons = {} 
 
     # First pass to establish end times for all tasks
     for _, row in tasks_df.iterrows():
@@ -100,13 +98,13 @@ def plot_gantt_chart(tasks_df, project_info, instance_name, incorrect_order_reas
             reason = ""
 
         # Draw the task bar
-        rect = ax.barh(row['Resource'], row['Duration'], left=row['Time'], height=0.4, color=color, edgecolor='k')
+        ax.barh(row['Resource'], row['Duration'], left=row['Time'], height=0.4, color=color, edgecolor='k')
 
         # Annotate the task ID and reason on the bar
-        text_x = row['Time'] + row['Duration'] / 2  # Middle of the task duration
+        text_x = row['Time'] + row['Duration'] / 2  # Middle of the task
         text_y = row['Resource']
         annotation_text = f"{task_id}" + (f": {reason}" if reason else "")
-        ax.text(text_x, text_y, annotation_text, ha='center', va='center', color='white', fontsize=8)
+        ax.text(text_x, text_y, annotation_text, ha='center', va='center', color='black', fontsize=8)
 
     # Adjusted error message for incorrect order and overlapping tasks
     error_messages = []
@@ -114,7 +112,7 @@ def plot_gantt_chart(tasks_df, project_info, instance_name, incorrect_order_reas
         error_messages.append("Incorrect task order detected!")
     if overlapping_tasks_reasons:
         error_messages.append("Overlapping tasks detected!")
-    if not error_messages:  # If there are no errors
+    if not error_messages:
         error_messages.append("Solution is correct.")
 
     # Combine error messages and project info into one message
@@ -135,9 +133,7 @@ def plot_gantt_chart(tasks_df, project_info, instance_name, incorrect_order_reas
     plt.show()
 
 
-
 # Main code
-filename = '../../optimizer/experiments/MSRCPSP/run_0/best_solution.sol'
-tasks_df, project_info, instance_name = read_and_format_data(filename)
+tasks_df, project_info, instance_name = read_and_format_data(solution_file_path)
 incorrect_order_tasks, overlapping_tasks = validate_tasks(tasks_df)
 plot_gantt_chart(tasks_df, project_info, instance_name, incorrect_order_tasks, overlapping_tasks)

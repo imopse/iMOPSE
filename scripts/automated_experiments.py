@@ -2,8 +2,16 @@ import subprocess
 import threading
 import argparse
 
+path_to_executable = "./imopse" # Input correct path
+
+configurations_to_run = [
+    "../../configurations/methods/NTGA2/NTGA2_ORIGINAL.cfg MSRCPSP_TA2 ../../configurations/problems/MSRCPSP/Regular/100_5_20_9_D3.def ../experiments/NTGA2/ 10",
+    "../../configurations/methods/NSGAII/NSGAII_MSRCPSP.cfg MSRCPSP_TA2 ../../configurations/problems/MSRCPSP/Regular/100_5_20_9_D3.def ../experiments/NSGAII/ 10"
+] # Input configurations to run
+
 def run_executable(config_string, silent):
-    command = f"./build/imopse {config_string}"
+    command = f"{path_to_executable} {config_string}"
+
     print(f"Starting task for configuration '{config_string}'...")
 
     # Run the command and capture the output
@@ -11,7 +19,6 @@ def run_executable(config_string, silent):
 
     # Check if there was an error
     if result.returncode != 0 or not silent:
-        # Print the output in grey color, strip trailing newlines
         print("\033[90m" + result.stdout.rstrip() + "\033[0m")
 
     if silent and result.returncode == 0:
@@ -31,17 +38,9 @@ def main(configurations, silent):
         thread.join()
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Run ./build/imopse with configurations')
+    parser = argparse.ArgumentParser(description='Run iMOPSE with configurations')
     parser.add_argument('-s', '--silent', action='store_true', help='Run in silent mode')
     args = parser.parse_args()
 
-    # Experiment configurations
-    configurations = [
-        "configurations/methods/GA/GA_MSRCPSP_2d.cfg MSRCPSP_TO_A configurations/problems/MSRCPSP/200_10_50_9.def experiments/MSRCPSP_TO/GA/ 10",
-        "configurations/methods/DEGR/DE_MSRCPSP_2d.cfg MSRCPSP_TO_A configurations/problems/MSRCPSP/200_10_50_9.def experiments/MSRCPSP_TO/DE/ 10",
-        "configurations/methods/SA/SA_MSRCPSP_2d.cfg MSRCPSP_TO_A configurations/problems/MSRCPSP/200_10_50_9.def experiments/MSRCPSP_TO/SA/ 10",
-        "configurations/methods/TS/TS_MSRCPSP_2d.cfg MSRCPSP_TO_A configurations/problems/MSRCPSP/200_10_50_9.def experiments/MSRCPSP_TO/TS/ 10",
-        "configurations/methods/PSO/PSO_MSRCPSP_2d.cfg MSRCPSP_TO_A configurations/problems/MSRCPSP/200_10_50_9.def experiments/MSRCPSP_TO/PSO/ 10",
-    ]
+    main(configurations_to_run, args.silent)
 
-    main(configurations, args.silent)

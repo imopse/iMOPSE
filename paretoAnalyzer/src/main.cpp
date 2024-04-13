@@ -7,74 +7,67 @@
 #include <filesystem>
 #include <cmath>
 
-std::vector<std::string> SplitLineBySpace(const std::string &line)
-{
-    std::vector<std::string> words;
-    size_t begin_pos = 0;
-    size_t pos = 0;
-    while ((pos = line.find(" ", begin_pos)) != std::string::npos)
-    {
-        words.push_back(line.substr(begin_pos, pos - begin_pos));
-        begin_pos = pos + 1;
+int main(int argc, char* argv[]) {
+    std::vector<ConfigData*> configsToAnalyze;
+    
+    if (argc != 4) {
+        std::cerr << "Usage: " << argv[0] << " <configurationFilePath> <instanceName> <outputDir>" << std::endl;
+        return 1;
     }
-    words.push_back(line.substr(begin_pos, line.length() - begin_pos));
-    return words;
-}
 
-int main(int argc, char *argv[])
-{
-    std::vector<ConfigData *> configsToAnalyze;
+    const char* configurationFilePath = argv[1];
+    const char* instanceName = argv[2];
+    const char* outputDir = argv[3];
 
-    for (int a = 1; a < argc; a++)
-    {
-        const char *experimentDirPath = argv[a];
+    std::ifstream configFile(configurationFilePath);
+    if (!configFile.is_open()) {
+        std::cerr << "Failed to open configuration file: " << configurationFilePath << std::endl;
+        return 1;
+    }
 
-        ParetoReader paretoReader;
-        std::filesystem::path path = experimentDirPath;
-        std::string name = path.filename().string();
+    ParetoReader paretoReader;
+    std::string line;
+    while (std::getline(configFile, line)) {
+        std::filesystem::path dirPath(line);
+        std::string name = dirPath.filename().string();
 
-        auto *newConfig = new ConfigData(name, experimentDirPath);
+        auto* newConfig = new ConfigData(name, line);
         configsToAnalyze.emplace_back(newConfig);
-        paretoReader.ReadConfigParetos(newConfig->configPath.c_str(), newConfig->configResults, "d6");
+        paretoReader.ReadConfigParetos(newConfig->configPath.c_str(), newConfig->configResults, instanceName);
+    }
 
-        bool allContains = true;
-        for (const ConfigData *config: configsToAnalyze)
+    configFile.close();
+    
+    // Analyze instance
+    std::cout << "--- Instance " << instanceName << " ---" << std::endl;
+
+    bool allContains = true;
+    for (const ConfigData* config : configsToAnalyze)
+    {
+        if (!config->configResults.Contains(instanceName))
         {
-            if (!config->configResults.Contains("d6"))
-            {
-                allContains = false;
-                std::cout << "Missing: " << name << " results for config: " << config->configName << std::endl;
-                break;
-            }
+            allContains = false;
+            std::cout << "Missing: " << instanceName << " results for config: " << config->configName << std::endl;
+            break;
         }
+    }
 
-
-        //++instanceCounter;
-
-        if (!allContains)
-        {
-            return 0;
-        }
+    if (!allContains)
+    {
+        return 0;
     }
 
     ParetoFront trueParetoFront;
 
     ParetoWriter paretoWriter;
-    //////////////////////////////////////////////////////////////////////////
     // Calculate true Pareto and write
-    for (ConfigData *config: configsToAnalyze)
+    for (ConfigData* config : configsToAnalyze)
     {
-        config->configMergedPareto = config->configResults.GetMergedParetoFronts("d6");
-        paretoWriter.WriteParetoToCSV("./", config->configName + "_" + "_merged",config->configMergedPareto);
+        config->configMergedPareto = config->configResults.GetMergedParetoFronts(instanceName);
+        paretoWriter.WriteParetoToCSV(outputDir, config->configName + "_merged", config->configMergedPareto);
         trueParetoFront = trueParetoFront.Merge(config->configMergedPareto);
     }
-    paretoWriter.WriteParetoToCSV("./",  + "all_merged", trueParetoFront);
-    //////////////////////////////////////////////////////////////////////////
-    // or
-    //////////////////////////////////////////////////////////////////////////
-    // Read Pareto front from the file
-//		paretoReader.ReadParetoFromCSV(trueParetoDir, selInstName + "_merged", trueParetoFront);
-    //////////////////////////////////////////////////////////////////////////
+    paretoWriter.WriteParetoToCSV(outputDir,  "true_pareto_front_approximation", trueParetoFront);
 
     size_t trueParetoFrontSize = trueParetoFront.solutions.size();
     std::cout << "TPFS:" << trueParetoFrontSize << std::endl;
@@ -100,7 +93,7 @@ int main(int argc, char *argv[])
         // Find Min and Max in TrueParetoFront
         for (size_t i = 1; i < trueParetoFrontSize; ++i)
         {
-            const std::vector<float> &sol = trueParetoFront.solutions[i];
+            const std::vector<float>& sol = trueParetoFront.solutions[i];
             for (size_t v = 0; v < sol1Size; ++v)
             {
                 float evalValue = sol[v];
@@ -115,34 +108,30 @@ int main(int argc, char *argv[])
             std::cout << "Error while trying to normalize TrueParetoFront!" << std::endl;
         }
         // Update config data
-        for (ConfigData *config: configsToAnalyze)
+        for (ConfigData* config : configsToAnalyze)
         {
-            if (!config->configResults.NormalizeByMinMax("d6", minValues, maxValues))
+            if (!config->configResults.NormalizeByMinMax(instanceName, minValues, maxValues))
             {
                 std::cout << "Error while trying to normalize Config: " << config->configName << "!" << std::endl;
             }
             if (!config->configMergedPareto.NormalizeByMinMax(minValues, maxValues))
             {
-                std::cout << "Error while trying to normalize ConfigMergedPareto: " << config->configName << "!"
-                          << std::endl;
+                std::cout << "Error while trying to normalize ConfigMergedPareto: " << config->configName << "!" << std::endl;
             }
         }
     }
-
-    // Evaluate
-    //std::cout << "Evaluate" << std::endl;
+    
     {
-        for (ConfigData *config: configsToAnalyze)
+        for (ConfigData* config : configsToAnalyze)
         {
             //ParetoMetrics avgParetoMetrics = config.configResults.EvaluateByTrueParetoFront_IGD(selInstName, trueParetoFront);
-            ParetoMetrics avgParetoMetrics = config->configResults.EvaluateByTrueParetoFront("d6", trueParetoFront);
+            ParetoMetrics avgParetoMetrics = config->configResults.EvaluateByTrueParetoFront(instanceName, trueParetoFront);
             //config.configResultsDump.push_back(selInstName + ";" + avgParetoMetrics.ToString());
-            size_t runsCount = config->configResults.GetParetoCountForInstance("d6");
+            size_t runsCount = config->configResults.GetParetoCountForInstance(instanceName);
             size_t mergedSize = config->configMergedPareto.solutions.size();
             size_t mergedNonDominated = config->configMergedPareto.GetNumberOfNonDominatedBy(trueParetoFront);
-            std::cout << config->configName << ";runs:" << runsCount << ";MPFS:" << mergedSize << ";MND:"
-                      << mergedNonDominated << ";" << avgParetoMetrics.ToString() << std::endl;
+            std::cout << config->configName << ";runs:" << runsCount << ";MPFS:" << mergedSize << ";MND:" << mergedNonDominated << ";" << avgParetoMetrics.ToString() << std::endl;
         }
     }
-    return 0;
+	return 0;
 }

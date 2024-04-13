@@ -18,18 +18,11 @@ CMSRCPSP_TA *CMSRCPSP_Factory::CreateMSRCPSP_TA(const char *problemConfiguration
     return new CMSRCPSP_TA(*scheduler, objCount);
 }
 
-CMSRCPSP_TO_P* CMSRCPSP_Factory::CreateMSRCPSP_TO_P(const char* problemConfigurationPath)
+CMSRCPSP_TO* CMSRCPSP_Factory::CreateMSRCPSP_TO(const char* problemConfigurationPath, size_t objCount)
 {
     scheduler = CreateScheduler(problemConfigurationPath);
 
-    return new CMSRCPSP_TO_P(*scheduler);
-}
-
-CMSRCPSP_TO_A* CMSRCPSP_Factory::CreateMSRCPSP_TO_A(const char* problemConfigurationPath)
-{
-    scheduler = CreateScheduler(problemConfigurationPath);
-
-    return new CMSRCPSP_TO_A(*scheduler);
+    return new CMSRCPSP_TO(*scheduler, objCount);
 }
 
 void CMSRCPSP_Factory::DeleteObjects()
