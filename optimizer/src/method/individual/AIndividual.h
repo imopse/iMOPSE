@@ -9,6 +9,7 @@ public:
     SGenotype m_Genotype;
     std::vector<float> m_Evaluation;
     std::vector<float> m_NormalizedEvaluation;
+    bool m_isValid = true;
     
 protected:
     AIndividual(SGenotype& genotype, std::vector<float>& evaluation, std::vector<float>& normalizedEvaluation)

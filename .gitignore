@@ -37,3 +37,6 @@
 /out/build/x64-Debug
 /CMakeSettings.json
 /.vs
+
+#build folder
+/build

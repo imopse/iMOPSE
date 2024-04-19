@@ -4,6 +4,7 @@
 #include "MSRCPSP/CMSRCPSP_Factory.h"
 #include "TTP/CTTPFactory.h"
 #include "CVRP/CCVRPFactory.h"
+#include "ECVRPTW/CECVRPTWFactory.h"
 #include "TSP/CTSPFactory.h"
 
 // Define the static method 'CreateProblem' in the 'CProblemFactory' class
@@ -18,6 +19,7 @@ AProblem *CProblemFactory::CreateProblem(const char *problemName, const char *pr
     if (strcmp(problemName, "TTP1") == 0) return CTTPFactory::CreateTTP1(problemConfigurationPath);
     if (strcmp(problemName, "TTP2") == 0) return CTTPFactory::CreateTTP2(problemConfigurationPath);
     if (strcmp(problemName, "CVRP") == 0) return CCVRPFactory::CreateCVRP(problemConfigurationPath);
+    if (strcmp(problemName, "ECVRPTW") == 0) return CECVRPTWFactory::CreateECVRPTW(problemConfigurationPath);
 
     // If none of the above conditions are met, throw a runtime error indicating the problem name is not supported
     throw std::runtime_error("Problem name: " + std::string(problemName) + " not supported");

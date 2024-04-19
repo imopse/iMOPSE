@@ -4,11 +4,13 @@
 #include "methods/SO/SA/CSAFactory.h"
 #include "methods/SO/TS/CTSFactory.h"
 #include "methods/MO/NTGA2/CNTGA2Factory.h"
+#include "methods/MO/NTGA2_ALNS/CNTGA2_ALNSFactory.h"
 #include "methods/MO/NSGAII/CNSGAIIFactory.h"
 #include "methods/SO/ACO/CACOFactory.h"
 #include "operators/initialization/CInitializationFactory.h"
 #include "operators/crossover/CCrossoverFactory.h"
 #include "operators/mutation/CMutationFactory.h"
+#include "operators/mutation/CALNSMutationFactory.h"
 #include "methods/SO/PSO/CPSOFactory.h"
 #include <cstring>
 #include "methods/SO/DE/CDEFactory.h"
@@ -81,6 +83,17 @@ AMethod* CMethodFactory::CreateMethod(
         return CBNTGAFactory::CreateBNTGA(configMap, problem, initialization, crossover, mutation);
     if (strcmp(methodName.c_str(), "SPEA2") == 0)
         return CSPEA2Factory::CreateSPEA2(configMap, problem, initialization, crossover, mutation);
+    if (strcmp(methodName.c_str(), "NTGA2_ALNS") == 0) 
+    {
+        return CNTGA2_ALNSFactory::CreateNTGA2_ALNS(configMap,
+            problem,
+            initialization,
+            crossover,
+            mutation,
+            CALNSMutationFactory::CreateRemovalOperators(problem),
+            CALNSMutationFactory::CreateInsertionOperators(problem)
+        );
+    }
     
     // If the method name is not supported, throw an error.
     throw std::runtime_error("Method name: " + std::string(methodName) + " not supported");
@@ -107,4 +120,5 @@ void CMethodFactory::DeleteObjects() {
     CBNTGAFactory::DeleteObjects();
     CSPEA2Factory::DeleteObjects();
     CACOFactory::DeleteObjects();
+    CNTGA2_ALNSFactory::DeleteObjects();
 }

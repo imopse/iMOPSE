@@ -2,7 +2,6 @@
 #include <fstream>
 #include <sstream>
 #include <sys/stat.h> // Library for file system statistics
-#include <regex>
 
 bool CReadUtils::fileExists(const char *path)
 {
@@ -65,6 +64,21 @@ CReadUtils::GotoReadStringByKey(std::ifstream &fileStream, const std::string &li
     if (CReadUtils::GotoLineByKey(fileStream, lineKey, line))
     {
         return CReadUtils::ReadStringByKey(line, lineKey, delimiter, val);
+    }
+    return false;
+}
+
+bool CReadUtils::GoToReadFloatByKeyAndRegex(std::ifstream& fileStream, const std::string& lineKey, const std::regex& regex, float& val)
+{
+    std::string line;
+    if (CReadUtils::GotoLineByKey(fileStream, lineKey, line))
+    {
+        std::smatch match;
+        if (std::regex_search(line, match, regex)) {
+            val = std::stof(match[0]);
+            return true;
+        }
+        return true;
     }
     return false;
 }
