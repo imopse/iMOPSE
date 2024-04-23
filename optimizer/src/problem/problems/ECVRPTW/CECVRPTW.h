@@ -17,6 +17,7 @@ public:
 
     void Evaluate(AIndividual& individual) override;
     void LogSolution(AIndividual& individual) override;
+    void LogAdditionalData() override;
     float GetScore(AIndividual& individual) { return individual.m_Evaluation[2]; }
 
     CECVRPTWTemplate& GetECVRPTWTemplate() { return m_ECVRPTWTemplate; }

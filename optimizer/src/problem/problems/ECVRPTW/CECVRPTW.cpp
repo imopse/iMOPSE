@@ -1,5 +1,7 @@
 #include "CECVRPTW.h"
 #include "../../../utils/logger/CExperimentLogger.h"
+#include <iostream>
+#include <sstream>
 
 CECVRPTW::CECVRPTW(CECVRPTWTemplate& ecvrptwBase) : m_ECVRPTWTemplate(ecvrptwBase)
 {
@@ -318,5 +320,15 @@ void CECVRPTW::LogSolution(AIndividual& individual) {
     solution += ";" + std::to_string(individual.m_Evaluation[2]);
     CExperimentLogger::AddLine(solution.c_str());
     delete genotype;
+}
+
+void CECVRPTW::LogAdditionalData() {
+    std::stringstream pointsData;
+    auto& cityData = m_ECVRPTWTemplate.GetCities();
+    for (auto& city : cityData) {
+        pointsData << city.m_PosX << ';' << city.m_PosY << std::endl;
+    }
+
+    CExperimentLogger::LogResult(pointsData.str().c_str(), "points.csv");
 }
 
