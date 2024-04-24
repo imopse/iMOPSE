@@ -304,7 +304,7 @@ void CECVRPTW::CreateProblemEncoding() {
 }
 
 void CECVRPTW::LogSolution(AIndividual& individual) {
-    auto* genotype = this->GetRealPath(individual);
+    auto* genotype = GetRealPath(individual);
     std::string solution;
     for (int i = 0; i < genotype->size(); i++) {
         solution += std::to_string((*genotype)[i]);
@@ -312,12 +312,6 @@ void CECVRPTW::LogSolution(AIndividual& individual) {
             solution += ";";
         }
     }
-    for (int i = genotype->size(); i < GetProblemEncoding().m_Encoding[0].m_SectionDescription[0].m_MaxValue*2; i++) {
-        solution += ";";
-    }
-    solution += ";" + std::to_string(individual.m_Evaluation[0]);
-    solution += ";" + std::to_string(individual.m_Evaluation[1]);
-    solution += ";" + std::to_string(individual.m_Evaluation[2]);
     CExperimentLogger::AddLine(solution.c_str());
     delete genotype;
 }

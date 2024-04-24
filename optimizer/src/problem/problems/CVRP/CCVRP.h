@@ -14,6 +14,7 @@ public:
 
     void Evaluate(AIndividual& individual) override;
     void LogSolution(AIndividual& individual) override;
+    void LogAdditionalData() override {};
 
 protected:
     size_t GetNearestDepotIdx(size_t cityIdx);

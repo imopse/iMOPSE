@@ -5,7 +5,7 @@ CMSRCPSP_TO_P::CMSRCPSP_TO_P(CScheduler& scheduler) : m_Scheduler(scheduler)
 {
     CreateProblemEncoding();
     m_Scheduler.SetCapableResources(m_CapableResources);
-    m_Scheduler.InitUnassignedTasks();
+   // m_Scheduler.InitUnassignedTasks(); TODO Method does not exist ?
 
     m_MaxObjectiveValues = {
             m_Scheduler.GetMaxDuration(),
@@ -32,7 +32,7 @@ SProblemEncoding& CMSRCPSP_TO_P::GetProblemEncoding()
 void CMSRCPSP_TO_P::Evaluate(AIndividual& individual)
 {
     m_Scheduler.Reset();
-    m_Scheduler.BuildTimestamps_TO_P(individual.m_Genotype.m_IntGenotype);
+   // m_Scheduler.BuildTimestamps_TO_P(individual.m_Genotype.m_IntGenotype); TODO Method does not exist?
 
     // We assume this is 5 dim problem
     individual.m_Evaluation =

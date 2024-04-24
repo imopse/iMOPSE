@@ -38,6 +38,8 @@ public:
         
     }
 
+    void LogAdditionalData() override {};
+
     void CreateProblemEncoding() {
         size_t citiesSize = m_CTSPTemplate.GetCitiesSize();
 

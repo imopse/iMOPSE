@@ -75,6 +75,7 @@ void CNTGA2_ALNS::RunOptimization()
 
     while (generation < m_GenerationLimit)
     {
+        CExperimentLogger::LogProgress(generation / (float)m_GenerationLimit);
         if ((generation % 100) < (100 - m_GapSelectionPercent))
         {
             RunGeneration();
@@ -348,4 +349,5 @@ void CNTGA2_ALNS::LogResult()
         m_Problem.LogSolution(*m_Archive[i]);
     }
     CExperimentLogger::LogData();
+    m_Problem.LogAdditionalData();
 }

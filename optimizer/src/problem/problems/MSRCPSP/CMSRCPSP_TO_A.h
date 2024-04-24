@@ -13,6 +13,7 @@ public:
 	SProblemEncoding& GetProblemEncoding() override;
 	void Evaluate(AIndividual& individual) override;
     void LogSolution(AIndividual& individual) override;
+    void LogAdditionalData() override {};
 private:
     void CreateProblemEncoding();
 

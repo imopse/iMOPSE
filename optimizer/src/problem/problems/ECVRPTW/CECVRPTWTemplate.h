@@ -1,6 +1,6 @@
 #pragma once
 
-#define PENALTYMULTIPLIER 200
+#define PENALTYMULTIPLIER 5
 #define DISTANCE_WEIGHT 20
 #define TIME_WEIGHT 10
 #define COST_WEIGHT 1
