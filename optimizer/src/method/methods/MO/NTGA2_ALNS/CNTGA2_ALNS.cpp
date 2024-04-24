@@ -185,13 +185,17 @@ bool CNTGA2_ALNS::ShouldUseALNS(std::vector<SMOIndividual*>& previousPopulation,
     float previousAverageEvaluation = 0;
     float currentAverageEvaluation = 0;
     float evaluationPoints = 0;
-    for (int j = 0; j < previousPopulation.size(); j++) {
-        evaluationPoints += previousPopulation[j]->m_Evaluation[0];
+    for (int i = 0; i < previousPopulation.size(); i++) {
+        for (int j = 0; j < previousPopulation[i]->m_Evaluation.size(); j++) {
+            evaluationPoints += previousPopulation[i]->m_Evaluation[j];
+        }
     }
     previousAverageEvaluation += evaluationPoints / m_PreviousPopulation.size();
     evaluationPoints = 0;
-    for (int j = 0; j < currentPopulation.size(); j++) {
-        evaluationPoints += currentPopulation[j]->m_Evaluation[0];
+    for (int i = 0; i < currentPopulation.size(); i++) {
+        for (int j = 0; j < currentPopulation[i]->m_Evaluation.size(); j++) {
+            evaluationPoints += currentPopulation[i]->m_Evaluation[j];
+        }
     }
     currentAverageEvaluation += evaluationPoints / m_PreviousPopulation.size();
     if ((currentAverageEvaluation / previousAverageEvaluation) - 1 < m_effectivnessThreshold) {
@@ -227,12 +231,12 @@ SMOIndividual* CNTGA2_ALNS::RunALNS(SMOIndividual& parent)
         m_Problem.Evaluate(*generated);
         if (generated->m_isValid) 
         {
-            if (generated->m_Evaluation[2] < current->m_Evaluation[2]) 
+            if (generated->m_Evaluation[0] + generated->m_Evaluation[1] < current->m_Evaluation[0] + current->m_Evaluation[1])
             {
                 delete current;
                 current = generated;
                 iterationsWithoutImprovement = 0;
-                if (current->m_Evaluation[2] < best->m_Evaluation[2]) 
+                if (current->m_Evaluation[0] + current->m_Evaluation[1] < best->m_Evaluation[0] + best->m_Evaluation[1])
                 {
                     delete best;
                     best = new SMOIndividual{ *current };
@@ -288,7 +292,7 @@ void CNTGA2_ALNS::UpdateScores(SMOIndividual* current,
     std::map<AMutation*, std::tuple<float, int>>& insertOperatorsScores
 ) 
 {
-    float scoreIncrease = current->m_Evaluation[2] - best->m_Evaluation[2];
+    float scoreIncrease = (current->m_Evaluation[0] + current->m_Evaluation[1]) - (best->m_Evaluation[0] + best->m_Evaluation[1]);
     if (removalOperatorsScores.count(removalOperator))
     {
         removalOperatorsScores[removalOperator] = std::tuple<float, int>(std::get<0>(removalOperatorsScores[removalOperator]) + scoreIncrease, ++std::get<1>(removalOperatorsScores[removalOperator]));

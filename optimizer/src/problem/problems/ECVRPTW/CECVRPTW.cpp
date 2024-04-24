@@ -216,22 +216,22 @@ void CECVRPTW::Evaluate(AIndividual& individual, std::vector<int>** genotypeCopy
     if (!isValid) {
         individual.m_Evaluation[0] = m_ECVRPTWTemplate.GetMaxDistance() * vehicleCount;
         individual.m_Evaluation[1] = m_ECVRPTWTemplate.GetMaxDueTime() * vehicleCount;
-        individual.m_Evaluation[2] = m_ECVRPTWTemplate.GetMaxCost() * vehicleCount;
+        //individual.m_Evaluation[2] = m_ECVRPTWTemplate.GetMaxCost() * vehicleCount;
         individual.m_isValid = false;
     }
     else {
         individual.m_Evaluation[0] = 0;
         individual.m_Evaluation[1] = 0;
-        individual.m_Evaluation[2] = 0;
+        //individual.m_Evaluation[2] = 0;
         for (int i = 0; i < vehicleCount; i++) {
             individual.m_Evaluation[0] += (*m_distance)[i];
             individual.m_Evaluation[1] += (*m_currentTime)[i];
-            individual.m_Evaluation[2] += DISTANCE_WEIGHT * (*m_distance)[i] + TIME_WEIGHT * (*m_currentTime)[i] + COST_WEIGHT * (*m_additionalCost)[i];
+            //individual.m_Evaluation[2] += DISTANCE_WEIGHT * (*m_distance)[i] + TIME_WEIGHT * (*m_currentTime)[i] + COST_WEIGHT * (*m_additionalCost)[i];
         }
     }
 
     // Normalize
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < 2; i++)
     {
         individual.m_NormalizedEvaluation[i] = (individual.m_Evaluation[i] - m_MinObjectiveValues[i]) / (m_MaxObjectiveValues[i] - m_MinObjectiveValues[i]);
     }
@@ -300,7 +300,7 @@ void CECVRPTW::CreateProblemEncoding() {
         EEncodingType::PERMUTATION
     };
 
-    m_ProblemEncoding = SProblemEncoding{ 3, {citiesSection} };
+    m_ProblemEncoding = SProblemEncoding{2, {citiesSection} };
 }
 
 void CECVRPTW::LogSolution(AIndividual& individual) {
@@ -317,12 +317,12 @@ void CECVRPTW::LogSolution(AIndividual& individual) {
 }
 
 void CECVRPTW::LogAdditionalData() {
-    std::stringstream pointsData;
+    std::ostringstream pointsData;
     auto& cityData = m_ECVRPTWTemplate.GetCities();
     for (auto& city : cityData) {
-        pointsData << city.m_PosX << ';' << city.m_PosY << std::endl;
+        
+        pointsData << city.m_PosX << ';' << city.m_PosY << ';' << (char)city.m_type << std::endl;
     }
-
     CExperimentLogger::LogResult(pointsData.str().c_str(), "points.csv");
 }
 
