@@ -20,7 +20,7 @@ CBNTGA::CBNTGA(AProblem &evaluator, AInitialization &initialization,
 
 void CBNTGA::RunOptimization()
 {
-    m_Generation = 0;
+    int generation = 0;
 
     for (size_t i = 0; i < m_PopulationSize; ++i)
     {
@@ -34,7 +34,7 @@ void CBNTGA::RunOptimization()
 
     ArchiveUtils::CopyToArchiveWithFiltering(m_Population, m_Archive);
 
-    while (m_Generation < m_GenerationLimit)
+    while (generation < m_GenerationLimit)
     {
         EvolveToNextGeneration();
 
@@ -46,7 +46,7 @@ void CBNTGA::RunOptimization()
         m_NextPopulation.clear();
         m_NextPopulation.reserve(m_Population.size());
 
-        m_Generation++;
+        generation++;
     }
     
     ArchiveUtils::LogParetoFront(m_Archive);

@@ -20,12 +20,8 @@ public:
     ~CBNTGA() override = default;
 
     void RunOptimization() override;
-    
-    void Reset() override {
-        m_Generation = 0;
-    }
+
 private:
-    int m_Generation = 0;
     CGapSelectionByRandomDim &m_GapSelection;
     
     void EvolveToNextGeneration();
