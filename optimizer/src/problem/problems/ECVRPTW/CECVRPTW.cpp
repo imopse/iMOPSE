@@ -1,5 +1,7 @@
 #include "CECVRPTW.h"
 #include "../../../utils/logger/CExperimentLogger.h"
+#include <iostream>
+#include <sstream>
 
 CECVRPTW::CECVRPTW(CECVRPTWTemplate& ecvrptwBase) : m_ECVRPTWTemplate(ecvrptwBase)
 {
@@ -214,22 +216,22 @@ void CECVRPTW::Evaluate(AIndividual& individual, std::vector<int>** genotypeCopy
     if (!isValid) {
         individual.m_Evaluation[0] = m_ECVRPTWTemplate.GetMaxDistance() * vehicleCount;
         individual.m_Evaluation[1] = m_ECVRPTWTemplate.GetMaxDueTime() * vehicleCount;
-        individual.m_Evaluation[2] = m_ECVRPTWTemplate.GetMaxCost() * vehicleCount;
+        //individual.m_Evaluation[2] = m_ECVRPTWTemplate.GetMaxCost() * vehicleCount;
         individual.m_isValid = false;
     }
     else {
         individual.m_Evaluation[0] = 0;
         individual.m_Evaluation[1] = 0;
-        individual.m_Evaluation[2] = 0;
+        //individual.m_Evaluation[2] = 0;
         for (int i = 0; i < vehicleCount; i++) {
             individual.m_Evaluation[0] += (*m_distance)[i];
             individual.m_Evaluation[1] += (*m_currentTime)[i];
-            individual.m_Evaluation[2] += DISTANCE_WEIGHT * (*m_distance)[i] + TIME_WEIGHT * (*m_currentTime)[i] + COST_WEIGHT * (*m_additionalCost)[i];
+            //individual.m_Evaluation[2] += DISTANCE_WEIGHT * (*m_distance)[i] + TIME_WEIGHT * (*m_currentTime)[i] + COST_WEIGHT * (*m_additionalCost)[i];
         }
     }
 
     // Normalize
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < 2; i++)
     {
         individual.m_NormalizedEvaluation[i] = (individual.m_Evaluation[i] - m_MinObjectiveValues[i]) / (m_MaxObjectiveValues[i] - m_MinObjectiveValues[i]);
     }
@@ -298,11 +300,11 @@ void CECVRPTW::CreateProblemEncoding() {
         EEncodingType::PERMUTATION
     };
 
-    m_ProblemEncoding = SProblemEncoding{ 3, {citiesSection} };
+    m_ProblemEncoding = SProblemEncoding{2, {citiesSection} };
 }
 
 void CECVRPTW::LogSolution(AIndividual& individual) {
-    auto* genotype = this->GetRealPath(individual);
+    auto* genotype = GetRealPath(individual);
     std::string solution;
     for (int i = 0; i < genotype->size(); i++) {
         solution += std::to_string((*genotype)[i]);
@@ -310,13 +312,17 @@ void CECVRPTW::LogSolution(AIndividual& individual) {
             solution += ";";
         }
     }
-    for (int i = genotype->size(); i < GetProblemEncoding().m_Encoding[0].m_SectionDescription[0].m_MaxValue*2; i++) {
-        solution += ";";
-    }
-    solution += ";" + std::to_string(individual.m_Evaluation[0]);
-    solution += ";" + std::to_string(individual.m_Evaluation[1]);
-    solution += ";" + std::to_string(individual.m_Evaluation[2]);
     CExperimentLogger::AddLine(solution.c_str());
     delete genotype;
+}
+
+void CECVRPTW::LogAdditionalData() {
+    std::ostringstream pointsData;
+    auto& cityData = m_ECVRPTWTemplate.GetCities();
+    for (auto& city : cityData) {
+        
+        pointsData << city.m_PosX << ';' << city.m_PosY << ';' << (char)city.m_type << std::endl;
+    }
+    CExperimentLogger::LogResult(pointsData.str().c_str(), "points.csv");
 }
 

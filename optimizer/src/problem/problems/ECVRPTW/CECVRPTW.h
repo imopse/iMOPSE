@@ -17,7 +17,8 @@ public:
 
     void Evaluate(AIndividual& individual) override;
     void LogSolution(AIndividual& individual) override;
-    float GetScore(AIndividual& individual) { return individual.m_Evaluation[2]; }
+    void LogAdditionalData() override;
+    float GetScore(AIndividual& individual) { return individual.m_Evaluation[0] + individual.m_Evaluation[1]; }
 
     CECVRPTWTemplate& GetECVRPTWTemplate() { return m_ECVRPTWTemplate; }
     std::vector<int>* GetRealPath(AIndividual& individual);

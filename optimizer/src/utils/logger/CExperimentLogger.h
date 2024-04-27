@@ -16,9 +16,11 @@ public:
     static void LogData();
     static void LogResult(const char* result);
     static void LogResult(const char* result, const char* fileName);
+    static void LogProgress(const float progress);
     static bool WriteSchedulerToFile(const CScheduler& schedule, const AIndividual& solution);
 private:
     static size_t m_BufferSize;
     static std::vector<std::string> m_Data;
+    static int m_LastProgressLogged;
     static void OpenFileForWriting(const char* filePath, std::ofstream& outFile);
 };

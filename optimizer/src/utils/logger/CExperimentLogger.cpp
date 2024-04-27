@@ -10,6 +10,7 @@
 char* CExperimentLogger::m_OutputDirPath = nullptr;
 std::vector<std::string> CExperimentLogger::m_Data;
 std::string CExperimentLogger::m_OutputDataPathPrefix;
+int CExperimentLogger::m_LastProgressLogged;
 size_t CExperimentLogger::m_BufferSize = 10000;
 
 void CExperimentLogger::CreateOutputDataPrefix() {
@@ -75,6 +76,14 @@ void CExperimentLogger::LogResult(const char* result, const char* fileName)
 
     outFile << result;
     outFile.close();
+}
+
+void CExperimentLogger::LogProgress(const float progress)
+{
+    if (m_LastProgressLogged != (int)(progress * 100)) {
+        std::cout << (int)(progress * 100) << std::endl;
+        m_LastProgressLogged = (int)(progress * 100);
+    }
 }
 
 void CExperimentLogger::OpenFileForWriting(const char* filePath, std::ofstream& outFile)

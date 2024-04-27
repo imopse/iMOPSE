@@ -5,7 +5,7 @@ CMSRCPSP_TO_P::CMSRCPSP_TO_P(CScheduler& scheduler) : m_Scheduler(scheduler)
 {
     CreateProblemEncoding();
     m_Scheduler.SetCapableResources(m_CapableResources);
-    m_Scheduler.InitUnassignedTasks();
+   m_Scheduler.InitUnassignedTasks();
 
     m_MaxObjectiveValues = {
             m_Scheduler.GetMaxDuration(),
