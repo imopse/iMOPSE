@@ -73,7 +73,7 @@ void CCVRP_OX::Crossover(const SProblemEncoding& problemEncoding, AIndividual &f
                     while (std::find(firstChild.m_Genotype.m_IntGenotype.begin(),
                                      firstChild.m_Genotype.m_IntGenotype.end(),
                                      secondParentGenes.m_IntGenotype[firstChildIdx]) !=
-                           firstChild.m_Genotype.m_IntGenotype.end()) {
+                           firstChild.m_Genotype.m_IntGenotype.end() && secondParentGenes.m_IntGenotype[firstChildIdx] != INT_MAX) {
                         firstChildIdx = (firstChildIdx + 1) % sectionSize;
                     }
                     firstChild.m_Genotype.m_IntGenotype[i] = secondParentGenes.m_IntGenotype[firstChildIdx];
@@ -82,7 +82,7 @@ void CCVRP_OX::Crossover(const SProblemEncoding& problemEncoding, AIndividual &f
                     while (std::find(secondChild.m_Genotype.m_IntGenotype.begin(),
                                      secondChild.m_Genotype.m_IntGenotype.end(),
                                      firstParentGenes.m_IntGenotype[secondChildIdx]) !=
-                           secondChild.m_Genotype.m_IntGenotype.end()) {
+                           secondChild.m_Genotype.m_IntGenotype.end() && firstParentGenes.m_IntGenotype[secondChildIdx] != INT_MAX) {
                         secondChildIdx = (secondChildIdx + 1) % sectionSize;
                     }
                     secondChild.m_Genotype.m_IntGenotype[i] = firstParentGenes.m_IntGenotype[secondChildIdx];

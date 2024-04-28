@@ -14,6 +14,7 @@ public:
     SProblemEncoding& GetProblemEncoding() override;
     void Evaluate(AIndividual& individual) override;
     void LogSolution(AIndividual& individual) override;
+    void LogAdditionalData() override {};
 
     // MSRCPSP specific functions
     float FindBestGeneValueCostWise(size_t geneIdx) const;

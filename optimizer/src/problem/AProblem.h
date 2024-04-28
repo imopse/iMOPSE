@@ -12,4 +12,5 @@ public:
     virtual SProblemEncoding &GetProblemEncoding() = 0;
     virtual void Evaluate(AIndividual& individual) = 0;
     virtual void LogSolution(AIndividual& individual) = 0;
+    virtual void LogAdditionalData() = 0;
 };
