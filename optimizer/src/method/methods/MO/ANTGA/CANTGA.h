@@ -24,7 +24,7 @@ public:
     ~CANTGA();
 
     void RunOptimization() override;
-    void Reset() override { m_Generation = 0; }
+    void Reset() override;
 
 private:
     int m_Generation = 0;

@@ -71,6 +71,13 @@ void CANTGA::RunOptimization()
     CExperimentLogger::LogResult(m_ArchiveHistory.ToStringStream().str().c_str(), "ArchHist.csv");
 }
 
+void CANTGA::Reset()
+{
+    AMOGeneticMethod::Reset();
+    m_Generation = 0;
+    m_MultiMutation->ResetAllOperatorData();
+}
+
 void CANTGA::EvolveToNextGeneration()
 {
     const auto& parents = m_GapSelection.Select(
