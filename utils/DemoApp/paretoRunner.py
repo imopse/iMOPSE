@@ -5,7 +5,9 @@ import csv
 import shutil
 
 def __CreateFiles(outputDirectory):
-   os.mkdir(os.path.join(outputDirectory, "config"))
+   path = os.path.join(outputDirectory, "config")
+   if not os.path.isdir(path):
+      os.mkdir(path)
    with open(os.path.join(outputDirectory, "config", "config.txt"), mode='w') as configFile:
       configFile.write(outputDirectory)
 
@@ -29,9 +31,12 @@ def RunPareto(outputDirectory):
    __MergeData(outputDirectory)
 
    with open(os.path.join(outputDirectory, "quality.txt"), mode='w') as qualityTxt:
-      qualityTxt.write(tpfs.split(':')[1].split("\\r")[0] + '\n')
-      qualityTxt.write(qualities[2].split(':')[1] + '\n')
-      qualityTxt.write(qualities[4] .split(':')[1] + '\n')
+      qualityTxt.write(tpfs.split(':')[1].split("\\r")[0] + '\n') # TPFS
+      qualityTxt.write(qualities[2].split(':')[1] + '\n') #MPFS
+      qualityTxt.write(qualities[4].split(':')[1] + '\n') #HV
+      qualityTxt.write(qualities[8].split(':')[1] + '\n') #IGD
+      qualityTxt.write(qualities[10].split(':')[1] + '\n') #PFS
+      qualityTxt.write(qualities[12].split(':')[1] + '\n') #ND? Purity?
 
    return process.returncode == 0
 

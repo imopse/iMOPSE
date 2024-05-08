@@ -56,6 +56,9 @@ class SetupWindow():
          , problemInstance
       )
 
+   def __RunParetoRunner(self):
+      RunPareto(self.outputDirectory.get())
+
    def __UpdateProgessBar(self, progress: int):
       self.progress.set(progress)
 
@@ -154,8 +157,10 @@ class SetupWindow():
       self.runButton.grid(row=10, pady=10)
       showData = Button(self.MainFrame, text="Show data", command=self.__RunMatplotlib)
       showData.grid(row=10, column=1, padx=10, sticky='ew')
+      showData = Button(self.MainFrame, text="Run quality check", command=self.__RunParetoRunner)
+      showData.grid(row=11, column=1, padx=10, sticky='ew')
 
       self.Progressbar = ttk.Progressbar(self.MainFrame, variable=self.progress)
-      self.Progressbar.grid(row=11, columnspan=2, sticky='ew')
+      self.Progressbar.grid(row=12, columnspan=2, pady=10, sticky='ew')
 
       return self.Root

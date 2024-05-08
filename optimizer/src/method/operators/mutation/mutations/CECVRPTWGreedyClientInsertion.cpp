@@ -3,7 +3,7 @@
 void CECVRPTWGreedyClientInsertion::Mutate(SProblemEncoding& problemEncoding, AIndividual& child) {
 	m_problem.Evaluate(child);
 	int intMax = INT32_MAX;;
-	float evaluationScore = m_problem.GetScore(child);
+	float evaluationScore = child.m_Evaluation[m_objectiveIndex];
 	auto& genotype = child.m_Genotype.m_IntGenotype;
 	auto genotypeCopy = std::vector<int>(genotype);
 	std::sort(genotypeCopy.begin(), genotypeCopy.end());
@@ -25,10 +25,13 @@ void CECVRPTWGreedyClientInsertion::Mutate(SProblemEncoding& problemEncoding, AI
 	for (int i = 0; i < missingCustomers.size(); i++) {
 		size_t bestInsertLocation = -1;
 		float bestCustomerScore = std::numeric_limits<float>::max();
-		for (int j = 0; j < genotype.size(); j++) {
+		int randomPivot = CRandom::GetInt(0, genotype.size());
+		int startPosition = CRandom::GetInt(std::max(0, randomPivot - GREEDYSIZE), randomPivot + 1);
+		int endPosition = CRandom::GetInt(randomPivot + 1, std::min((int)genotype.size(), randomPivot + 1 + GREEDYSIZE - (randomPivot - startPosition)) + 1);
+		for (int j = startPosition; j < endPosition + 1; j++) {
 			genotype.insert(genotype.begin() + j, missingCustomers[i]);
 			m_problem.Evaluate(child);
-			float newEvaluationScore = m_problem.GetScore(child);
+			float newEvaluationScore = child.m_Evaluation[m_objectiveIndex];
 			if (abs(evaluationScore - newEvaluationScore) < bestCustomerScore) {
 				bestInsertLocation = j;
 				bestCustomerScore = evaluationScore - newEvaluationScore;

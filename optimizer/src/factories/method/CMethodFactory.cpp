@@ -7,10 +7,10 @@
 #include "methods/MO/NTGA2_ALNS/CNTGA2_ALNSFactory.h"
 #include "methods/MO/NSGAII/CNSGAIIFactory.h"
 #include "methods/SO/ACO/CACOFactory.h"
+#include "methods/SO/ALNS/CALNSFactory.h"
 #include "operators/initialization/CInitializationFactory.h"
 #include "operators/crossover/CCrossoverFactory.h"
 #include "operators/mutation/CMutationFactory.h"
-#include "operators/mutation/CALNSMutationFactory.h"
 #include "methods/SO/PSO/CPSOFactory.h"
 #include <cstring>
 #include "methods/SO/DE/CDEFactory.h"
@@ -19,6 +19,8 @@
 #include "methods/MO/BNTGA/CBNTGAFactory.h"
 #include "methods/MO/SPEA2/CSPEA2Factory.h"
 #include "../../utils/fileReader/CReadUtils.h"
+#include "../../method/methods/SO/ALNS/CALNS.h"
+#include <iostream>
 
 // Static members of CMethodFactory, initialized to nullptr. These will hold various components of an optimization method.
 SConfigMap* CMethodFactory::configMap = nullptr;
@@ -85,15 +87,20 @@ AMethod* CMethodFactory::CreateMethod(
         return CSPEA2Factory::CreateSPEA2(configMap, problem, initialization, crossover, mutation);
     if (strcmp(methodName.c_str(), "NTGA2_ALNS") == 0) 
     {
+        std::vector<CALNS*>* alnsInstances = new std::vector<CALNS*>();
+        for (int i = 0; i < problem.GetProblemEncoding().m_objectivesNumber; i++) {
+            alnsInstances->push_back(CALNSFactory::CreateALNS(configMap, problem, initialization, i, false));
+        }
         return CNTGA2_ALNSFactory::CreateNTGA2_ALNS(configMap,
             problem,
             initialization,
             crossover,
             mutation,
-            CALNSMutationFactory::CreateRemovalOperators(problem),
-            CALNSMutationFactory::CreateInsertionOperators(problem)
+            alnsInstances
         );
     }
+    if (strcmp(methodName.c_str(), "ALNS") == 0)
+        return CALNSFactory::CreateALNS(configMap, problem, initialization, -1, true);
     
     // If the method name is not supported, throw an error.
     throw std::runtime_error("Method name: " + std::string(methodName) + " not supported");
@@ -121,4 +128,5 @@ void CMethodFactory::DeleteObjects() {
     CSPEA2Factory::DeleteObjects();
     CACOFactory::DeleteObjects();
     CNTGA2_ALNSFactory::DeleteObjects();
+    CALNSFactory::DeleteObjects();
 }

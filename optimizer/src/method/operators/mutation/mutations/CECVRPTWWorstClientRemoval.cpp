@@ -2,7 +2,7 @@
 
 void CECVRPTWWorstClientRemoval::Mutate(SProblemEncoding& problemEncoding, AIndividual& child) {
 	m_problem.Evaluate(child);
-	float evaluationScore = m_problem.GetScore(child);
+	float evaluationScore = child.m_Evaluation[m_objectiveIndex];
 	auto& genotype = child.m_Genotype.m_IntGenotype;
 	std::vector<std::tuple<size_t, float>> calculatedRemovals;
 	calculatedRemovals.reserve(problemEncoding.m_Encoding[0].m_SectionDescription.size() + m_problem.GetECVRPTWTemplate().GetVehicleCount() - 1);
@@ -11,7 +11,7 @@ void CECVRPTWWorstClientRemoval::Mutate(SProblemEncoding& problemEncoding, AIndi
 		if (customerIdx != VEHICLE_DELIMITER) {
 			genotype.erase(genotype.begin() + i);
 			m_problem.Evaluate(child);
-			float newEvaluationScore = m_problem.GetScore(child);
+			float newEvaluationScore = child.m_Evaluation[m_objectiveIndex];
 			if (calculatedRemovals.size() == 0) {
 				calculatedRemovals.insert(calculatedRemovals.begin()
 					, std::tuple<size_t, float>(customerIdx, evaluationScore - newEvaluationScore)

@@ -9,10 +9,11 @@
 class CECVRPTWWorstClientRemoval : public AMutation
 {
 public:
-	explicit CECVRPTWWorstClientRemoval(AProblem& problem) : m_problem((CECVRPTW&)problem) {};
+	explicit CECVRPTWWorstClientRemoval(AProblem& problem, size_t objectiveIndex) : m_problem((CECVRPTW&)problem), m_objectiveIndex(objectiveIndex) {};
 	~CECVRPTWWorstClientRemoval() override = default;
 
 	void Mutate(SProblemEncoding& problemEncoding, AIndividual& child) override;
 private:
 	CECVRPTW& m_problem;
+	size_t m_objectiveIndex = 0;
 };

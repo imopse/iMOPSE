@@ -55,7 +55,13 @@ class MatplotlibManager():
       with open(os.path.join(self.OutputDirectory, 'quality.txt')) as qualityTxt:
          tpfs = int(qualityTxt.readline())
          mpfs = float(qualityTxt.readline())
-         hv = float(qualityTxt.readline())
+         try:
+            hv = float(qualityTxt.readline())
+         except:
+            hv = float('NaN')
+         igd = float(qualityTxt.readline())
+         pfs = float(qualityTxt.readline())
+         purity = float(qualityTxt.readline())
 
       #Set style
       plt.style.use('_mpl-gallery')
@@ -63,14 +69,14 @@ class MatplotlibManager():
       #Draw Scatter plot
       self.paretofig = plt.figure()
       self.ax = self.paretofig.add_subplot(121)
-      axTrue = self.paretofig.add_subplot(122, sharex=self.ax)
+      axTrue = self.paretofig.add_subplot(122, sharex=self.ax, sharey=self.ax)
       self.sc = self.ax.scatter(self.npData[:, 0], self.npData[:, 1], picker=True, pickradius=5, c=np.array([[0, 0, 1]] * np.size(self.npData, 0)))
 
       self.ax.set_title(f"Method: {self.MethodName} Instance: {self.InstanceName}")
 
       #Draw True Pareto Scatter plot
       axTrue.scatter(trueData[:, 0], trueData[:, 1], color="black")
-      axTrue.set_title(f"True pareto front approximation\nTPFS: {tpfs} MPFS: {mpfs:0.6f} self.HV: {hv:0.6f}")
+      axTrue.set_title(f"True pareto front approximation\nTPFS: {tpfs} MPFS: {mpfs:0.6f} HV: {hv:0.6f}\nIGD: {igd:0.6f} PFS: {pfs:0.6f} Purity: {purity:0.6f}")
       axTrue.set_xlabel("Distance")
       axTrue.set_ylabel("Time")
 
