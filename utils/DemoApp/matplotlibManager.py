@@ -187,10 +187,10 @@ class MatplotlibManager():
       color = self.__GetColor()
       tolereance = 1
       for pointIndex in row:
-         if pointIndex != VEHICLESEPERATOR and pointIndex != 0:
+         if pointIndex != VEHICLESEPERATOR and pointIndex != 0 and pointIndex != 1:
             x_data.append(points[pointIndex, 0])
             y_data.append(points[pointIndex, 1])
-         elif pointIndex == 0 and tolereance == 0:
+         elif (pointIndex == 0 or pointIndex == 1) and tolereance == 0:
             x_data.append(points[0, 0])
             y_data.append(points[0, 1])
             ax.plot(np.array(x_data), np.array(y_data), color=color)
@@ -201,7 +201,7 @@ class MatplotlibManager():
             x_data.append(points[0, 0])
             y_data.append(points[0, 1])
             tolereance = 1
-         elif pointIndex == 0 and tolereance > 0:
+         elif (pointIndex == 0 or pointIndex == 1) and tolereance > 0:
             tolereance = tolereance - 1
             x_data.append(points[pointIndex, 0])
             y_data.append(points[pointIndex, 1])

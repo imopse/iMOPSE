@@ -60,7 +60,9 @@ def __MergeData(outputDirectory):
          if results[i][0] == results[j][0] and results[i][1] == results[j][1]:
             print("are equal", results[i][0], results[i][1], "index", i)
             indexesToRemove.append(i)
+            break
    
+   print(indexesToRemove)
    for index in sorted(indexesToRemove, reverse=True):
       del datas[index]
       del results[index]

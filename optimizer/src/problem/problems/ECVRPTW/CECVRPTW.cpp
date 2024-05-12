@@ -145,13 +145,16 @@ void CECVRPTW::MoveToNextCity(int& rechargeStationVisitInSeries,
 void CECVRPTW::HandleTimeOnCity(int& currentCar, size_t& nextCityIdx)
 {
     auto& cities = m_ECVRPTWTemplate.GetCities();
+    auto dayLength = m_ECVRPTWTemplate.GetMaxDueTime();
 
-    if ((*m_currentTime)[currentCar] < cities[nextCityIdx].m_readyTime) {
+    if (std::fmod((*m_currentTime)[currentCar], dayLength) < cities[nextCityIdx].m_readyTime) {
         (*m_currentTime)[currentCar] += cities[nextCityIdx].m_readyTime - (*m_currentTime)[currentCar];
     }
-    else if ((*m_currentTime)[currentCar] > cities[nextCityIdx].m_dueTime) {
-        float timeDiff = (*m_currentTime)[currentCar] - cities[nextCityIdx].m_dueTime;
-        (*m_additionalCost)[currentCar] += fminf(cities[nextCityIdx].m_serviceTime * PENALTYMULTIPLIER, powf(timeDiff, 2));
+    else if (std::fmod((*m_currentTime)[currentCar], dayLength) > cities[nextCityIdx].m_dueTime) {
+        float timeToEndOfDay = dayLength - (*m_currentTime)[currentCar];
+        (*m_currentTime)[currentCar] += timeToEndOfDay;
+        (*m_currentTime)[currentCar] += cities[nextCityIdx].m_readyTime;
+        //(*m_additionalCost)[currentCar] += fminf(cities[nextCityIdx].m_serviceTime * PENALTYMULTIPLIER, powf(timeDiff, 2));
     }
 }
 
