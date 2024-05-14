@@ -3,6 +3,7 @@ import threading as t
 import typing as type
 import asyncio.subprocess
 import infoManager as im
+import time
 
 def RunIMOPSE(loop: asyncio.BaseEventLoop
    , methodConfigFileName
@@ -83,6 +84,7 @@ class Runner():
       , onSuccess: type.Callable[[], None]
       , terminateEvent: t.Event):
       print("Starting impose")
+      startTime = time.time()
       process = await asyncio.create_subprocess_exec("./resources/imopse.exe"
          , *[methodConfigFileName
             , problemName
@@ -108,6 +110,7 @@ class Runner():
       else:
          checkTerminate.cancel()
       onProgressUpdated(100)
+      endTime = time.time()
       print("Return code: ", process.returncode)
       if process.returncode != 0:
          try:
@@ -125,5 +128,5 @@ class Runner():
             except:
                pass        
       else:
-         im.SaveInfo(outputDirectory, methodConfigFileName, problemInstanceFileName)
+         im.SaveInfo(outputDirectory, methodConfigFileName, problemInstanceFileName, endTime - startTime)
          onSuccess()

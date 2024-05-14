@@ -25,7 +25,7 @@ public:
     void RunOptimization() override;
 private:
     int m_GapSelectionPercent = 0;
-    int m_ALNSProbabilityPercent = 0;
+    float m_ALNSProbabilityPercent = 0;
     float m_effectivnessThreshold = 0;
 
     std::vector<SMOIndividual*> m_PreviousPopulation;

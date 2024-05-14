@@ -78,3 +78,16 @@ def __MergeData(outputDirectory):
          resultsCsvWriter.writerow(result)
 
    shutil.copyfile(os.path.join(outputDirectory, "run_0", "points.csv"), os.path.join(outputDirectory, "points.csv"))
+
+def MergeFolders(outputDirectory, directoryFrom):
+   lastNumber = -1
+   for path, subdirs, files in os.walk(outputDirectory):
+      for name in subdirs:
+         if name.startswith('run'):
+            lastNumber = int(name.split('_')[1])
+   for path, subdirs, files in os.walk(directoryFrom):
+      for name in subdirs:
+         if name.startswith('run'):
+            lastNumber = lastNumber + 1
+            shutil.copytree(os.path.join(path, name), os.path.join(outputDirectory, f"run_{lastNumber}"))
+   RunPareto(outputDirectory)

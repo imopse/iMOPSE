@@ -2,7 +2,7 @@ from tkinter import *
 from tkinter import filedialog as fd
 from tkinter import ttk
 from iMOPSERunner import RunIMOPSE
-from paretoRunner import RunPareto
+from paretoRunner import MergeFolders, RunPareto
 from matplotlibManager import RunDrawParetoFront
 import asyncio
 import infoManager as im
@@ -17,6 +17,7 @@ class SetupWindow():
       self.errorLabel = None
       self.thread = None
       self.terminateThreadEvent = None
+      self.mergeDirectory = None
       self.loop = loop
       self.tasks = []
       self.tasks.append(loop.create_task(self.MainLoop()))
@@ -27,8 +28,10 @@ class SetupWindow():
    def __SelectProblemFile(self):
       self.problemFile.set(fd.askopenfilename())
 
-   def __SelectOutputDirectory(self):
-      self.outputDirectory.set(fd.askdirectory())
+   def __SelectOutputDirectory(self, parameter: StringVar):
+      def __SelectOutputDirectoryFunc():
+         parameter.set(fd.askdirectory())
+      return __SelectOutputDirectoryFunc
 
    def __RunOptimization(self):
       if self.errorLabel is not None:
@@ -49,15 +52,16 @@ class SetupWindow():
       self.tasks.append(task)
 
    def __RunMatplotlib(self):
-      methodName, problemInstance = im.ReadInfo(self.outputDirectory.get())
+      methodName, problemInstance, time = im.ReadInfo(self.outputDirectory.get())
       RunDrawParetoFront(self.loop
          , self.outputDirectory.get()
          , methodName
          , problemInstance
+         , time
       )
 
    def __RunParetoRunner(self):
-      RunPareto(self.outputDirectory.get())
+      MergeFolders(self.outputDirectory.get(), self.mergeDirectory.get())
 
    def __UpdateProgessBar(self, progress: int):
       self.progress.set(progress)
@@ -82,6 +86,7 @@ class SetupWindow():
       self.problemName = StringVar()
       self.RunsCount = StringVar(value=1)
       self.progress = IntVar()
+      self.mergeDirectory = StringVar()
 
    def __OnClosing(self):
       if self.thread is not None:
@@ -101,7 +106,7 @@ class SetupWindow():
 
    def CreateGUI(self):
       self.Root = Tk()
-      self.Root.geometry("500x350")
+      self.Root.geometry("650x350")
       self.Root.protocol("WM_DELETE_WINDOW", self.__OnClosing)
       self.Root.title("iMOPSE Demo")
 
@@ -109,8 +114,9 @@ class SetupWindow():
 
       self.MainFrame = Frame(self.Root)
       self.MainFrame.pack(fill=BOTH, padx=10, pady=10)
-      self.MainFrame.grid_columnconfigure(0, weight=4)
+      self.MainFrame.grid_columnconfigure(0, weight=3)
       self.MainFrame.grid_columnconfigure(1, weight=1)
+      self.MainFrame.grid_columnconfigure(2, weight=1)
 
       labelFrame = Frame(self.MainFrame)
       labelFrame.grid(row=0, column=0, sticky='nesw')
@@ -119,7 +125,7 @@ class SetupWindow():
       self.MethodEntry = Entry(self.MainFrame, width=60, textvariable=self.configFile)
       self.MethodEntry.grid(row=1, column=0, sticky='ew')
       methodButton = Button(self.MainFrame, text="Select file", command=self.__SelectConfigFile)
-      methodButton.grid(row=1, column=1, sticky='ew', padx=10)
+      methodButton.grid(row=1, column=1, columnspan=2, sticky='ew', padx=10)
 
       labelProblemFrame = Frame(self.MainFrame)
       labelProblemFrame.grid(row=2, column=0, sticky='nesw')
@@ -128,7 +134,7 @@ class SetupWindow():
       self.ProblemEntry = Entry(self.MainFrame, width=60, textvariable=self.problemFile)
       self.ProblemEntry.grid(row=3, column=0, sticky='ew')
       problemButton = Button(self.MainFrame, text="Select file", command=self.__SelectProblemFile)
-      problemButton.grid(row=3, column=1, sticky='ew', padx=10)
+      problemButton.grid(row=3, column=1, columnspan=2, sticky='ew', padx=10)
 
       labelOutputFrame = Frame(self.MainFrame)
       labelOutputFrame.grid(row=4, column=0, sticky='nesw')
@@ -136,31 +142,36 @@ class SetupWindow():
       labelOutput.pack(side=LEFT)
       self.OutputEntry = Entry(self.MainFrame, width=60, textvariable=self.outputDirectory)
       self.OutputEntry.grid(row=5, column=0, sticky='ew')
-      OutputButton = Button(self.MainFrame, text="Select directory", command=self.__SelectOutputDirectory)
-      OutputButton.grid(row=5, column=1, sticky='ew', padx=10)
+      OutputButton = Button(self.MainFrame, text="Select directory", command=self.__SelectOutputDirectory(self.outputDirectory))
+      OutputButton.grid(row=5, column=1, columnspan=2, sticky='ew', padx=10)
 
       labelProblemNameFrame = Frame(self.MainFrame)
-      labelProblemNameFrame.grid(row=6, column=0, sticky='nesw')
+      labelProblemNameFrame.grid(row=6, column=0, columnspan=3, sticky='nesw')
       labelProblemName = Label(labelProblemNameFrame, text="Problem name:")
       labelProblemName.pack(side=LEFT)
       self.ProblemNameEntry = ttk.Combobox(self.MainFrame, width=60,values=["ECVRPTW"] , textvariable=self.problemName)
-      self.ProblemNameEntry.grid(row=7, column=0, sticky='ew')
+      self.ProblemNameEntry.grid(row=7, column=0, columnspan=3, sticky='ew')
 
       labelRunsCountFrame = Frame(self.MainFrame)
-      labelRunsCountFrame.grid(row=8, column=0, sticky='nesw')
+      labelRunsCountFrame.grid(row=8, column=0, columnspan=3, sticky='nesw')
       labelRunsCount = Label(labelRunsCountFrame, text="Runs count:")
       labelRunsCount.pack(side=LEFT)
       self.RunsCountEntry = Entry(self.MainFrame, width=60, textvariable=self.RunsCount)
-      self.RunsCountEntry.grid(row=9, column=0, sticky='ew')
+      self.RunsCountEntry.grid(row=9, column=0, columnspan=3, sticky='ew')
 
       self.runButton = Button(self.MainFrame, text="Run optimization", command=self.__RunOptimization)
-      self.runButton.grid(row=10, pady=10)
+      self.runButton.grid(row=10, column=1, sticky='ew')
       showData = Button(self.MainFrame, text="Show data", command=self.__RunMatplotlib)
-      showData.grid(row=10, column=1, padx=10, sticky='ew')
-      showData = Button(self.MainFrame, text="Run quality check", command=self.__RunParetoRunner)
-      showData.grid(row=11, column=1, padx=10, sticky='ew')
+      showData.grid(row=10, column=2, sticky='ew', pady=10)
+
+      self.MergeEntry = Entry(self.MainFrame, width=60, textvariable=self.mergeDirectory)
+      self.MergeEntry.grid(row=11, column=0, sticky='ew')
+      runMergeDirectory = Button(self.MainFrame, text="Select directory", command=self.__SelectOutputDirectory(self.mergeDirectory))
+      runMergeDirectory.grid(row=11, column=1, sticky='ew')
+      runMerge = Button(self.MainFrame, text="Run merge", command=self.__RunParetoRunner)
+      runMerge.grid(row=11, column=2, sticky='ew')
 
       self.Progressbar = ttk.Progressbar(self.MainFrame, variable=self.progress)
-      self.Progressbar.grid(row=12, columnspan=2, pady=10, sticky='ew')
+      self.Progressbar.grid(row=12, columnspan=3, pady=10, sticky='ew')
 
       return self.Root

@@ -38,7 +38,7 @@ CNTGA2_ALNS::CNTGA2_ALNS(AProblem &evaluator,
     ErrorUtils::LowerThanZeroF("NTGA2_ALNS", "EffectivnessThreshold", m_effectivnessThreshold);
 
     configMap->TakeValue("ALNSProbabilityPercent", m_ALNSProbabilityPercent);
-    ErrorUtils::OutOfScopeF("NTGA2_ALNS", "ALNSProbabilityPercent", m_ALNSProbabilityPercent / 100.f);
+    ErrorUtils::OutOfScopeF("NTGA2_ALNS", "ALNSProbabilityPercent", m_ALNSProbabilityPercent);
 }
 
 void CNTGA2_ALNS::RunOptimization()
@@ -104,7 +104,7 @@ void CNTGA2_ALNS::RunGeneration()
         auto* firstParent = m_RankedTournament.Select(m_Population);
         auto* secondParent = m_RankedTournament.Select(m_Population);
 
-        if (shouldUseALNS && CRandom::GetInt(0, 101) < m_ALNSProbabilityPercent) {
+        if (shouldUseALNS && CRandom::GetFloat(0, 1) < m_ALNSProbabilityPercent) {
             auto* firstChild = RunALNS(*firstParent);
             auto* secondChild = RunALNS(*secondParent);
             EvaluateAndAdd(*firstChild);

@@ -54,7 +54,7 @@ SMOIndividual* CALNS::RunOptimization(SMOIndividual& individual)
 
 bool CALNS::AcceptWorseSolution(SMOIndividual& generated, SMOIndividual& current, float temperature)
 {
-    return CRandom::GetFloat(0, 1) < exp((generated.m_Evaluation[m_objectiveIndex] - current.m_Evaluation[m_objectiveIndex]) / temperature);
+    return CRandom::GetFloat(0, 1) < exp(-(generated.m_Evaluation[m_objectiveIndex] - current.m_Evaluation[m_objectiveIndex]) / temperature);
 }
 
 SMOIndividual* CALNS::RunALNS(SMOIndividual& parent)
@@ -144,7 +144,7 @@ void CALNS::UpdateScores(SMOIndividual* current,
     std::map<AMutation*, std::tuple<float, int>>& insertOperatorsScores
 )
 {
-    float scoreIncrease = (current->m_Evaluation[0] + current->m_Evaluation[1]) - (best->m_Evaluation[0] + best->m_Evaluation[1]);
+    float scoreIncrease = (current->m_Evaluation[m_objectiveIndex]) - (best->m_Evaluation[m_objectiveIndex]);
     if (removalOperatorsScores.count(removalOperator))
     {
         removalOperatorsScores[removalOperator] = std::tuple<float, int>(std::get<0>(removalOperatorsScores[removalOperator]) + scoreIncrease, ++std::get<1>(removalOperatorsScores[removalOperator]));

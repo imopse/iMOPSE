@@ -16,8 +16,9 @@ def RunDrawParetoFront(loop: asyncio.BaseEventLoop
    , outputDirectory: str
    , methodName
    , instanceName
+   , time
 ):
-   manager = MatplotlibManager(outputDirectory, methodName, instanceName)
+   manager = MatplotlibManager(outputDirectory, methodName, instanceName, time)
    manager.DrawParetoFront()
 
 class MatplotlibManager():
@@ -25,6 +26,7 @@ class MatplotlibManager():
          , outputDirectory: str
          , methodName: str
          , instanceName: str
+         , time: float | None
       ) -> None:
       self.OutputDirectory: str = outputDirectory
       self.MethodName: str = methodName
@@ -33,6 +35,7 @@ class MatplotlibManager():
       self.LastPickedIndex = None
       self.paretofig = None
       self.eventId = 0
+      self.time = time
 
    def DrawParetoFront(self):
       #Read parreto front data
@@ -71,8 +74,9 @@ class MatplotlibManager():
       self.ax = self.paretofig.add_subplot(121)
       axTrue = self.paretofig.add_subplot(122, sharex=self.ax, sharey=self.ax)
       self.sc = self.ax.scatter(self.npData[:, 0], self.npData[:, 1], picker=True, pickradius=5, c=np.array([[0, 0, 1]] * np.size(self.npData, 0)))
-
-      self.ax.set_title(f"Method: {self.MethodName} Instance: {self.InstanceName}")
+      distanceText = f"Distance: Best: {np.amin(self.npData[:, 0]):0.2f} Average: {np.average(self.npData[:, 0]):0.2f} Worst: {np.amax(self.npData[:, 0]):0.2f} Std: {np.std(self.npData[:, 0]):0.2f}"
+      timeText = f"Time: Best: {np.amin(self.npData[:, 1]):0.2f} Average: {np.average(self.npData[:, 1]):0.2f} Worst: {np.amax(self.npData[:, 1]):0.2f} Std: {np.std(self.npData[:, 1]):0.2f}"
+      self.ax.set_title(f"Method: {self.MethodName} Instance: {self.InstanceName} Time: {self.time:0.2f}\n{distanceText}\n{timeText}")
 
       #Draw True Pareto Scatter plot
       axTrue.scatter(trueData[:, 0], trueData[:, 1], color="black")
