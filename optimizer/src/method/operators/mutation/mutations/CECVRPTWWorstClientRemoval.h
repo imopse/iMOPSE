@@ -9,7 +9,7 @@
 class CECVRPTWWorstClientRemoval : public AMutation
 {
 public:
-	explicit CECVRPTWWorstClientRemoval(AProblem& problem, size_t objectiveIndex) : m_problem((CECVRPTW&)problem), m_objectiveIndex(objectiveIndex) 
+	explicit CECVRPTWWorstClientRemoval(AProblem& problem, std::vector<float>& objectiveWeights) : m_problem((CECVRPTW&)problem), m_objectiveWeights(objectiveWeights)
 	{
 		m_calculatedRemovals = new std::vector<std::tuple<size_t, float>>();
 		m_calculatedRemovals->reserve(m_problem.GetProblemEncoding().m_Encoding[0].m_SectionDescription.size() + m_problem.GetECVRPTWTemplate().GetVehicleCount() - 1);
@@ -22,6 +22,6 @@ public:
 	void Mutate(SProblemEncoding& problemEncoding, AIndividual& child) override;
 private:
 	CECVRPTW& m_problem;
-	size_t m_objectiveIndex = 0;
+	std::vector<float>& m_objectiveWeights;
 	std::vector<std::tuple<size_t, float>>* m_calculatedRemovals;
 };

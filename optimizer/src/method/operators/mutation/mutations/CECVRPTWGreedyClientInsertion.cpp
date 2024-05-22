@@ -1,13 +1,18 @@
 #include "CECVRPTWGreedyClientInsertion.h"
+#include "../../../individual/SO/SSOIndividual.h"
+#include "../../../../method/methods/SO/CAggregatedFitness.h"
 
 void CECVRPTWGreedyClientInsertion::Mutate(SProblemEncoding& problemEncoding, AIndividual& child) {
 	m_genotypeCopy->clear();
 	m_missingCustomers->clear();
 
-	m_problem.Evaluate(child);
-	int intMax = INT32_MAX;;
-	float evaluationScore = child.m_Evaluation[m_objectiveIndex];
-	auto& genotype = child.m_Genotype.m_IntGenotype;
+	auto& convertedChild = (SSOIndividual&)child;
+	m_problem.Evaluate(convertedChild);
+	CAggregatedFitness::CountFitness(convertedChild, m_objectiveWeights);
+	int intMax = INT32_MAX;
+
+	float evaluationScore = convertedChild.m_Fitness;
+	auto& genotype = convertedChild.m_Genotype.m_IntGenotype;
 	std::copy(genotype.begin(), genotype.end(), std::back_inserter(*m_genotypeCopy));
 	std::sort(m_genotypeCopy->begin(), m_genotypeCopy->end());
 	auto& ecvrpTemplate = m_problem.GetECVRPTWTemplate();
@@ -32,8 +37,9 @@ void CECVRPTWGreedyClientInsertion::Mutate(SProblemEncoding& problemEncoding, AI
 		int endPosition = CRandom::GetInt(randomPivot + 1, std::min((int)genotype.size(), randomPivot + 1 + GREEDYSIZE - (randomPivot - startPosition)) + 1);
 		for (int j = startPosition; j < endPosition + 1; j++) {
 			genotype.insert(genotype.begin() + j, (*m_missingCustomers)[i]);
-			m_problem.Evaluate(child);
-			float newEvaluationScore = child.m_Evaluation[m_objectiveIndex];
+			m_problem.Evaluate(convertedChild);
+			CAggregatedFitness::CountFitness(convertedChild, m_objectiveWeights);
+			float newEvaluationScore = convertedChild.m_Fitness;
 			if (abs(evaluationScore - newEvaluationScore) < bestCustomerScore) {
 				bestInsertLocation = j;
 				bestCustomerScore = evaluationScore - newEvaluationScore;

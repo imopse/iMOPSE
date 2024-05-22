@@ -5,7 +5,7 @@
 class CALNSFactory
 {
 public:
-    static CALNS* CreateALNS(SConfigMap* configMap, AProblem& problem, AInitialization* initialization, int objectiveIndex, bool logProgress);
+    static CALNS* CreateALNS(SConfigMap* configMap, AProblem& problem, AInitialization* initialization, bool logProgress, int* objectiveIndex = nullptr);
     static void DeleteObjects();
 private:
     static std::vector<float>* objectiveWeights;

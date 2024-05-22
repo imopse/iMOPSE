@@ -11,9 +11,9 @@
 class CECVRPTWGreedyClientInsertion : public AMutation
 {
 public:
-	explicit CECVRPTWGreedyClientInsertion(AProblem& problem, size_t objectiveIndex) 
+	explicit CECVRPTWGreedyClientInsertion(AProblem& problem, std::vector<float>& objectiveWeights)
 		: m_problem((CECVRPTW&)problem)
-		, m_objectiveIndex(objectiveIndex) 
+		, m_objectiveWeights(objectiveWeights)
 	{
 		m_genotypeCopy = new std::vector<int>();
 		m_missingCustomers = new std::vector<int>();
@@ -30,7 +30,7 @@ public:
 	void Mutate(SProblemEncoding& problemEncoding, AIndividual& child) override;
 private:
 	CECVRPTW& m_problem;
-	size_t m_objectiveIndex = 0;
+	std::vector<float>& m_objectiveWeights;
 	std::vector<int>* m_genotypeCopy;
 	std::vector<int>* m_missingCustomers;
 };

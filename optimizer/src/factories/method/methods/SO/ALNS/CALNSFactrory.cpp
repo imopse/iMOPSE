@@ -7,24 +7,38 @@ std::vector<float>* CALNSFactory::objectiveWeights = nullptr;
 std::vector<AMutation*>* CALNSFactory::s_removalOperators = nullptr;
 std::vector<AMutation*>* CALNSFactory::s_insertionOperators = nullptr;
 
-CALNS* CALNSFactory::CreateALNS(SConfigMap* configMap, AProblem& problem, AInitialization* initialization, int objectiveIndex, bool logProgress)
+CALNS* CALNSFactory::CreateALNS(SConfigMap* configMap, AProblem& problem, AInitialization* initialization, bool logProgress, int* objectiveIndex)
 {
     objectiveWeights = new std::vector<float>();
-    *objectiveWeights = { 1.0f };
-
-    if (objectiveIndex == -1) {
-        configMap->TakeValue("ObjectiveIndex", objectiveIndex);
+    if (objectiveIndex == nullptr) {
+        std::string rawWeightsString;
+        configMap->TakeValue("ObjectiveWeights", rawWeightsString);
+        if (!rawWeightsString.empty())
+        {
+            CReadUtils::ReadWeights(rawWeightsString, *objectiveWeights);
+        }
+        else {
+            *objectiveWeights = { 1.0f };
+        }
+    }
+    else 
+    {
+        if (*objectiveIndex == 0) {
+            *objectiveWeights = { 1.0f, 0.f };
+        }
+        else {
+            *objectiveWeights = { 0.f, 1.0f };
+        }
     }
 
-    s_removalOperators = CALNSMutationFactory::CreateRemovalOperators(problem, objectiveIndex);
-    s_insertionOperators = CALNSMutationFactory::CreateInsertionOperators(problem, objectiveIndex);
+    s_removalOperators = CALNSMutationFactory::CreateRemovalOperators(problem, *objectiveWeights);
+    s_insertionOperators = CALNSMutationFactory::CreateInsertionOperators(problem, *objectiveWeights);
 
     return new CALNS(
         *objectiveWeights,
         problem,
         *initialization,
         configMap,
-        objectiveIndex,
         logProgress,
         *s_removalOperators,
         *s_insertionOperators

@@ -34,7 +34,7 @@ AMethod* CMethodFactory::CreateMethod(
         AProblem& problem
 )
 {
-    /*std::string test;
+   /* std::string test;
     std::cin >> test;*/
 
     // Create a configuration map from the provided path using the CConfigFactory.
@@ -104,7 +104,7 @@ AMethod* CMethodFactory::CreateMethod(
     {
         std::vector<CALNS*>* alnsInstances = new std::vector<CALNS*>();
         for (int i = 0; i < problem.GetProblemEncoding().m_objectivesNumber; i++) {
-            alnsInstances->push_back(CALNSFactory::CreateALNS(configMap, problem, initialization, i, false));
+            alnsInstances->push_back(CALNSFactory::CreateALNS(configMap, problem, initialization, false, &i));
         }
         return CNTGA2_ALNSFactory::CreateNTGA2_ALNS(configMap,
             problem,
@@ -115,7 +115,7 @@ AMethod* CMethodFactory::CreateMethod(
         );
     }
     if (strcmp(methodName.c_str(), "ALNS") == 0)
-        return CALNSFactory::CreateALNS(configMap, problem, initialization, -1, true);
+        return CALNSFactory::CreateALNS(configMap, problem, initialization, true);
     
     // If the method name is not supported, throw an error.
     throw std::runtime_error("Method name: " + std::string(methodName) + " not supported");

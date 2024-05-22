@@ -11,7 +11,6 @@ public:
         AProblem& evaluator,
         AInitialization& initialization,
         SConfigMap* configMap,
-        int objectiveIndex,
         bool logProgress,
         std::vector<AMutation*>& alnsRemovalMutations,
         std::vector<AMutation*>& alnsInsertionMutations
@@ -27,21 +26,19 @@ public:
         std::vector<float>& insertionOperatorsProbabilityDistribution
     );
 
-    void UpdateScores(SMOIndividual* current,
-        SMOIndividual* best,
+    void UpdateScores(SSOIndividual* current,
+        SSOIndividual* best,
         AMutation*& removalOperator,
         AMutation*& insertOperator,
         std::map<AMutation*, std::tuple<float, int>>& removalOperatorsScores,
         std::map<AMutation*, std::tuple<float, int>>& insertOperatorsScores
     );
 
-    bool AcceptWorseSolution(SMOIndividual& generated, SMOIndividual& current, float temperature);
+    bool AcceptWorseSolution(SSOIndividual& generated, SSOIndividual& current, float temperature);
 
-    SMOIndividual* RunALNS(SMOIndividual& parent);
+    SSOIndividual* RunALNS(SSOIndividual& parent);
 
 private:
-    size_t m_objectiveIndex = 0;
-
     std::vector<AMutation*>& m_alnsRemovalMutations;
     std::vector<AMutation*>& m_alnsInsertionMutations;
 

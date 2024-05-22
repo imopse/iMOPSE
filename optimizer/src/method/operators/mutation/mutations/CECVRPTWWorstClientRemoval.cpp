@@ -1,17 +1,21 @@
 #include "CECVRPTWWorstClientRemoval.h"
+#include "../../../individual/SO/SSOIndividual.h"
+#include "../../../../method/methods/SO/CAggregatedFitness.h"
 
 void CECVRPTWWorstClientRemoval::Mutate(SProblemEncoding& problemEncoding, AIndividual& child) {
 	m_calculatedRemovals->clear();
-
-	m_problem.Evaluate(child);
-	float evaluationScore = child.m_Evaluation[m_objectiveIndex];
-	auto& genotype = child.m_Genotype.m_IntGenotype;
+	auto& convertedChild = (SSOIndividual&)child;
+	m_problem.Evaluate(convertedChild);
+	CAggregatedFitness::CountFitness(convertedChild, m_objectiveWeights);
+	float evaluationScore = convertedChild.m_Fitness;
+	auto& genotype = convertedChild.m_Genotype.m_IntGenotype;
 	for (int i = 0; i < problemEncoding.m_Encoding[0].m_SectionDescription.size(); i++) {
 		int customerIdx = genotype[i];
 		if (customerIdx != VEHICLE_DELIMITER) {
 			genotype.erase(genotype.begin() + i);
-			m_problem.Evaluate(child);
-			float newEvaluationScore = child.m_Evaluation[m_objectiveIndex];
+			m_problem.Evaluate(convertedChild);
+			CAggregatedFitness::CountFitness(convertedChild, m_objectiveWeights);
+			float newEvaluationScore = convertedChild.m_Fitness;
 			if (m_calculatedRemovals->size() == 0) {
 				m_calculatedRemovals->insert(m_calculatedRemovals->begin()
 					, std::tuple<size_t, float>(customerIdx, evaluationScore - newEvaluationScore)

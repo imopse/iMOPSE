@@ -12,11 +12,10 @@ CALNS::CALNS(
     AProblem& evaluator,
     AInitialization& initialization,
     SConfigMap* configMap,
-    int objectiveIndex,
     bool logProgress,
     std::vector<AMutation*>& alnsRemovalMutations,
     std::vector<AMutation*>& alnsInsertionMutations
-) : ASOMethod(evaluator, initialization, objectiveWeights), m_objectiveIndex(objectiveIndex), m_alnsInsertionMutations(alnsInsertionMutations), m_alnsRemovalMutations(alnsRemovalMutations), m_logProgress(logProgress)
+) : ASOMethod(evaluator, initialization, objectiveWeights), m_alnsInsertionMutations(alnsInsertionMutations), m_alnsRemovalMutations(alnsRemovalMutations), m_logProgress(logProgress)
 {
     configMap->TakeValue("ALNSIterations", m_ALNSIterations);
     ErrorUtils::LowerThanZeroI("ALNS", "ALNSIterations", m_ALNSIterations);
@@ -36,31 +35,40 @@ CALNS::CALNS(
 
 void CALNS::RunOptimization()
 {
-    auto individual = m_Initialization.CreateMOIndividual(m_Problem.GetProblemEncoding());
+    auto individual = m_Initialization.CreateSOIndividual(m_Problem.GetProblemEncoding());
     auto best = RunALNS(*individual);
-    m_Problem.Evaluate(*best);
+    auto bestConverted = new SMOIndividual(*best);
+    m_Problem.Evaluate(*bestConverted);
 
     CExperimentLogger::LogProgress(1);
-    ArchiveUtils::LogParetoFront(std::vector<SMOIndividual*> { best });
-    m_Problem.LogSolution(*best);
+    ArchiveUtils::LogParetoFront(std::vector<SMOIndividual*> { bestConverted });
+    m_Problem.LogSolution(*bestConverted);
     CExperimentLogger::LogData();
     m_Problem.LogAdditionalData();
+    delete best;
+    delete bestConverted;
 }
 
 SMOIndividual* CALNS::RunOptimization(SMOIndividual& individual)
 {
-    return RunALNS(individual);
+    auto* newIndividual = RunALNS(SSOIndividual(individual));
+    auto* convertedIndividual = new SMOIndividual(individual);
+    delete newIndividual;
+    return convertedIndividual;
 }
 
-bool CALNS::AcceptWorseSolution(SMOIndividual& generated, SMOIndividual& current, float temperature)
+bool CALNS::AcceptWorseSolution(SSOIndividual& generated, SSOIndividual& current, float temperature)
 {
-    return CRandom::GetFloat(0, 1) < exp(-(generated.m_Evaluation[m_objectiveIndex] - current.m_Evaluation[m_objectiveIndex]) / temperature);
+    CAggregatedFitness::CountFitness(generated, m_ObjectiveWeights);
+    CAggregatedFitness::CountFitness(current, m_ObjectiveWeights);
+    return CRandom::GetFloat(0, 1) < exp(-(generated.m_Fitness - current.m_Fitness) / temperature);
 }
 
-SMOIndividual* CALNS::RunALNS(SMOIndividual& parent)
+SSOIndividual* CALNS::RunALNS(SSOIndividual& parent)
 {
-    auto* best = new SMOIndividual{ parent };
-    auto* current = new SMOIndividual{ *best };
+    auto* best = new SSOIndividual{ parent };
+    m_Problem.Evaluate(*best);
+    auto* current = new SSOIndividual{ *best };
     int iteration = 1;
     int iterationsWithoutImprovement = 0;
     float temperature = 0;
@@ -68,28 +76,31 @@ SMOIndividual* CALNS::RunALNS(SMOIndividual& parent)
     std::vector<float> insertionOperatorsProbabilityDistribution(m_alnsInsertionMutations.size(), 1.0f / m_alnsInsertionMutations.size());
     std::map<AMutation*, std::tuple<float, int>> removalOperatorsScores;
     std::map<AMutation*, std::tuple<float, int>> insertOperatorsScores;
-    m_Problem.Evaluate(*current);
+    CAggregatedFitness::CountFitness(*best, m_ObjectiveWeights);
+    CAggregatedFitness::CountFitness(*current, m_ObjectiveWeights);
     while (iteration < (m_ALNSIterations + 1) && iterationsWithoutImprovement < m_ALNSNoImprovementIterations)
     {
         if(m_logProgress)
             CExperimentLogger::LogProgress(iteration / (float)(m_ALNSIterations + 1));
-        auto* generated = new SMOIndividual(*current);
+        auto* generated = new SSOIndividual(*current);
         auto& removalOperator = m_alnsRemovalMutations[CRandom::GetWeightedInt(removalOperatorsProbabilityDistribution)];
         auto& insertOperator = m_alnsInsertionMutations[CRandom::GetWeightedInt(insertionOperatorsProbabilityDistribution)];
         removalOperator->Mutate(m_Problem.GetProblemEncoding(), *generated);
         insertOperator->Mutate(m_Problem.GetProblemEncoding(), *generated);
         m_Problem.Evaluate(*generated);
+        CAggregatedFitness::CountFitness(*generated, m_ObjectiveWeights);
         if (generated->m_isValid)
         {
-            if (generated->m_Evaluation[m_objectiveIndex] < current->m_Evaluation[m_objectiveIndex])
+            if (generated->m_Fitness < current->m_Fitness)
             {
                 delete current;
                 current = generated;
                 iterationsWithoutImprovement = 0;
-                if (current->m_Evaluation[m_objectiveIndex] < best->m_Evaluation[m_objectiveIndex])
+                if (current->m_Fitness < best->m_Fitness)
                 {
                     delete best;
-                    best = new SMOIndividual{ *current };
+                    best = new SSOIndividual{ *current };
+                    CAggregatedFitness::CountFitness(*best, m_ObjectiveWeights);
                 }
             }
             else if (AcceptWorseSolution(*generated, *current, temperature))
@@ -137,15 +148,15 @@ SMOIndividual* CALNS::RunALNS(SMOIndividual& parent)
     return best;
 }
 
-void CALNS::UpdateScores(SMOIndividual* current,
-    SMOIndividual* best,
+void CALNS::UpdateScores(SSOIndividual* current,
+    SSOIndividual* best,
     AMutation*& removalOperator,
     AMutation*& insertOperator,
     std::map<AMutation*, std::tuple<float, int>>& removalOperatorsScores,
     std::map<AMutation*, std::tuple<float, int>>& insertOperatorsScores
 )
 {
-    float scoreIncrease = (current->m_Evaluation[m_objectiveIndex]) - (best->m_Evaluation[m_objectiveIndex]);
+    float scoreIncrease = (current->m_Fitness) - (best->m_Fitness);
     if (removalOperatorsScores.count(removalOperator))
     {
         removalOperatorsScores[removalOperator] = std::tuple<float, int>(std::get<0>(removalOperatorsScores[removalOperator]) + scoreIncrease, ++std::get<1>(removalOperatorsScores[removalOperator]));
