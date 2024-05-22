@@ -10,6 +10,7 @@ class CSelectionFactory
 public:
     static CFitnessTournament *CreateFitnessTournamentSelection(SConfigMap *configMap);
     static CRankedTournament *CreateRankedTournamentSelection(SConfigMap *configMap);
+    static CRankedTournament* CreateRankedTournamentSelection(SConfigMap* configMap, std::string& selectionName);
     static CGapSelectionByRandomDim *CreateGapSelection(SConfigMap *configMap, bool bntga);
 private:
     static int ValidateSelectionAndReturnTournamentSize(SConfigMap *configMap, std::string selectionName);

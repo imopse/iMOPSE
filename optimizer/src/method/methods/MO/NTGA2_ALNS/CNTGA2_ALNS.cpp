@@ -11,6 +11,7 @@
 CNTGA2_ALNS::CNTGA2_ALNS(AProblem &evaluator,
     AInitialization &initialization,
     CRankedTournament &rankedTournament,
+    CRankedTournament& alnsRankedTournament,
     CGapSelectionByRandomDim &gapSelection,
     ACrossover &crossover,
     AMutation &mutation,
@@ -20,7 +21,8 @@ CNTGA2_ALNS::CNTGA2_ALNS(AProblem &evaluator,
         AMOGeneticMethod(evaluator, initialization, crossover, mutation),
         m_RankedTournament(rankedTournament),
         m_GapSelection(gapSelection),
-        m_ALNSInstances(alnsInstances)
+        m_ALNSInstances(alnsInstances),
+        m_AlnsRankedTournament(alnsRankedTournament)
 {
     configMap->TakeValue("GapSelectionPercent", m_GapSelectionPercent);
     ErrorUtils::OutOfScopeF("NTGA2_ALNS", "GapSelectionPercent", m_GapSelectionPercent / 100.f); // Assuming this checks for a valid percentage range
@@ -34,11 +36,8 @@ CNTGA2_ALNS::CNTGA2_ALNS(AProblem &evaluator,
     configMap->TakeValue("GenerationLimit", m_GenerationLimit);
     ErrorUtils::LowerThanZeroI("NTGA2_ALNS", "GenerationLimit", m_GenerationLimit);
 
-    configMap->TakeValue("EffectivnessThreshold", m_effectivnessThreshold);
-    ErrorUtils::LowerThanZeroF("NTGA2_ALNS", "EffectivnessThreshold", m_effectivnessThreshold);
-
-    configMap->TakeValue("ALNSProbabilityPercent", m_ALNSProbabilityPercent);
-    ErrorUtils::OutOfScopeF("NTGA2_ALNS", "ALNSProbabilityPercent", m_ALNSProbabilityPercent);
+    configMap->TakeValue("EliteSize", m_EliteSize);
+    ErrorUtils::LowerThanZeroI("NTGA2_ALNS", "EliteSize", m_EliteSize);
 }
 
 void CNTGA2_ALNS::RunOptimization()
@@ -48,7 +47,7 @@ void CNTGA2_ALNS::RunOptimization()
     for (size_t i = 0; i < m_PopulationSize; ++i)
     {
         SProblemEncoding& problemEncoding = m_Problem.GetProblemEncoding();
-        auto* newInd = m_Initialization.CreateMOIndividualForECVRPTW(problemEncoding, (CECVRPTW&)m_Problem);
+        auto* newInd = m_Initialization.CreateMOIndividual(problemEncoding);
 
         m_Problem.Evaluate(*newInd);
 
@@ -67,6 +66,14 @@ void CNTGA2_ALNS::RunOptimization()
         else
         {
             RunGenerationWithGap();
+        }
+
+        for (size_t i = 0; i < m_EliteSize; i++) {
+            auto* parent = m_AlnsRankedTournament.Select(m_NextPopulation);
+            m_NextPopulation.erase(std::find(m_NextPopulation.begin(), m_NextPopulation.end(), parent));
+            auto* newIndividual = RunALNS(*parent);
+            delete parent;
+            m_Population.push_back(newIndividual);
         }
 
         ArchiveUtils::CopyToArchiveWithFiltering(m_NextPopulation, m_Archive);
@@ -97,22 +104,12 @@ void CNTGA2_ALNS::RunGeneration()
     std::vector<std::vector<size_t>> combinedClusters;
     nonDominatedSorting.Cluster(parentsVector, combinedClusters);
 
-    bool shouldUseALNS = ShouldUseALNS(m_PreviousPopulation, m_Population);
-
     for (size_t i = 0; i < m_PopulationSize; i += 2)
     {
         auto* firstParent = m_RankedTournament.Select(m_Population);
         auto* secondParent = m_RankedTournament.Select(m_Population);
 
-        if (shouldUseALNS && CRandom::GetFloat(0, 1) < m_ALNSProbabilityPercent) {
-            auto* firstChild = RunALNS(*firstParent);
-            auto* secondChild = RunALNS(*secondParent);
-            EvaluateAndAdd(*firstChild);
-            EvaluateAndAdd(*secondChild);
-        }
-        else {
-            CrossoverAndMutate(*firstParent, *secondParent);
-        }
+        CrossoverAndMutate(*firstParent, *secondParent);
     }
 }
 
@@ -126,15 +123,7 @@ void CNTGA2_ALNS::RunGenerationWithGap()
     bool shouldUseALNS = ShouldUseALNS(m_PreviousPopulation, m_Population);
 
     for (auto parentsPair : parents) {
-        if (shouldUseALNS && CRandom::GetInt(0, 101) < m_ALNSProbabilityPercent) {
-            auto* firstChild = RunALNS(*parentsPair.first);
-            auto* secondChild = RunALNS(*parentsPair.second);
-            EvaluateAndAdd(*firstChild);
-            EvaluateAndAdd(*secondChild);
-        }
-        else {
-            CrossoverAndMutate(*parentsPair.first, *parentsPair.second);
-        }
+        CrossoverAndMutate(*parentsPair.first, *parentsPair.second);
     }
 }
 
@@ -182,7 +171,7 @@ bool CNTGA2_ALNS::ShouldUseALNS(std::vector<SMOIndividual*>& previousPopulation,
         }
     }
     currentAverageEvaluation += evaluationPoints / m_PreviousPopulation.size();
-    if ((currentAverageEvaluation / previousAverageEvaluation) - 1 < m_effectivnessThreshold) {
+    if ((currentAverageEvaluation / previousAverageEvaluation) - 1 < 1) {
         return true;
     }
     return false;

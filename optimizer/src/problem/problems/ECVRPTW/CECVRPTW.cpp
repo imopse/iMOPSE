@@ -9,7 +9,7 @@ CECVRPTW::CECVRPTW(CECVRPTWTemplate& ecvrptwBase) : m_ECVRPTWTemplate(ecvrptwBas
 
     m_MaxObjectiveValues = {
         m_ECVRPTWTemplate.GetMaxDistance(),
-        m_ECVRPTWTemplate.GetMaxDueTime(),
+        m_ECVRPTWTemplate.GetMaxDueTime() * m_ECVRPTWTemplate.GetCustomers().size(),
         m_ECVRPTWTemplate.GetMaxCost()
     };
 

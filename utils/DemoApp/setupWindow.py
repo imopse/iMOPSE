@@ -20,7 +20,7 @@ class SetupWindow():
       self.mergeDirectory = None
       self.loop = loop
       self.tasks = []
-      self.tasks.append(loop.create_task(self.MainLoop()))
+      self.runner = None
 
    def __SelectConfigFile(self):
       self.configFile.set(fd.askopenfilename())
@@ -39,7 +39,7 @@ class SetupWindow():
          self.errorLabel = None
       self.runButton["state"] = "disabled"
       self.progress.set(0)
-      task, self.terminateThreadEvent = RunIMOPSE(self.loop
+      task, self.runner, self.terminateThreadEvent = RunIMOPSE(self.loop
          , self.configFile.get()
          , self.problemFile.get()
          , self.problemName.get()
@@ -91,11 +91,16 @@ class SetupWindow():
    def __OnClosing(self):
       if self.thread is not None:
          self.terminateThreadEvent.set()
+      if self.runner is not None:
+         self.runner.CancelProcess()
       for task in self.tasks:
          task.cancel()
-      self.loop.stop()
       self.Root.destroy()
       self.Root = None
+
+   def Run(self):
+      task = self.loop.create_task(self.MainLoop())
+      return task
 
    async def MainLoop(self):
       self.CreateGUI()
@@ -106,7 +111,7 @@ class SetupWindow():
 
    def CreateGUI(self):
       self.Root = Tk()
-      self.Root.geometry("650x350")
+      self.Root.geometry("800x350")
       self.Root.protocol("WM_DELETE_WINDOW", self.__OnClosing)
       self.Root.title("iMOPSE Demo")
 

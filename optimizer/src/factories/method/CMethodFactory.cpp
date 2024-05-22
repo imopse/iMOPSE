@@ -34,6 +34,9 @@ AMethod* CMethodFactory::CreateMethod(
         AProblem& problem
 )
 {
+    /*std::string test;
+    std::cin >> test;*/
+
     // Create a configuration map from the provided path using the CConfigFactory.
     configMap = CConfigFactory::CreateConfigMap(optimizerConfigPath);
     if (configMap == nullptr) {
@@ -46,8 +49,20 @@ AMethod* CMethodFactory::CreateMethod(
         throw std::runtime_error("MethodName not provided in method configuration");
     }
 
+    std::string initializationName;
+    // Extract the method name from the configuration map. If it's not provided, throw an error.
+    if (!configMap->TakeValue("InitializationName", initializationName)) {
+        throw std::runtime_error("InitializationName not provided in method configuration");
+    }
+
     // Create initialization strategy based on the configuration map.
-    initialization = CInitializationFactory::Create(configMap);
+    if(strcmp(initializationName.c_str(), "Generic") == 0)
+        initialization = CInitializationFactory::Create(configMap);
+    if (strcmp(initializationName.c_str(), "ECVRPTW") == 0)
+        initialization = CInitializationFactory::CreateECVRPTW(configMap, problem);
+
+    if (initialization == nullptr)
+        throw std::runtime_error("Initialization method " + initializationName + " not supported");
 
     // Create and return a specific optimization method based on the method name.
     if (strcmp(methodName.c_str(), "ACO") == 0)

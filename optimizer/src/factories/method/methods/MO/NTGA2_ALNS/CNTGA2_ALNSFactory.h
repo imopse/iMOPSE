@@ -16,6 +16,7 @@ public:
     static void DeleteObjects();
 private:
     static CRankedTournament *rankedTournament;
+    static CRankedTournament* alnsRankedTournament;
     static CGapSelectionByRandomDim *gapSelectionByRandomDim;
     static std::vector<CALNS*>* s_alnsInstances;
 };

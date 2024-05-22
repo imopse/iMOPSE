@@ -36,7 +36,7 @@ CALNS::CALNS(
 
 void CALNS::RunOptimization()
 {
-    auto individual = m_Initialization.CreateMOIndividualForECVRPTW(m_Problem.GetProblemEncoding(), (CECVRPTW&)m_Problem);
+    auto individual = m_Initialization.CreateMOIndividual(m_Problem.GetProblemEncoding());
     auto best = RunALNS(*individual);
     m_Problem.Evaluate(*best);
 
@@ -131,6 +131,7 @@ SMOIndividual* CALNS::RunALNS(SMOIndividual& parent)
 
         temperature = temperature * m_ALNSTemperatureAnnealingRate;
     }
+    delete current;
     if(m_logProgress)
         CExperimentLogger::LogProgress(1);
     return best;

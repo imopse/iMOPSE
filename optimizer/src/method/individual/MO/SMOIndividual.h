@@ -15,7 +15,7 @@ public:
         : AIndividual(other)
         , m_MetaInfo(other.m_MetaInfo)
     {};
-    
+
     bool IsDominatedBy(const SMOIndividual* otherSolution) const
     {
         // If this has any better value

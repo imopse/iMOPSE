@@ -71,18 +71,31 @@ class MatplotlibManager():
 
       #Draw Scatter plot
       self.paretofig = plt.figure()
-      self.ax = self.paretofig.add_subplot(121)
-      axTrue = self.paretofig.add_subplot(122, sharex=self.ax, sharey=self.ax)
-      self.sc = self.ax.scatter(self.npData[:, 0], self.npData[:, 1], picker=True, pickradius=5, c=np.array([[0, 0, 1]] * np.size(self.npData, 0)))
+      self.ax = self.paretofig.add_subplot()
+
+      scatterColors = []
+      for i, row in enumerate(self.npData):
+         found = False
+         for j, trueDataInfo in enumerate(trueData):
+            if trueDataInfo[0] == row[0] and trueDataInfo[1] == row[1]:
+               scatterColors.append([0, 0, 0])
+               found = True
+               break
+         if not found:
+            scatterColors.append([0, 0, 1])
+         
+
+      self.sc = self.ax.scatter(self.npData[:, 0], self.npData[:, 1], picker=True, pickradius=5, c=scatterColors)
       distanceText = f"Distance: Best: {np.amin(self.npData[:, 0]):0.2f} Average: {np.average(self.npData[:, 0]):0.2f} Worst: {np.amax(self.npData[:, 0]):0.2f} Std: {np.std(self.npData[:, 0]):0.2f}"
       timeText = f"Time: Best: {np.amin(self.npData[:, 1]):0.2f} Average: {np.average(self.npData[:, 1]):0.2f} Worst: {np.amax(self.npData[:, 1]):0.2f} Std: {np.std(self.npData[:, 1]):0.2f}"
-      self.ax.set_title(f"Method: {self.MethodName} Instance: {self.InstanceName} Time: {self.time:0.2f}\n{distanceText}\n{timeText}")
+      paretoFrontText = f"True pareto front approximation\nTPFS: {tpfs} MPFS: {mpfs:0.6f} HV: {hv:0.6f}\nIGD: {igd:0.6f} PFS: {pfs:0.6f} Purity: {purity:0.6f}"
+      self.ax.set_title(f"Method: {self.MethodName} Instance: {self.InstanceName} Average time: {self.time:0.2f}\n{distanceText}\n{timeText}\n{paretoFrontText}")
 
       #Draw True Pareto Scatter plot
-      axTrue.scatter(trueData[:, 0], trueData[:, 1], color="black")
-      axTrue.set_title(f"True pareto front approximation\nTPFS: {tpfs} MPFS: {mpfs:0.6f} HV: {hv:0.6f}\nIGD: {igd:0.6f} PFS: {pfs:0.6f} Purity: {purity:0.6f}")
-      axTrue.set_xlabel("Distance")
-      axTrue.set_ylabel("Time")
+      # axTrue.scatter(trueData[:, 0], trueData[:, 1], color="black")
+      # axTrue.set_title(f"True pareto front approximation\nTPFS: {tpfs} MPFS: {mpfs:0.6f} HV: {hv:0.6f}\nIGD: {igd:0.6f} PFS: {pfs:0.6f} Purity: {purity:0.6f}")
+      # axTrue.set_xlabel("Distance")
+      # axTrue.set_ylabel("Time")
 
       #Name axis
       self.ax.set_xlabel("Distance")
@@ -92,7 +105,7 @@ class MatplotlibManager():
       self.eventId = self.paretofig.canvas.mpl_connect('pick_event', self.__OnPick)
 
       #Setup figure width
-      self.paretofig.set_figwidth(FIGSIZE*2)
+      self.paretofig.set_figwidth(FIGSIZE)
       self.paretofig.set_figheight(FIGSIZE)
       self.paretofig.tight_layout()
 
@@ -102,6 +115,8 @@ class MatplotlibManager():
    def __OnPick(self, event: PickEvent):
       if event.artist.axes != self.ax:
          return
+      self.LastPickedColor = [*self.sc._facecolors[event.ind[0],:]]
+      self.LastPickedIndex = event.ind[0]
       self.sc._facecolors[event.ind[0],:] = (0, 1, 0, 1)
       self.paretofig.canvas.draw()
       self.__DrawGenotype(event.ind[0])
@@ -109,11 +124,11 @@ class MatplotlibManager():
       self.paretofig.canvas.mpl_disconnect(self.eventId)
 
    def __OnClose(self, event):
-      self.sc._facecolors[self.LastPickedIndex,:] = (0, 0, 1, 1)
+      self.sc._facecolors[self.LastPickedIndex,:] = (self.LastPickedColor[0], self.LastPickedColor[1], self.LastPickedColor[2], self.LastPickedColor[3])
+      self.paretofig.canvas.draw()
       self.LastPickedIndex = None
       #Reconnect OnClick event
       self.eventId = self.paretofig.canvas.mpl_connect('pick_event', self.__OnPick)
-      self.paretofig.canvas.draw()
 
    def __GetColor(self):
       return np.random.choice(range(256), size=3)/255.

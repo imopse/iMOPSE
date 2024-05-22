@@ -14,6 +14,7 @@ public:
         AProblem& evaluator,
         AInitialization& initialization,
         CRankedTournament& rankedTournament,
+        CRankedTournament& alnsRankedTournament,
         CGapSelectionByRandomDim& gapSelection,
         ACrossover& crossover,
         AMutation& mutation,
@@ -25,12 +26,12 @@ public:
     void RunOptimization() override;
 private:
     int m_GapSelectionPercent = 0;
-    float m_ALNSProbabilityPercent = 0;
-    float m_effectivnessThreshold = 0;
+    int m_EliteSize = 0;
 
     std::vector<SMOIndividual*> m_PreviousPopulation;
     std::vector<CALNS*>& m_ALNSInstances;
     CRankedTournament &m_RankedTournament;
+    CRankedTournament& m_AlnsRankedTournament;
     CGapSelectionByRandomDim &m_GapSelection;
     
     void CrossoverAndMutate(SMOIndividual &firstParent, SMOIndividual &secondParent);
