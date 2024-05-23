@@ -1,3 +1,7 @@
 .venv
 __pycache__
 out*
+
+/results
+/result_pareto
+/config

@@ -41,7 +41,3 @@
 #build folder
 /build
 /out
-
-/results
-/result_pareto
-/config
