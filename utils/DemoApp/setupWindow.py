@@ -162,5 +162,7 @@ class SetupWindow():
 
       self.Progressbar = ttk.Progressbar(self.MainFrame, variable=self.progress)
       self.Progressbar.grid(row=12, columnspan=3, pady=10, sticky='ew')
+      textProgress = Label(self.MainFrame, textvariable=self.progress)
+      textProgress.grid(row=12, columnspan=3)
 
       return self.Root
