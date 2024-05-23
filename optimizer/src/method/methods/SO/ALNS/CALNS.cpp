@@ -89,25 +89,16 @@ SSOIndividual* CALNS::RunALNS(SSOIndividual& parent)
         insertOperator->Mutate(m_Problem.GetProblemEncoding(), *generated);
         m_Problem.Evaluate(*generated);
         CAggregatedFitness::CountFitness(*generated, m_ObjectiveWeights);
-        if (generated->m_isValid)
+        if (generated->m_Fitness < current->m_Fitness)
         {
-            if (generated->m_Fitness < current->m_Fitness)
+            delete current;
+            current = generated;
+            iterationsWithoutImprovement = 0;
+            if (current->m_isValid && current->m_Fitness < best->m_Fitness)
             {
-                delete current;
-                current = generated;
-                iterationsWithoutImprovement = 0;
-                if (current->m_Fitness < best->m_Fitness)
-                {
-                    delete best;
-                    best = new SSOIndividual{ *current };
-                    CAggregatedFitness::CountFitness(*best, m_ObjectiveWeights);
-                }
-            }
-            else if (AcceptWorseSolution(*generated, *current, temperature))
-            {
-                delete current;
-                current = generated;
-                iterationsWithoutImprovement++;
+                delete best;
+                best = new SSOIndividual{ *current };
+                CAggregatedFitness::CountFitness(*best, m_ObjectiveWeights);
             }
         }
         else if (AcceptWorseSolution(*generated, *current, temperature))

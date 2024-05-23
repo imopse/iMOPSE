@@ -34,7 +34,7 @@ AMethod* CMethodFactory::CreateMethod(
         AProblem& problem
 )
 {
-   /* std::string test;
+    /*std::string test;
     std::cin >> test;*/
 
     // Create a configuration map from the provided path using the CConfigFactory.

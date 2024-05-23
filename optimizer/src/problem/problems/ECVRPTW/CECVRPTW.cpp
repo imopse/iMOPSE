@@ -87,7 +87,8 @@ void CECVRPTW::PrepareData(AIndividual& individual)
     std::fill(m_additionalCost->begin(), m_additionalCost->end(), 0);
 }
 
-void CECVRPTW::MoveToDepoAndThenToCity(size_t& currentIdx,
+void CECVRPTW::MoveToDepoAndThenToCity(AIndividual& individual,
+    size_t& currentIdx,
     int& rechargeStationVisitInSeries,
     size_t& cityIdx,
     size_t& nextCityIdx,
@@ -114,12 +115,13 @@ void CECVRPTW::MoveToDepoAndThenToCity(size_t& currentIdx,
     //Add depot visit to genotype
     m_genotypeCpy->emplace(m_genotypeCpy->begin() + currentIdx, depotIdx);
 
-    HandleTimeOnCity(currentCar, nextCityIdx);
+    HandleTimeOnCity(individual, currentCar, nextCityIdx);
 
     cityIdx = nextCityIdx;
 }
 
-void CECVRPTW::MoveToNextCity(int& rechargeStationVisitInSeries,
+void CECVRPTW::MoveToNextCity(AIndividual& individual,
+    int& rechargeStationVisitInSeries,
     size_t& cityIdx,
     size_t& nextCityIdx,
     int& currentCar,
@@ -136,13 +138,13 @@ void CECVRPTW::MoveToNextCity(int& rechargeStationVisitInSeries,
 
     (*m_currentLoad)[currentCar] -= cities[nextCityIdx].m_demand;
 
-    HandleTimeOnCity(currentCar, nextCityIdx);
+    HandleTimeOnCity(individual, currentCar, nextCityIdx);
 
     (*m_currentTime)[currentCar] += cities[nextCityIdx].m_serviceTime;
     cityIdx = nextCityIdx;
 }
 
-void CECVRPTW::HandleTimeOnCity(int& currentCar, size_t& nextCityIdx)
+void CECVRPTW::HandleTimeOnCity(AIndividual& individual, int& currentCar, size_t& nextCityIdx)
 {
     auto& cities = m_ECVRPTWTemplate.GetCities();
     auto dayLength = m_ECVRPTWTemplate.GetMaxDueTime();
@@ -154,7 +156,8 @@ void CECVRPTW::HandleTimeOnCity(int& currentCar, size_t& nextCityIdx)
         float timeToEndOfDay = dayLength - (*m_currentTime)[currentCar];
         (*m_currentTime)[currentCar] += timeToEndOfDay;
         (*m_currentTime)[currentCar] += cities[nextCityIdx].m_readyTime;
-        //(*m_additionalCost)[currentCar] += fminf(cities[nextCityIdx].m_serviceTime * PENALTYMULTIPLIER, powf(timeDiff, 2));
+        //(*m_additionalCost)[currentCar] += powf(std::fmod((*m_currentTime)[currentCar], dayLength) - cities[nextCityIdx].m_dueTime, 1.2);
+        //individual.m_isValid = false;
     }
 }
 
@@ -202,10 +205,10 @@ void CECVRPTW::Evaluate(AIndividual& individual, std::vector<int>** genotypeCopy
         size_t depotIdx = GetNearestDepotIdx(cityIdx);
 
         if ((*m_currentLoad)[currentCar] < cities[nextCityIdx].m_demand && distMtx[cityIdx][depotIdx].m_fuelConsumption < (*m_currentTankCapacity)[currentCar]) {
-            MoveToDepoAndThenToCity(i, rechargeStationVisitInSeries, cityIdx, nextCityIdx, currentCar, depotIdx);
+            MoveToDepoAndThenToCity(individual, i, rechargeStationVisitInSeries, cityIdx, nextCityIdx, currentCar, depotIdx);
         }
         else if (distMtx[cityIdx][nextCityIdx].m_fuelConsumption + distMtx[nextCityIdx][nearestChargingStationNearNextCityIdx].m_fuelConsumption <= (*m_currentTankCapacity)[currentCar]) {
-            MoveToNextCity(rechargeStationVisitInSeries, cityIdx, nextCityIdx, currentCar, depotIdx);
+            MoveToNextCity(individual, rechargeStationVisitInSeries, cityIdx, nextCityIdx, currentCar, depotIdx);
         }
         else if (++rechargeStationVisitInSeries > 2) {
             i = m_genotypeCpy->size();
@@ -227,8 +230,8 @@ void CECVRPTW::Evaluate(AIndividual& individual, std::vector<int>** genotypeCopy
         individual.m_Evaluation[1] = 0;
         //individual.m_Evaluation[2] = 0;
         for (int i = 0; i < vehicleCount; i++) {
-            individual.m_Evaluation[0] += (*m_distance)[i];
             individual.m_Evaluation[1] += (*m_currentTime)[i];
+            individual.m_Evaluation[0] += (*m_distance)[i];               
             //individual.m_Evaluation[2] += DISTANCE_WEIGHT * (*m_distance)[i] + TIME_WEIGHT * (*m_currentTime)[i] + COST_WEIGHT * (*m_additionalCost)[i];
         }
     }

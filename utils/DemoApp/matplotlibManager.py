@@ -13,22 +13,22 @@ ANNOTATIONOFFSETX = 0.5
 ANNOTATIONOFFSETY = 0.5
 
 def RunDrawParetoFront(loop: asyncio.BaseEventLoop
-   , outputDirectory: str
+   , dataDirectory: str
    , methodName
    , instanceName
    , time
 ):
-   manager = MatplotlibManager(outputDirectory, methodName, instanceName, time)
+   manager = MatplotlibManager(dataDirectory, methodName, instanceName, time)
    manager.DrawParetoFront()
 
 class MatplotlibManager():
    def __init__(self
-         , outputDirectory: str
+         , dataDirectory: str
          , methodName: str
          , instanceName: str
          , time: float | None
       ) -> None:
-      self.OutputDirectory: str = outputDirectory
+      self.DataDirectory: str = dataDirectory
       self.MethodName: str = methodName
       self.InstanceName: str = instanceName
       self.npData = None
@@ -39,7 +39,7 @@ class MatplotlibManager():
 
    def DrawParetoFront(self):
       #Read parreto front data
-      with open(os.path.join(self.OutputDirectory, 'results.csv')) as resultsCsv:
+      with open(os.path.join(self.DataDirectory, self.MethodName, 'results.csv')) as resultsCsv:
          reader = csv.reader(resultsCsv, delimiter=';')
          data = []
          for row in reader:
@@ -47,7 +47,7 @@ class MatplotlibManager():
          self.npData = np.array(data)
       
       #Read true parreto front data
-      with open(os.path.join(self.OutputDirectory, 'true_pareto_front_approximation.csv')) as trueParretoCsv:
+      with open(os.path.join(self.DataDirectory, 'true_pareto_front_approximation.csv')) as trueParretoCsv:
          reader = csv.reader(trueParretoCsv, delimiter=';')
          trueData = []
          for row in reader:
@@ -55,16 +55,21 @@ class MatplotlibManager():
          trueData = np.array(trueData)
 
       #Read quality data
-      with open(os.path.join(self.OutputDirectory, 'quality.txt')) as qualityTxt:
-         tpfs = int(qualityTxt.readline())
-         mpfs = float(qualityTxt.readline())
-         try:
-            hv = float(qualityTxt.readline())
-         except:
-            hv = float('NaN')
-         igd = float(qualityTxt.readline())
-         pfs = float(qualityTxt.readline())
-         purity = float(qualityTxt.readline())
+      with open(os.path.join(self.DataDirectory, 'quality.txt')) as qualityTxt:
+         for line in qualityTxt.readlines():
+            if line.startswith('TPFS:'):
+               tpfs = int(line.split(':')[1])
+            if line.startswith(self.MethodName):
+               qualitiesText = line.split(';')[1:]
+               qualities = []
+               for quality in qualitiesText:
+                  splitedQulity = quality.split(":")
+                  if len(splitedQulity) == 2:
+                     qualities.append(splitedQulity[1])
+               mpfs = float(qualities[1])
+               hv = float(qualities[3])
+               igd = float(qualities[7])
+               pfs = float(qualities[9])
 
       #Set style
       plt.style.use('_mpl-gallery')
@@ -74,21 +79,23 @@ class MatplotlibManager():
       self.ax = self.paretofig.add_subplot()
 
       scatterColors = []
+      truePointsCount = 0.
       for i, row in enumerate(self.npData):
          found = False
          for j, trueDataInfo in enumerate(trueData):
             if trueDataInfo[0] == row[0] and trueDataInfo[1] == row[1]:
                scatterColors.append([0, 0, 0])
+               truePointsCount = truePointsCount + 1.
                found = True
                break
          if not found:
             scatterColors.append([0, 0, 1])
-         
+      purity = truePointsCount/(np.size(self.npData)/2)
 
       self.sc = self.ax.scatter(self.npData[:, 0], self.npData[:, 1], picker=True, pickradius=5, c=scatterColors)
       distanceText = f"Distance: Best: {np.amin(self.npData[:, 0]):0.2f} Average: {np.average(self.npData[:, 0]):0.2f} Worst: {np.amax(self.npData[:, 0]):0.2f} Std: {np.std(self.npData[:, 0]):0.2f}"
       timeText = f"Time: Best: {np.amin(self.npData[:, 1]):0.2f} Average: {np.average(self.npData[:, 1]):0.2f} Worst: {np.amax(self.npData[:, 1]):0.2f} Std: {np.std(self.npData[:, 1]):0.2f}"
-      paretoFrontText = f"True pareto front approximation\nTPFS: {tpfs} MPFS: {mpfs:0.6f} HV: {hv:0.6f}\nIGD: {igd:0.6f} PFS: {pfs:0.6f} Purity: {purity:0.6f}"
+      paretoFrontText = f"True pareto front approximation\nTPFS: {tpfs} MPFS: {mpfs:0.6f} HV: {hv:0.6f}\nIGD: {igd:0.6f} PFS: {pfs:0.6f} Purity: {purity:0.3f}"
       self.ax.set_title(f"Method: {self.MethodName} Instance: {self.InstanceName} Average time: {self.time:0.2f}\n{distanceText}\n{timeText}\n{paretoFrontText}")
 
       #Draw True Pareto Scatter plot
@@ -168,14 +175,14 @@ class MatplotlibManager():
 
    def __DrawGenotype(self, index: int):
       #Read Data
-      with open(os.path.join(self.OutputDirectory, 'data.csv')) as dataCsv:
+      with open(os.path.join(self.DataDirectory, self.MethodName, 'data.csv')) as dataCsv:
          reader = csv.reader(dataCsv, delimiter=';')
          rows = []
          for row in reader:
             rows.append(row)
          row = rows[index]
       #Read points
-      with open(os.path.join(self.OutputDirectory, 'points.csv')) as pointsCsv:
+      with open(os.path.join(self.DataDirectory, 'points.csv')) as pointsCsv:
          reader = csv.reader(pointsCsv, delimiter=';')
          pointsRead = []
          for point in reader:

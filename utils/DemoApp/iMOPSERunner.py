@@ -2,7 +2,7 @@ import subprocess as proc
 import threading as t
 import typing as type
 import asyncio.subprocess
-import infoManager as im
+import fileManager as fm
 import numpy as np
 
 def RunIMOPSE(loop: asyncio.BaseEventLoop
@@ -108,20 +108,7 @@ class Runner():
       returnCode = await self.process.wait()
       print("Return code: ", returnCode)
       if returnCode != 0:
-         try:
-            print("Trying to read stderr...")
-            msg = await asyncio.wait_for(self.process.stderr.readline(), timeout=0.1)
-            if msg == b'':
-               print("Trying to read stdout...")
-               msg = await asyncio.wait_for(self.process.stdout.readline(), timeout=0.1)
-               onError(returnCode, msg)
-            onError(returnCode, msg)
-         except:
-            print("Trying to read stdout...")
-            try:
-               onError(returnCode, await asyncio.wait_for(self.process.stdout.readline(), timeout=0.1))
-            except:
-               pass        
+         onError(returnCode, "ERROR")
       else:
-         im.SaveInfo(outputDirectory, methodConfigFileName, problemInstanceFileName, np.average(self.timeArray))
+         fm.SaveInfo(fm.DirectoryBack(outputDirectory), fm.ReadMethodName(methodConfigFileName), fm.ReadInstanceName(problemInstanceFileName), np.average(self.timeArray))
          onSuccess()
