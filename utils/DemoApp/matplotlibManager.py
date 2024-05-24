@@ -57,9 +57,10 @@ class MatplotlibManager():
       #Read quality data
       with open(os.path.join(self.DataDirectory, 'quality.txt')) as qualityTxt:
          for line in qualityTxt.readlines():
+            methodName = line.split(';')[0]
             if line.startswith('TPFS:'):
                tpfs = int(line.split(':')[1])
-            if line.startswith(self.MethodName):
+            if methodName == self.MethodName:
                qualitiesText = line.split(';')[1:]
                qualities = []
                for quality in qualitiesText:

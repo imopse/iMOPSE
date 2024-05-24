@@ -48,6 +48,7 @@ void CBNTGA::RunOptimization()
         m_NextPopulation.reserve(m_Population.size());
 
         generation++;
+        CExperimentLogger::LogProgress((float)generation/m_GenerationLimit);
     }
     
     CExperimentLogger::LogProgress(1);
