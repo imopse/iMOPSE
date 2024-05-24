@@ -3,6 +3,7 @@
 #include "CBNTGA.h"
 #include "../utils/archive/ArchiveUtils.h"
 #include "../../../../utils/logger/ErrorUtils.h"
+#include <utils/logger/CExperimentLogger.h>
 
 CBNTGA::CBNTGA(AProblem &evaluator, AInitialization &initialization,
                ACrossover &crossover, AMutation &mutation, CGapSelectionByRandomDim& gapSelection, SConfigMap *configMap) :
@@ -49,7 +50,13 @@ void CBNTGA::RunOptimization()
         generation++;
     }
     
+    CExperimentLogger::LogProgress(1);
     ArchiveUtils::LogParetoFront(m_Archive);
+    for (int i = 0; i < m_Archive.size(); i++) {
+        m_Problem.LogSolution(*m_Archive[i]);
+    }
+    CExperimentLogger::LogData();
+    m_Problem.LogAdditionalData();
 }
 
 void CBNTGA::EvolveToNextGeneration()
