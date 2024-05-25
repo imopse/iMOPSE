@@ -91,7 +91,7 @@ class MatplotlibManager():
                break
          if not found:
             scatterColors.append([0, 0, 1])
-      purity = truePointsCount/(np.size(self.npData)/2)
+      purity = truePointsCount/(np.size(trueData)/2)
 
       self.sc = self.ax.scatter(self.npData[:, 0], self.npData[:, 1], picker=True, pickradius=5, c=scatterColors)
       distanceText = f"Distance: Best: {np.amin(self.npData[:, 0]):0.2f} Average: {np.average(self.npData[:, 0]):0.2f} Worst: {np.amax(self.npData[:, 0]):0.2f} Std: {np.std(self.npData[:, 0]):0.2f}"

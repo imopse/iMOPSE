@@ -21,6 +21,7 @@ class SetupWindow():
       self.loop = loop
       self.tasks = []
       self.runner = None
+      self.currentRun = 1
 
    def __SelectFile(self, parameter: StringVar):
       def __SelectFileFunc():
@@ -28,6 +29,7 @@ class SetupWindow():
       return __SelectFileFunc
 
    def __RunOptimization(self):
+      self.currentRun = 1
       if self.errorLabel is not None:
          self.errorLabel.grid_remove()
          self.errorLabel = None
@@ -61,9 +63,14 @@ class SetupWindow():
       )
 
    def __UpdateProgessBar(self, progress: int):
-      self.progress.set(progress)
+      runCount = float(self.RunsCount.get())
+      self.progress.set(min(progress * 1/runCount + (self.currentRun-1)/runCount * 100, 100))
+      if progress == 100:
+         self.currentRun = self.currentRun + 1
 
    def __OnError(self, exitCode: int, error: str):
+      self.currentRun = int(self.RunsCount.get())-1
+      self.__UpdateProgessBar()
       self.errorLabel = Label(self.MainFrame, text=error, foreground='Red')
       self.errorLabel.grid(row=10, columnspan=2, sticky='s')
       self.runButton["state"] = "active"
