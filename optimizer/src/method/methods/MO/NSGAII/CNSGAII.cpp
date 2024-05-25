@@ -98,6 +98,7 @@ void CNSGAII::RunOptimization()
         m_NextPopulation.reserve(m_Population.size());
 
         generation++;
+        CExperimentLogger::LogProgress((float)generation / m_GenerationLimit);
     }
 
     ArchiveUtils::CopyToArchiveWithFiltering(m_NextPopulation, m_Archive);

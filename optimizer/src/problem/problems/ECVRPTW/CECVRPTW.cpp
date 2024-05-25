@@ -150,10 +150,10 @@ void CECVRPTW::HandleTimeOnCity(AIndividual& individual, int& currentCar, size_t
     auto dayLength = m_ECVRPTWTemplate.GetMaxDueTime();
 
     if (std::fmod((*m_currentTime)[currentCar], dayLength) < cities[nextCityIdx].m_readyTime) {
-        (*m_currentTime)[currentCar] += cities[nextCityIdx].m_readyTime - (*m_currentTime)[currentCar];
+        (*m_currentTime)[currentCar] += cities[nextCityIdx].m_readyTime - std::fmod((*m_currentTime)[currentCar], dayLength);
     }
     else if (std::fmod((*m_currentTime)[currentCar], dayLength) > cities[nextCityIdx].m_dueTime) {
-        float timeToEndOfDay = dayLength - (*m_currentTime)[currentCar];
+        float timeToEndOfDay = dayLength - std::fmod((*m_currentTime)[currentCar], dayLength);
         (*m_currentTime)[currentCar] += timeToEndOfDay;
         (*m_currentTime)[currentCar] += cities[nextCityIdx].m_readyTime;
         //(*m_additionalCost)[currentCar] += powf(std::fmod((*m_currentTime)[currentCar], dayLength) - cities[nextCityIdx].m_dueTime, 1.2);
@@ -231,7 +231,7 @@ void CECVRPTW::Evaluate(AIndividual& individual, std::vector<int>** genotypeCopy
         //individual.m_Evaluation[2] = 0;
         for (int i = 0; i < vehicleCount; i++) {
             individual.m_Evaluation[1] += (*m_currentTime)[i];
-            individual.m_Evaluation[0] += (*m_distance)[i];               
+            individual.m_Evaluation[0] += (*m_distance)[i];              
             //individual.m_Evaluation[2] += DISTANCE_WEIGHT * (*m_distance)[i] + TIME_WEIGHT * (*m_currentTime)[i] + COST_WEIGHT * (*m_additionalCost)[i];
         }
     }
