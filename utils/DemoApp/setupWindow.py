@@ -35,7 +35,7 @@ class SetupWindow():
          self.errorLabel = None
       self.runButton["state"] = "disabled"
       self.progress.set(0)
-      task, self.runner, self.terminateThreadEvent = RunIMOPSE(self.loop
+      task, self.runner = RunIMOPSE(self.loop
          , self.configFile.get()
          , self.instanceFile.get()
          , self.problemName.get()
@@ -44,6 +44,7 @@ class SetupWindow():
          , self.__UpdateProgessBar
          , self.__OnError
          , self.__OnSuccess
+         , self.parrarel.get()
       )
       self.tasks.append(task)
 
@@ -64,13 +65,20 @@ class SetupWindow():
 
    def __UpdateProgessBar(self, progress: int):
       runCount = float(self.RunsCount.get())
-      self.progress.set(min(progress * 1/runCount + (self.currentRun-1)/runCount * 100, 100))
-      if progress == 100:
+      if self.parrarel.get() == True:
          self.currentRun = self.currentRun + 1
+         self.progress.set(round(min((self.currentRun/(runCount*100))*100, 100), 1))
+      else:        
+         self.progress.set(round(min(progress * 1/runCount + (self.currentRun-1)/runCount * 100, 100), 1))
+         if progress == 100:
+            self.currentRun = self.currentRun + 1
 
    def __OnError(self, exitCode: int, error: str):
-      self.currentRun = int(self.RunsCount.get())-1
-      self.__UpdateProgessBar()
+      if self.parrarel.get() == True:
+         self.currentRun = int(self.RunsCount.get())*100
+      else:
+         self.currentRun = int(self.RunsCount.get())
+      self.__UpdateProgessBar(100)
       self.errorLabel = Label(self.MainFrame, text=error, foreground='Red')
       self.errorLabel.grid(row=10, columnspan=2, sticky='s')
       self.runButton["state"] = "active"
@@ -92,6 +100,7 @@ class SetupWindow():
       self.RunsCount = StringVar(value=1)
       self.progress = IntVar()
       self.mergeDirectory = StringVar()
+      self.parrarel = BooleanVar()
 
    def __OnClosing(self):
       if self.thread is not None:
@@ -160,6 +169,8 @@ class SetupWindow():
       self.RunsCountEntry = Entry(self.MainFrame, width=60, textvariable=self.RunsCount)
       self.RunsCountEntry.grid(row=9, column=0, columnspan=3, sticky='ew')
 
+      parrarelCheckbox = Checkbutton(self.MainFrame, text="Run in parrarel", variable=self.parrarel)
+      parrarelCheckbox.grid(row=10, column=0, sticky='w')
       self.runButton = Button(self.MainFrame, text="Run optimization", command=self.__RunOptimization)
       self.runButton.grid(row=10, column=1, sticky='ew')
       showData = Button(self.MainFrame, text="Show data", command=self.__RunMatplotlib)

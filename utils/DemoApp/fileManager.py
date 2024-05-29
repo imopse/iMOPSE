@@ -1,4 +1,5 @@
 import os
+import typing as type
 
 def SaveInfo(directory: str, methodName: str, instanceName, time):
    print("Saving info...")
@@ -12,6 +13,39 @@ def SaveInfo(directory: str, methodName: str, instanceName, time):
       print("Saving failed...", e)
       return
    print("Save succeded..")
+
+def SaveTime(directory: str, instanceName: str, times: type.List[float]):
+   print("Saving time...")
+   try:
+      if not os.path.isdir(os.path.join(directory, 'info', instanceName)):
+         os.makedirs(os.path.join(directory, 'info', instanceName))
+      with open(os.path.join(directory, 'info', instanceName, 'time.txt'), mode='w') as infoFile:
+         for time in times:
+            infoFile.writelines([str(time), ';'])
+         infoFile.writelines(['\n'])
+         infoFile.close()
+   except Exception as e:
+      print("Saving failed...", e)
+      return
+   print("Save succeded..")
+
+def ReadTime(directory: str, instanceName: str):
+   print("Reading time...")
+   try:
+      if os.path.exists(os.path.join(directory, 'info', instanceName, 'time.txt')):
+         with open(os.path.join(directory, 'info', instanceName, 'time.txt'), mode='r') as infoFile:
+            timesStr = infoFile.readline()
+            times = []
+            for timeStr in timesStr.split(';')[:-1]:
+               times.append(float(timeStr))
+            infoFile.close()
+            print("Read succeded...")
+            return times
+   except Exception as e:
+      print("Read failed...", e)
+      return None
+   print("No data")
+   return None
 
 def DirectoryBack(directory: str):
    return os.path.dirname(directory)
@@ -42,8 +76,10 @@ def WriteConfig(outputDirectory: str, instanceName: str):
       if os.path.exists(os.path.join(os.getcwd(), "config", instanceName, "config.txt")):
          with open(os.path.join(os.getcwd(), "config", instanceName, "config.txt"), mode='r') as configFile:
             for line in configFile.read().splitlines():
-               print(line)
-               lines.append(line.replace('\n', '') + '\n')
+               lineRead = line.replace('\n', '')
+               if lineRead == outputDirectory:
+                  return
+               lines.append(lineRead + '\n')
       with open(os.path.join(os.getcwd(), "config", instanceName, "config.txt"), mode='w+') as configFile:
          configFile.writelines([*lines, outputDirectory])
    except Exception as e:

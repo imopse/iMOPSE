@@ -4,6 +4,8 @@ import typing as type
 import asyncio.subprocess
 import fileManager as fm
 import numpy as np
+import shutil
+import os
 
 def RunIMOPSE(loop: asyncio.BaseEventLoop
    , methodConfigFileName
@@ -13,8 +15,8 @@ def RunIMOPSE(loop: asyncio.BaseEventLoop
    , runCount
    , onProgressUpdated: type.Callable[[int], None]
    , onError: type.Callable[[int, str], None]
-   , onSuccess: type.Callable[[], None]):  
-   terminateEvent = t.Event()
+   , onSuccess: type.Callable[[], None]
+   , parrarel: bool):  
    runner = Runner()
    task = loop.create_task(runner.Run(methodConfigFileName
       , problemInstanceFileName
@@ -24,15 +26,15 @@ def RunIMOPSE(loop: asyncio.BaseEventLoop
       , onProgressUpdated
       , onError
       , onSuccess
-      , terminateEvent))
-   return task, runner, terminateEvent
+      , parrarel))
+   return task, runner
 
 class Runner():
    def __init__(self) -> None:
       self.terminated = False
       self.loop = None
-      self.process = None
-      self.readLines = None
+      self.processes: type.List[asyncio.subprocess.Process] = []
+      self.readLines: type.List[asyncio.Task[None]] = []
       self.timeArray = []
 
    async def Run(self
@@ -44,7 +46,7 @@ class Runner():
       , onProgressUpdated: type.Callable[[int], None]
       , onError: type.Callable[[int, str], None]
       , onSuccess: type.Callable[[], None]
-      , terminateEvent: t.Event):
+      , parrarel: bool):
       await self.__RunIMOPSE(methodConfigFileName
          , problemInstanceFileName
          , problemName
@@ -53,12 +55,14 @@ class Runner():
          , onProgressUpdated
          , onError
          , onSuccess
-         , terminateEvent)
+         , parrarel)
 
    def CancelProcess(self):
-      self.readLines.cancel()
-      if self.process.returncode is None:
-         self.process.kill()
+      for readline in self.readLines:
+         readline.cancel()
+      for process in self.processes:
+         if process.returncode is None:
+            process.kill()
 
    async def __readLine(self, process: asyncio.subprocess.Process, onProgressUpdated: type.Callable[[int], None]):
       data = None
@@ -82,33 +86,70 @@ class Runner():
       , onProgressUpdated: type.Callable[[int], None]
       , onError: type.Callable[[int, str], None]
       , onSuccess: type.Callable[[], None]
-      , terminateEvent: t.Event):
-      print("Starting impose")
-      self.process = await asyncio.create_subprocess_exec("./resources/imopse.exe"
-         , *[methodConfigFileName
-            , problemName
-            , problemInstanceFileName
-            , outputDirectory
-            , runCount
-            ]
-         , stdout=proc.PIPE
-         , stderr=proc.PIPE
-         , stdin=proc.PIPE
-      )
-
-      print("Creating tasks")
-      self.readLines = asyncio.create_task(self.__readLine(self.process, onProgressUpdated))
-      await self.readLines
+      , parrarel: bool):
+      actualRunCount = runCount
+      processCount=1
+      if parrarel == True:
+         processCount = runCount
+         actualRunCount = 1
       try:
-         await asyncio.wait_for(self.process.communicate(), timeout=0.1)
-      except Exception as e:
-         pass
+         for i in range(0, int(processCount)):
+            print(f"Starting imopse {i}")
+            process = await asyncio.create_subprocess_exec("./resources/imopse.exe"
+               , *[methodConfigFileName
+                  , problemName
+                  , problemInstanceFileName
+                  , os.path.join(outputDirectory, str(i))
+                  , str(actualRunCount)
+                  ]
+               , stdout=proc.PIPE
+               , stderr=proc.PIPE
+               , stdin=proc.PIPE
+            )
+            self.processes.append(process)
+            print(f"Creating tasks {i}")
+            self.readLines.append(asyncio.create_task(self.__readLine(process, onProgressUpdated)))
 
-      onProgressUpdated(100)
-      returnCode = await self.process.wait()
-      print("Return code: ", returnCode)
-      if returnCode != 0:
-         onError(returnCode, "ERROR")
-      else:
-         fm.SaveInfo(fm.DirectoryBack(outputDirectory), fm.ReadMethodName(methodConfigFileName), fm.ReadInstanceName(problemInstanceFileName), np.average(self.timeArray))
-         onSuccess()
+         print("Waiting...")
+         await asyncio.wait(self.readLines)
+         print("Wait completed")
+  
+         onProgressUpdated(100)
+         failedProcesses = 0
+         for process in self.processes:
+            print(f"Waiting for process {process}")
+            try:
+               await asyncio.wait_for(process.communicate(), timeout=0.1)
+            except Exception as e:
+               pass
+            returnCode = await process.wait()
+            print("Return code: ", returnCode)
+            if returnCode != 0:
+               failedProcesses = failedProcesses + 1            
+               
+         if failedProcesses > 0:
+            onError(0, f"{failedProcesses} tasks failed")
+
+         if failedProcesses != int(processCount):
+            for i in range(0, int(processCount)):
+               if parrarel == True:
+                  outputPath = os.path.join(outputDirectory, f"run_{i+failedProcesses}")
+                  counter = 0
+                  while os.path.exists(outputPath):
+                     outputPath = os.path.join(outputDirectory, f"run_{counter}")
+                     counter = counter + 1
+                  if self.processes[i].returncode == 0:
+                     shutil.copytree(os.path.join(outputDirectory, str(i), "run_0"), outputPath)
+               elif self.processes[i].returncode == 0:
+                  shutil.copytree(os.path.join(outputDirectory, str(i)), outputDirectory)
+               shutil.rmtree(os.path.join(outputDirectory, str(i)))
+            timesRead = fm.ReadTime(fm.DirectoryBack(outputDirectory), fm.ReadInstanceName(problemInstanceFileName))
+            if timesRead != None:
+               self.timeArray.extend(timesRead)
+            else:
+               self.timeArray
+            fm.SaveInfo(fm.DirectoryBack(outputDirectory), fm.ReadMethodName(methodConfigFileName), fm.ReadInstanceName(problemInstanceFileName), np.average(self.timeArray))
+            fm.SaveTime(fm.DirectoryBack(outputDirectory), fm.ReadInstanceName(problemInstanceFileName), self.timeArray)
+            onSuccess()
+      except Exception as e:
+         print(f"iMOPSE runner: {e}")

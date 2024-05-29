@@ -2,6 +2,6 @@
 __pycache__
 out*
 
-/results
-/result_pareto
-/config
+/results*
+/result_pareto*
+/config*
