@@ -1,4 +1,7 @@
+import matplotlib
+matplotlib.rcParams["toolbar"] = "toolmanager"
 from matplotlib.backend_bases import PickEvent
+from matplotlib.backend_tools import ToolBase
 import matplotlib.pyplot as plt
 import csv
 import asyncio
@@ -11,6 +14,54 @@ ARROWSIZE = 1
 MARKERSIZE = 25
 ANNOTATIONOFFSETX = 0.5
 ANNOTATIONOFFSETY = 0.5
+
+class ExportTool(ToolBase):
+   image=r"C:\\Users\\adria\\source\\repos\\iMOPSE_public\\utils\\DemoApp\\assets\\ios_share_24dp.png"
+
+   def __init__(self, *args, methodName, instanceName, time
+                  , TPFS, MPFS, HV, HVSTD, IGD, IGDSTD, PFS, PFSSTD, purity
+                  , MinDistance, AverageDistance, MaxDistance, DistanceSTD
+                  , MinTime, AverageTime, MaxTime, TimeSTD
+                  , **kwarg):
+      super().__init__(*args, **kwarg)
+      self.methodName = methodName
+      self.instanceName = instanceName
+      self.time = time
+      self.TPFS = TPFS
+      self.MPFS = MPFS
+      self.HV = HV
+      self.HVSTD = HVSTD
+      self.IGD = IGD
+      self.IGDSTD = IGDSTD
+      self.PFS = PFS
+      self.PFSSTD = PFSSTD
+      self.purity = purity
+      self.MinDistance = MinDistance
+      self.AverageDistance = AverageDistance
+      self.MaxDistance = MaxDistance
+      self.DistanceSTD = DistanceSTD
+      self.MinTime = MinTime
+      self.AverageTime = AverageTime
+      self.MaxTime = MaxTime
+      self.TimeSTD = TimeSTD
+
+
+   def trigger(self, sender, event, data=None):
+      if not os.path.exists(os.path.join(os.getcwd(), "export.csv")):
+         with open(os.path.join(os.getcwd(), "export.csv"), mode="w", newline='', encoding='UTF-8') as csvFile:
+            writer = csv.writer(csvFile, delimiter=';', quotechar='"')
+            writer.writerow(["Nazwa instancji", "Metoda", "Średni czas wykonania"
+               , "TPFS", "MPFS", "HV", "HV błąd standardowy", "IGD", "IGD błąd standardowy", "PFS", "PFS błąd standardowy", "Purity"
+               , "Minimalny dystans", "Średni dystans", "Maksymalny dystans", "Dystans błąd standardowy"
+               , "Minimalny czas", "Średni czas", "Maksymalny czas", "Czas błąd standardowy"]      
+            )
+      with open(os.path.join(os.getcwd(), "export.csv"), mode="a+", newline='') as csvFile:
+         writer = csv.writer(csvFile, delimiter=';', quotechar='"')
+         writer.writerow([self.instanceName, self.methodName, self.time
+            , self.TPFS, self.MPFS, self.HV, self.HVSTD, self.IGD, self.IGDSTD, self.PFS, self.PFSSTD, self.purity
+            , self.MinDistance, self.AverageDistance, self.MaxDistance, self.DistanceSTD
+            , self.MinTime, self.AverageTime, self.MaxTime, self.TimeSTD]      
+         )
 
 def RunDrawParetoFront(loop: asyncio.BaseEventLoop
    , dataDirectory: str
@@ -69,8 +120,11 @@ class MatplotlibManager():
                      qualities.append(splitedQulity[1])
                mpfs = float(qualities[1])
                hv = float(qualities[3])
+               hvStd = float(qualities[4])
                igd = float(qualities[7])
+               igdStd = float(qualities[8])
                pfs = float(qualities[9])
+               pfsStd = float(qualities[10])
 
       #Set style
       plt.style.use('_mpl-gallery')
@@ -116,6 +170,15 @@ class MatplotlibManager():
       self.paretofig.set_figwidth(FIGSIZE)
       self.paretofig.set_figheight(FIGSIZE)
       self.paretofig.tight_layout()
+
+      #Add export button
+      tm = self.paretofig.canvas.manager.toolmanager
+      tm.add_tool("export", ExportTool
+                  , methodName=self.MethodName, instanceName=self.InstanceName, time=self.time
+                  , TPFS=tpfs, MPFS=mpfs, HV=hv, HVSTD=hvStd, IGD=igd, IGDSTD=igdStd, PFS=pfs, PFSSTD=pfsStd, purity=purity
+                  , MinDistance=np.amin(self.npData[:, 0]), AverageDistance=np.average(self.npData[:, 0]), MaxDistance=np.amax(self.npData[:, 0]), DistanceSTD=np.std(self.npData[:, 0])
+                  , MinTime=np.amin(self.npData[:, 1]), AverageTime=np.average(self.npData[:, 1]), MaxTime=np.amax(self.npData[:, 1]), TimeSTD=np.std(self.npData[:, 1]))
+      self.paretofig.canvas.manager.toolbar.add_tool(tm.get_tool("export"), "toolgroup")
 
       #Show
       plt.show()
