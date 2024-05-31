@@ -37,6 +37,7 @@ void CALNS::RunOptimization()
 {
     auto individual = m_Initialization.CreateSOIndividual(m_Problem.GetProblemEncoding());
     auto best = RunALNS(*individual);
+    CSOExperimentUtils::LogResultData(*best, m_Problem);
     auto bestConverted = new SMOIndividual(*best);
     m_Problem.Evaluate(*bestConverted);
 
@@ -128,6 +129,8 @@ SSOIndividual* CALNS::RunALNS(SSOIndividual& parent)
                 insertionOperatorsProbabilityDistribution
             );
         }
+
+        CExperimentLogger::AddLine(std::to_string(current->m_Fitness).c_str());
 
         iteration++;
 

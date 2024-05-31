@@ -90,17 +90,23 @@ int main(int argc, char* argv[]) {
             maxValues[v] = minValues[v] = trueParetoFront.solutions[0][v];
         }
 
-        // Find Min and Max in TrueParetoFront
-        for (size_t i = 1; i < trueParetoFrontSize; ++i)
+        for (size_t i = 0; i < configsToAnalyze.size(); ++i) 
         {
-            const std::vector<float>& sol = trueParetoFront.solutions[i];
-            for (size_t v = 0; v < sol1Size; ++v)
+            // Find Min and Max in TrueParetoFront
+            for (size_t j = 0; j < configsToAnalyze[i]->configResults.m_ConfigParetos[instanceName].size(); ++j)
             {
-                float evalValue = sol[v];
-                minValues[v] = fminf(minValues[v], evalValue);
-                maxValues[v] = fmaxf(maxValues[v], evalValue);
+                for (size_t k = 0; k < configsToAnalyze[i]->configResults.m_ConfigParetos[instanceName][j].solutions.size(); k++) {
+                    const std::vector<float>& sol = configsToAnalyze[i]->configResults.m_ConfigParetos[instanceName][j].solutions[k];
+                    for (size_t v = 0; v < sol1Size; ++v)
+                    {
+                        float evalValue = sol[v];
+                        minValues[v] = fminf(minValues[v], evalValue);
+                        maxValues[v] = fmaxf(maxValues[v], evalValue);
+                    }
+                }
             }
         }
+        
 
         // Update Pareto data
         if (!trueParetoFront.NormalizeByMinMax(minValues, maxValues))

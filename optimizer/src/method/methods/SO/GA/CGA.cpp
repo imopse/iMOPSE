@@ -3,6 +3,8 @@
 #include "../utils/aggregatedFitness/CAggregatedFitness.h"
 #include "../utils/experiment/CSOExperimentUtils.h"
 #include "../../../../utils/logger/ErrorUtils.h"
+#include <utils/logger/CExperimentLogger.h>
+#include <method/methods/MO/utils/archive/ArchiveUtils.h>
 
 CGA::CGA(
         std::vector<float> &objectiveWeights,
@@ -43,6 +45,11 @@ void CGA::RunOptimization()
 
     auto* best = CSOExperimentUtils::FindBest(m_Population);
     CSOExperimentUtils::LogResultData(*best, m_Problem);
+    CExperimentLogger::LogProgress(1);
+    ArchiveUtils::LogParetoFront(std::vector<SMOIndividual*> { new SMOIndividual(*best) });
+    m_Problem.LogSolution(*best);
+    CExperimentLogger::LogData();
+    m_Problem.LogAdditionalData();
 }
 
 void CGA::CreateIndividual()
