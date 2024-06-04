@@ -130,7 +130,8 @@ SSOIndividual* CALNS::RunALNS(SSOIndividual& parent)
             );
         }
 
-        CExperimentLogger::AddLine(std::to_string(current->m_Fitness).c_str());
+        if (m_logProgress)
+            CExperimentLogger::AddLine(std::to_string(current->m_Fitness).c_str());
 
         iteration++;
 

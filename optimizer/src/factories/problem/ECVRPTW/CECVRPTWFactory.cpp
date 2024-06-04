@@ -71,6 +71,7 @@ CECVRPTWTemplate* CECVRPTWFactory::ReadECVRPTWTemplate(const char* problemDefini
         switch ((*cities)[i].m_type) {
             case ENodeType::Depot:
                 depotIndexes->emplace_back(i);
+                chargingStationIndexes->emplace_back(i);
                 break;
             case ENodeType::ChargingStation:
                 chargingStationIndexes->emplace_back(i);

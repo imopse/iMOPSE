@@ -10,7 +10,7 @@ CECVRPTW::CECVRPTW(CECVRPTWTemplate& ecvrptwBase) : m_ECVRPTWTemplate(ecvrptwBas
     m_MaxObjectiveValues = {
         m_ECVRPTWTemplate.GetMaxDistance(),
         m_ECVRPTWTemplate.GetMaxDueTime() * m_ECVRPTWTemplate.GetCustomers().size(),
-        m_ECVRPTWTemplate.GetMaxCost()
+        200
     };
 
     m_MinObjectiveValues = {
@@ -97,26 +97,32 @@ void CECVRPTW::MoveToDepoAndThenToCity(AIndividual& individual,
 )
 {
     auto& distMtx = m_ECVRPTWTemplate.GetDistInfoMtx();
+    auto& cities = m_ECVRPTWTemplate.GetCities();
     rechargeStationVisitInSeries = 0;
     //To depot
     (*m_distance)[currentCar] += distMtx[cityIdx][depotIdx].m_distance;
-    (*m_distance)[currentCar] += distMtx[depotIdx][nextCityIdx].m_distance;
     (*m_currentTime)[currentCar] += distMtx[cityIdx][depotIdx].m_travelTime;
+    (*m_currentTankCapacity)[currentCar] -= distMtx[cityIdx][depotIdx].m_fuelConsumption;
+
     //Depot refuel
     (*m_currentTime)[currentCar] += CalculateRefuelTime(m_ECVRPTWTemplate.GetTankCapcity(), (*m_currentTankCapacity)[currentCar]);
-    //Depot car loading
     (*m_currentTankCapacity)[currentCar] = m_ECVRPTWTemplate.GetTankCapcity();
 
+    //Depot car loading
+    (*m_currentLoad)[currentCar] = m_ECVRPTWTemplate.GetCapacity();
+
     //To next city
+    (*m_distance)[currentCar] += distMtx[depotIdx][nextCityIdx].m_distance;
     (*m_currentTime)[currentCar] += distMtx[depotIdx][nextCityIdx].m_travelTime;
-    (*m_currentTankCapacity)[currentCar] -= distMtx[cityIdx][nextCityIdx].m_fuelConsumption;
-    (*m_currentLoad)[currentCar] = m_ECVRPTWTemplate.GetTankCapcity();
+    (*m_currentTankCapacity)[currentCar] -= distMtx[depotIdx][nextCityIdx].m_fuelConsumption;
+
+    (*m_currentLoad)[currentCar] -= cities[nextCityIdx].m_demand;
 
     //Add depot visit to genotype
-    m_genotypeCpy->emplace(m_genotypeCpy->begin() + currentIdx, depotIdx);
+    m_genotypeCpy->emplace(m_genotypeCpy->begin() + currentIdx + 1, depotIdx);
 
     HandleTimeOnCity(individual, currentCar, nextCityIdx);
-
+    currentIdx++;
     cityIdx = nextCityIdx;
 }
 
@@ -204,40 +210,41 @@ void CECVRPTW::Evaluate(AIndividual& individual, std::vector<int>** genotypeCopy
         size_t nearestChargingStationNearNextCityIdx = GetNearestChargingStationIdx(nextCityIdx);
         size_t depotIdx = GetNearestDepotIdx(cityIdx);
 
-        if ((*m_currentLoad)[currentCar] < cities[nextCityIdx].m_demand && distMtx[cityIdx][depotIdx].m_fuelConsumption < (*m_currentTankCapacity)[currentCar]) {
+        if ((*m_currentLoad)[currentCar] < cities[nextCityIdx].m_demand && (distMtx[cityIdx][depotIdx].m_fuelConsumption <= (*m_currentTankCapacity)[currentCar] || !isValid)) {
             MoveToDepoAndThenToCity(individual, i, rechargeStationVisitInSeries, cityIdx, nextCityIdx, currentCar, depotIdx);
+            if (!isValid) {
+                (*m_additionalCost)[currentCar] += 1;
+            }
         }
-        else if (distMtx[cityIdx][nextCityIdx].m_fuelConsumption + distMtx[nextCityIdx][nearestChargingStationNearNextCityIdx].m_fuelConsumption <= (*m_currentTankCapacity)[currentCar]) {
+        else if ((*m_currentLoad)[currentCar] >= cities[nextCityIdx].m_demand 
+            && (distMtx[cityIdx][nextCityIdx].m_fuelConsumption + distMtx[nextCityIdx][nearestChargingStationNearNextCityIdx].m_fuelConsumption <= (*m_currentTankCapacity)[currentCar] || !isValid)) {
             MoveToNextCity(individual, rechargeStationVisitInSeries, cityIdx, nextCityIdx, currentCar, depotIdx);
+            if (!isValid) {
+                (*m_additionalCost)[currentCar] += 1;
+            }
         }
         else if (++rechargeStationVisitInSeries > 2) {
-            i = m_genotypeCpy->size();
             isValid = false;
+            individual.m_isValid = false;
+            (*m_additionalCost)[currentCar] += 2;
         }
         else {
             MoveToRechargeStation(i, cityIdx, currentCar);
         }
     }
 
-    if (!isValid) {
-        individual.m_Evaluation[0] = m_ECVRPTWTemplate.GetMaxDistance() * vehicleCount;
-        individual.m_Evaluation[1] = m_ECVRPTWTemplate.GetMaxDueTime() * vehicleCount;
-        //individual.m_Evaluation[2] = m_ECVRPTWTemplate.GetMaxCost() * vehicleCount;
-        individual.m_isValid = false;
-    }
-    else {
-        individual.m_Evaluation[0] = 0;
-        individual.m_Evaluation[1] = 0;
-        //individual.m_Evaluation[2] = 0;
-        for (int i = 0; i < vehicleCount; i++) {
-            individual.m_Evaluation[1] += (*m_currentTime)[i];
-            individual.m_Evaluation[0] += (*m_distance)[i];              
-            //individual.m_Evaluation[2] += DISTANCE_WEIGHT * (*m_distance)[i] + TIME_WEIGHT * (*m_currentTime)[i] + COST_WEIGHT * (*m_additionalCost)[i];
-        }
+
+    individual.m_Evaluation[0] = 0;
+    individual.m_Evaluation[1] = 0;
+    individual.m_Evaluation[2] = 0;
+    for (int i = 0; i < vehicleCount; i++) {
+        individual.m_Evaluation[0] += (*m_distance)[i];              
+        individual.m_Evaluation[1] += (*m_currentTime)[i];
+        individual.m_Evaluation[2] += (*m_additionalCost)[i];
     }
 
     // Normalize
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < 3; i++)
     {
         individual.m_NormalizedEvaluation[i] = (individual.m_Evaluation[i] - m_MinObjectiveValues[i]) / (m_MaxObjectiveValues[i] - m_MinObjectiveValues[i]);
     }
@@ -306,7 +313,7 @@ void CECVRPTW::CreateProblemEncoding() {
         EEncodingType::PERMUTATION
     };
 
-    m_ProblemEncoding = SProblemEncoding{2, {citiesSection} };
+    m_ProblemEncoding = SProblemEncoding{3, {citiesSection} };
 }
 
 void CECVRPTW::LogSolution(AIndividual& individual) {

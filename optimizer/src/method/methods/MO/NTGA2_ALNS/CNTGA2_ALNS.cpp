@@ -73,7 +73,7 @@ void CNTGA2_ALNS::RunOptimization()
             m_NextPopulation.erase(std::find(m_NextPopulation.begin(), m_NextPopulation.end(), parent));
             auto* newIndividual = RunALNS(*parent);
             delete parent;
-            m_Population.push_back(newIndividual);
+            m_NextPopulation.push_back(newIndividual);
         }
 
         ArchiveUtils::CopyToArchiveWithFiltering(m_NextPopulation, m_Archive);

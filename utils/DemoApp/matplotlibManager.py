@@ -94,7 +94,8 @@ class MatplotlibManager():
          reader = csv.reader(resultsCsv, delimiter=';')
          data = []
          for row in reader:
-            data.append(np.array(row).astype(np.float32))
+            if row[2] == '0':
+               data.append(np.array(row).astype(np.float32))
          self.npData = np.array(data)
       
       #Read true parreto front data
