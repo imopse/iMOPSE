@@ -68,8 +68,9 @@ def RunDrawParetoFront(loop: asyncio.BaseEventLoop
    , methodName
    , instanceName
    , time
+   , singleObjective: bool = False
 ):
-   manager = MatplotlibManager(dataDirectory, methodName, instanceName, time)
+   manager = MatplotlibManager(dataDirectory, methodName, instanceName, time, singleObjective)
    manager.DrawParetoFront()
 
 class MatplotlibManager():
@@ -78,6 +79,7 @@ class MatplotlibManager():
          , methodName: str
          , instanceName: str
          , time: float | None
+         , singleObjective: bool
       ) -> None:
       self.DataDirectory: str = dataDirectory
       self.MethodName: str = methodName
@@ -87,6 +89,7 @@ class MatplotlibManager():
       self.paretofig = None
       self.eventId = 0
       self.time = time
+      self.singleObjective = singleObjective
 
    def DrawParetoFront(self):
       #Read parreto front data
@@ -94,7 +97,7 @@ class MatplotlibManager():
          reader = csv.reader(resultsCsv, delimiter=';')
          data = []
          for row in reader:
-            if row[2] == '0':
+            if row[2] == '0' or self.singleObjective:
                data.append(np.array(row).astype(np.float32))
          self.npData = np.array(data)
       
@@ -103,7 +106,8 @@ class MatplotlibManager():
          reader = csv.reader(trueParretoCsv, delimiter=';')
          trueData = []
          for row in reader:
-            trueData.append(np.array(row).astype(np.float32))
+            if row[2] == '0' or self.singleObjective:
+               trueData.append(np.array(row).astype(np.float32))
          trueData = np.array(trueData)
 
       #Read quality data
@@ -122,8 +126,14 @@ class MatplotlibManager():
                mpfs = float(qualities[1])
                hv = float(qualities[3])
                hvStd = float(qualities[4])
-               igd = float(qualities[7])
-               igdStd = float(qualities[8])
+               try:
+                  igd = float(qualities[7])
+               except:
+                  igd = float('inf')
+               try:
+                  igdStd = float(qualities[8])
+               except:
+                  igdStd = float('inf')
                pfs = float(qualities[9])
                pfsStd = float(qualities[10])
 
@@ -146,7 +156,7 @@ class MatplotlibManager():
                break
          if not found:
             scatterColors.append([0, 0, 1])
-      purity = truePointsCount/(np.size(trueData)/2)
+      purity = truePointsCount/(np.size(trueData)/3)
 
       self.sc = self.ax.scatter(self.npData[:, 0], self.npData[:, 1], picker=True, pickradius=5, c=scatterColors)
       distanceText = f"Distance: Best: {np.amin(self.npData[:, 0]):0.2f} Average: {np.average(self.npData[:, 0]):0.2f} Worst: {np.amax(self.npData[:, 0]):0.2f} Std: {np.std(self.npData[:, 0]):0.2f}"

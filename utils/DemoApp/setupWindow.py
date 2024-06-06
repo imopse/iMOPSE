@@ -61,6 +61,7 @@ class SetupWindow():
          , methodName
          , problemInstance
          , time
+         , self.singleObjective.get()
       )
 
    def __UpdateProgessBar(self, progress: int):
@@ -101,6 +102,7 @@ class SetupWindow():
       self.progress = IntVar()
       self.mergeDirectory = StringVar()
       self.parrarel = BooleanVar()
+      self.singleObjective = BooleanVar()
 
    def __OnClosing(self):
       if self.thread is not None:
@@ -113,6 +115,7 @@ class SetupWindow():
       self.Root = None
 
    def Run(self):
+      fm.MergeExperimentFiles()
       task = self.loop.create_task(self.MainLoop())
       return task
 
@@ -175,6 +178,8 @@ class SetupWindow():
       self.runButton.grid(row=10, column=1, sticky='ew')
       showData = Button(self.MainFrame, text="Show data", command=self.__RunMatplotlib)
       showData.grid(row=10, column=2, sticky='ew', pady=10)
+      soCheckbox = Checkbutton(self.MainFrame, text="Single objective", variable=self.singleObjective)
+      soCheckbox.grid(row=11, column=2, sticky='w')
       runParetoButton = Button(self.MainFrame, text="Run pareto analyzer", command=self.__RunPareto)
       runParetoButton.grid(row=11, column=1, sticky='ew', pady=10)
 

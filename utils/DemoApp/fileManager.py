@@ -1,5 +1,6 @@
 import os
 import typing as type
+import csv
 
 def SaveInfo(directory: str, methodName: str, instanceName, time):
    print("Saving info...")
@@ -89,3 +90,17 @@ def WriteConfig(outputDirectory: str, instanceName: str):
 
 def GetParetoOutputFolder(instanceName: str):
    return os.path.join(os.getcwd(), "result_pareto", instanceName).replace('\\', '/')
+
+def MergeExperimentFiles():
+   method="ALNS"
+   for path, subdirs, files in os.walk(os.path.join('C:\\Users\\adria\source\\repos\\iMOPSE_public\\utils\\DemoApp\\results', method)):
+      for directory in subdirs:
+         if directory != "info":
+            with open(os.path.join(path, directory, 'mergedExperiment.csv'), mode='w', newline='') as dataFile:
+               csvWriter = csv.writer(dataFile, delimiter=';')
+               for path2, subdirs2, files in os.walk(os.path.join('C:\\Users\\adria\source\\repos\\iMOPSE_public\\utils\\DemoApp\\results', method, directory)):
+                  for subdirectory in subdirs2:
+                     with open(os.path.join(path2, subdirectory, 'experiment.csv'), mode='r') as readDataFile:
+                        csvReader = csv.reader(readDataFile, delimiter=';')
+                        for data in csvReader:
+                           csvWriter.writerow(data)

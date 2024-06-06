@@ -225,7 +225,7 @@ void CECVRPTW::Evaluate(AIndividual& individual, std::vector<int>** genotypeCopy
         }
         else if (++rechargeStationVisitInSeries > 2) {
             isValid = false;
-            individual.m_isValid = false;
+            //individual.m_isValid = false;
             (*m_additionalCost)[currentCar] += 2;
         }
         else {
