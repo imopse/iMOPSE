@@ -60,7 +60,7 @@ def ReadInfo(directory: str, instanceName: str):
 def ReadMethodName(filePath: str):
    with open(filePath) as config:
       for line in config.readlines():
-         if line.startswith("MethodName"):
+         if line.startswith("#MethodName"):
             return line.split(' ')[1][:-1]
    return "NOMETHODNAME"
 

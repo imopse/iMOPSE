@@ -13,13 +13,13 @@ std::vector<AMutation*>* CALNSMutationFactory::CreateRemovalOperators(AProblem& 
     auto randomClientRemoval = new CECVRPTWRandomClientRemoval(problem);
     auto shawClientRemoval = new CECVRPTWShawClientRemoval(problem);
     auto worstClientRemoval = new CECVRPTWWorstClientRemoval(problem, objectiveWeights);
-    return new std::vector<AMutation*>{ randomClientRemoval, shawClientRemoval, worstClientRemoval };
+    return new std::vector<AMutation*>{ randomClientRemoval, shawClientRemoval };
 }
 
 std::vector<AMutation*>* CALNSMutationFactory::CreateInsertionOperators(AProblem& problem, std::vector<float>& objectiveWeights)
 {
     auto greedyClientInsertion = new CECVRPTWGreedyClientInsertion(problem, objectiveWeights);
     auto shawClientInsertion = new CECVRPTWShawClientInsertion(problem);
-    //auto randomClientInsertion = new CECVRPTWRandomClientInsertion(problem);
-    return new std::vector<AMutation*>{ shawClientInsertion, greedyClientInsertion };
+    auto randomClientInsertion = new CECVRPTWRandomClientInsertion(problem);
+    return new std::vector<AMutation*>{ shawClientInsertion, randomClientInsertion };
 }
