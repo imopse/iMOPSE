@@ -1,8 +1,8 @@
 # iMOPSE
 
-The Intelligent Multi-Objective Problem Solving Environment is a open-source C++ library that specializes
-in single- and multi-objective metaheuristic optimization especially in area of NP-hard optimization problems.
-Our library provides set of optimization algorithms, problems and ready-to-use problem instances and tools useful in research and benchmarking.
+The Intelligent Multi-Objective Problem Solving Environment is an open-source C++ library that specializes
+in single- and multi-objective metaheuristic optimization especially in the area of NP-hard optimization problems.
+Our library provides a set of optimization algorithms, problems and ready-to-use problem instances and tools useful in research and benchmarking.
 
 ### Key Features
 - **State-of-the-art Optimization Methods**:
@@ -19,11 +19,11 @@ Our library provides set of optimization algorithms, problems and ready-to-use p
 - **Flexible Encoding Mechanism** and **Specialized Operators**:  iMOPSE excels in handling classical NP-hard problems with constraints, with focus on scheduling and combinatorial problems like MS-RCPSP or TSP. Its versatile encoding system effectively manages various problems and enhances the application of specialized operators.
 - **Comprehensive Tool Suite**: iMOPSE provides pre-configured problem instances and method setups, complemented by an extensive array of tools for data collection, visualization, and analysis, making it highly effective for research and result interpretation.
 - **Extensive Customization**: Offers numerous customization options to facilitate research into diverse optimization methods and scenarios.
-- **User-Friendly Interface**: Features an intuitive interface with straightforward input parameters and configuration files, making it accessible to the wide audience of users.
+- **User-Friendly Interface**: Features an intuitive interface with straightforward input parameters and configuration files, making it accessible to a wide audience of users.
 
 ## Compile project
-To start working with iMOPSE, clone the repository it consists of two C++ projects `optimizer` and `paretoAnalyzer`, both of them contains CMakeLists.txt files.
-In this subsection we present few example methods to compile C++ project.
+To start working with iMOPSE, clone the repository, it consists of two C++ projects `optimizer` and `paretoAnalyzer`, both of them contain CMakeLists.txt files.
+In this subsection we present a few example methods to compile C++ project.
 ### using CMake
 - Verify CMake and Make 
   Verify if CMake and Make are installed on your system. If not, you will need to install them. Visit the [CMake Website](https://cmake.org) and the [GNU Make Manual](https://www.gnu.org/software/make/manual/make.html#Installing-Make) for installation instructions.
@@ -50,11 +50,11 @@ Expected output should be: `Usage: <pathToExecutable> <MethodConfigPath> <Proble
 ### using Clion IDE
 - Open project in CLion.
 - In one of project directories find `CMakeLists.txt`, right-click it and select `Load CMake Project` option.
-- CLion will automatically build project.
-- After building run button will be available in the top-right corner. Expected output should be: `Usage: <pathToExecutable> <MethodConfigPath> <ProblemName> <ProblemDefinitionPath> [ExecutionsCount] [Seed]`
+- CLion will automatically build the project.
+- After building the run button will be available in the top-right corner. Expected output should be: `Usage: <pathToExecutable> <MethodConfigPath> <ProblemName> <ProblemDefinitionPath> [ExecutionsCount] [Seed]`
 
 ## Optimizer
-Optimizer is the main iMOPSE project responsible for problem optimization with usage of metaheuristic algorithms.
+Optimizer is the main iMOPSE component responsible for problem optimization with usage of metaheuristic algorithms.
 The optimizer architecture emphasizes modularity with two primary modules: the `method` module and the `problem` module, alongside additional utilities. The `method` module includes an `operators` submodule, designed for flexibility and extensibility, allowing for the incorporation of a range of optimization algorithms via a generic `AMethod` interface. The `problem` module contains implementations for various optimization problems, adhering to a `AProblem` interface that supports integration with the `method` module.
 
 ### Input parameters
@@ -65,14 +65,14 @@ The optimizer executable takes the following parameters when run:
 4. **Output directory:** Path to directory where optimization results will be saved.
 5. **Executions Count (Optional):** The number of times the optimization should be run. Useful for statistical analysis.
 6. **Seed (Optional):** A seed value for the random number generator to ensure reproducibility of the results.
-Note: This value applies only to the first run. For each subsequent runs, the seed is incremented by one.
+Note: This value applies only to the first run. For each subsequent run, the seed is incremented by one.
 
 List of possible to input problem names:
 - **Multi-Skill Resource-Constrained Project Scheduling Problem**:
-  - **MSRCPSP_TA**: Task-resource association based solution encoding and greedy order of tasks execution
-  - **MSRCPSP_TA2**: Task-resource association based solution encoding and greedy order of tasks execution, with only two objectives (makespan, cost)
-  - **MSRCPSP_TO**: Order permutation based solution with greedy task association
-  - **MSRCPSP_TO2**: Order permutation based solution with greedy task association, with only two objectives (makespan, cost)
+  - **MSRCPSP_TA**: Task-resource association-based solution encoding and greedy order of tasks execution
+  - **MSRCPSP_TA2**: Task-resource association-based solution encoding and greedy order of tasks execution, with only two objectives (makespan, cost)
+  - **MSRCPSP_TO**: Order permutation-based solution with greedy task association
+  - **MSRCPSP_TO2**: Order permutation-based solution with greedy task association, with only two objectives (makespan, cost)
 - **Traveling Salesman Problem**: TSP
 - **Traveling Thief Problem**:
   - **TTP1**: Single-objective TTP
@@ -207,74 +207,27 @@ Thanks to all the contributors who have invested their time and expertise in dev
 
 ### Current Contributors
 - **Paweł Myszkowski** (2011 - Now)
-  - Interests/Tasks: Multi- and many-objective optimization, NP-hard problems
-  - Role/Title: Ph.D., D.Sc., Project Manager
 - **Michał Antkiewicz** (2021 - Now)
-  - Interests/Tasks: GaMeDe, B-NTGA
-  - Role/Title: Ph.D. student
 - **Konrad Gmyrek** (2023 - Now)
-  - Interests/Tasks: iMOPSE library, GA
-  - Role/Title: Ph.D. student
 - **Łukasz Olech** (2024 - Now)
-  - Interests/Tasks: GA
-  - Role/Title: Ph.D. student
 - **Aleksandra Stecka** (2024 - Now)
-  - Interests/Tasks: Coevolution
-  - Role/Title: Eng.
 - **Adrian Żak** (2024 - Now)
-  - Interests/Tasks: ECVRPTW
-  - Role/Title: Eng.
 
 
 ### Past Collaborators
 - **Maciej Laszczyk** (2014 - 2021)
-  - Interests/Tasks: Multi- and many-objective optimization, NP-hard problems, NTGA2
-  - Role/Title: Ph.D.
 - **Kamil Król** (2021 - 2022)
-  - Interests/Tasks: Coevolution, multi-objective optimization
-  - Role/Title: M.Sc.
 - **Jacek Wernikowski** (2014 - 2016)
-  - Interests/Tasks: Multi-objective optimization, NTGA2
-  - Role/Title: M.Sc.
 - **Jakub Graniczny** (2018 - 2020)
-  - Interests/Tasks: Coevolutionary Algorithms, CoRT
-  - Role/Title: M.Sc.
 - **Kamil Dziadek** (2018 - 2019)
-  - Interests/Tasks: Metaheuristics, multi-objective optimization, TSP
-  - Role/Title: M.Sc.
 - **Joanna Lichodij** (2017 - 2018)
-  - Interests/Tasks: Heuristics, multi-objective optimization, NSGA-II, NTGA
-  - Role/Title: M.Sc.
 - **Ivan Nikulin** (2015 - 2016)
-  - Interests/Tasks: EA/SA/TS, visualization
-  - Role/Title: Eng.
 - **Dawid Kalinowski** (2017 - 2018)
-  - Interests/Tasks: EA, coevolution, hybrid
-  - Role/Title: M.Sc.
-- **Łukasz Olech** (2012 - 2016)
-  - Interests/Tasks: PSO, ACO, DE
-  - Role/Title: Ph.D. student
 - **Marek Skowroński** (2011 - 2015)
-  - Interests/Tasks: (Meta)heuristics - TS, SA, EA
-  - Role/Title: Ph.D. student
 - **Jędrzej Siemieński** (2014 - 2015)
-  - Interests/Tasks: GRASP, Greedy Algorithm
-  - Role/Title: M.Sc.
 - **Krzysztof Oślizło** (2012 - 2013)
-  - Interests/Tasks: PSO, ACO
-  - Role/Title: M.Sc.
 - **Marcin Adamski** (2013 - 2014)
-  - Interests/Tasks: TS, SA
-  - Role/Title: Eng.
 - **Paweł Kwiatek** (2011 - 2012)
-  - Interests/Tasks: TS, SA
-  - Role/Title: Eng.
 - **Łukasz Podlodowski** (2011 - 2012)
-  - Interests/Tasks: Heuristics
-  - Role/Title: M.Sc.
 - **Kacper Małkowski** (2024)
-  - Interests/Tasks: CVRP
-  - Role/Title: Eng.
 - **Jakub Korycki** (2024)
-  - Interests/Tasks: ACO
-  - Role/Title: Eng.
