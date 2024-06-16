@@ -1,12 +1,11 @@
 from tkinter import *
 from tkinter import filedialog as fd
 from tkinter import ttk
-from iMOPSERunner import RunIMOPSE
 from paretoRunner import RunPareto
-from matplotlibManager import RunDrawParetoFront
 import asyncio
 import fileManager as fm
 import os
+from strategies.resolver import ResolveDrawMethod, ResolveRunnerMethod
 
 class SetupWindow():
    def __init__(self, loop: asyncio.BaseEventLoop) -> None:
@@ -22,6 +21,7 @@ class SetupWindow():
       self.tasks = []
       self.runner = None
       self.currentRun = 1
+      self.configsCount = 1
 
    def __SelectFile(self, parameter: StringVar):
       def __SelectFileFunc():
@@ -29,14 +29,14 @@ class SetupWindow():
       return __SelectFileFunc
 
    def __RunOptimization(self):
+      runner = ResolveRunnerMethod(self.configFile.get())
       self.currentRun = 1
       if self.errorLabel is not None:
          self.errorLabel.grid_remove()
          self.errorLabel = None
       self.runButton["state"] = "disabled"
       self.progress.set(0)
-      task, self.runner = RunIMOPSE(self.loop
-         , self.configFile.get()
+      task, self.runner, self.configsCount = runner.Run(self.loop
          , self.instanceFile.get()
          , self.problemName.get()
          , self.__getDirectory()
@@ -49,26 +49,18 @@ class SetupWindow():
       self.tasks.append(task)
 
    def __getDirectory(self):
-      return os.path.join(os.getcwd(), 'results', fm.ReadMethodName(self.configFile.get()), fm.ReadInstanceName(self.instanceFile.get()))
-   
-   def __getDirectoryWithoutInstance(self):
-      return os.path.join(os.getcwd(), 'results', fm.ReadMethodName(self.configFile.get()))
+      return os.path.join(os.getcwd(), 'results')
 
    def __RunMatplotlib(self):
-      methodName, problemInstance, time = fm.ReadInfo(self.__getDirectoryWithoutInstance(), fm.ReadInstanceName(self.instanceFile.get()))
-      RunDrawParetoFront(self.loop
-         , fm.GetParetoOutputFolder(fm.ReadInstanceName(self.instanceFile.get()))
-         , methodName
-         , problemInstance
-         , time
-         , self.singleObjective.get()
-      )
+      method = ResolveDrawMethod(self.problemName.get(), self.instanceFile.get(), self.configFile.get(), self.singleObjective.get())
+      if method != None:
+         method.Draw()
 
    def __UpdateProgessBar(self, progress: int):
       runCount = float(self.RunsCount.get())
       if self.parrarel.get() == True:
          self.currentRun = self.currentRun + 1
-         self.progress.set(round(min((self.currentRun/(runCount*100))*100, 100), 1))
+         self.progress.set(round(min((self.currentRun/(runCount*100*self.configsCount))*100, 100), 1))
       else:        
          self.progress.set(round(min(progress * 1/runCount + (self.currentRun-1)/runCount * 100, 100), 1))
          if progress == 100:
@@ -85,10 +77,10 @@ class SetupWindow():
       self.runButton["state"] = "active"
       self.tasks = [self.tasks[0]]
 
-   def __OnSuccess(self):
+   def __OnSuccess(self, methodName: str):
       self.runButton["state"] = "active"
-      self.tasks = [self.tasks[0]]
-      fm.WriteConfig(self.__getDirectoryWithoutInstance(), fm.ReadInstanceName(self.instanceFile.get()))
+      # self.tasks = [self.tasks[0]]
+      fm.WriteConfig(os.path.join(os.getcwd(), 'results', methodName), fm.ReadInstanceName(self.instanceFile.get()))
       self.__RunPareto()
 
    def __RunPareto(self):

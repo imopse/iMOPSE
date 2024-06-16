@@ -1,4 +1,5 @@
 import matplotlib
+from matplotlib.collections import PatchCollection
 matplotlib.rcParams["toolbar"] = "toolmanager"
 from matplotlib.backend_bases import PickEvent
 from matplotlib.backend_tools import ToolBase
@@ -7,6 +8,10 @@ import csv
 import asyncio
 import os.path
 import numpy as np
+import numpy.typing as npt
+from strategies.Drawable import Drawable
+import typing as t
+
 
 FIGSIZE = 8
 VEHICLESEPERATOR=2147483647
@@ -15,17 +20,11 @@ MARKERSIZE = 25
 ANNOTATIONOFFSETX = 0.5
 ANNOTATIONOFFSETY = 0.5
 
-class ExportTool(ToolBase):
-   image=r"C:\\Users\\adria\\source\\repos\\iMOPSE_public\\utils\\DemoApp\\assets\\ios_share_24dp.png"
-
-   def __init__(self, *args, methodName, instanceName, time
+class Metrics():
+   def __init__(self, time
                   , TPFS, MPFS, HV, HVSTD, IGD, IGDSTD, PFS, PFSSTD, purity
                   , MinDistance, AverageDistance, MaxDistance, DistanceSTD
-                  , MinTime, AverageTime, MaxTime, TimeSTD
-                  , **kwarg):
-      super().__init__(*args, **kwarg)
-      self.methodName = methodName
-      self.instanceName = instanceName
+                  , MinTime, AverageTime, MaxTime, TimeSTD):
       self.time = time
       self.TPFS = TPFS
       self.MPFS = MPFS
@@ -45,6 +44,22 @@ class ExportTool(ToolBase):
       self.MaxTime = MaxTime
       self.TimeSTD = TimeSTD
 
+class MethodResult():
+   def __init__(self, methodName: str, instanceName: str, color: npt.NDArray[np.floating]):
+      self.methodName = methodName
+      self.instanceName = instanceName
+      self.metrics: Metrics
+      self.data: npt.ArrayLike
+      self.color: npt.NDArray[np.floating] = color
+      self.scatterColorArray: t.List
+
+
+class ExportTool(ToolBase):
+   image=r"C:\\Users\\adria\\source\\repos\\iMOPSE_public\\utils\\DemoApp\\assets\\ios_share_24dp.png"
+
+   def __init__(self, *args, methodResults: t.Dict[str, MethodResult] , **kwarg):
+      super().__init__(*args, **kwarg)
+      self.methodResults = methodResults
 
    def trigger(self, sender, event, data=None):
       if not os.path.exists(os.path.join(os.getcwd(), "export.csv")):
@@ -57,67 +72,64 @@ class ExportTool(ToolBase):
             )
       with open(os.path.join(os.getcwd(), "export.csv"), mode="a+", newline='') as csvFile:
          writer = csv.writer(csvFile, delimiter=';', quotechar='"')
-         writer.writerow([self.instanceName, self.methodName, self.time
-            , self.TPFS, self.MPFS, self.HV, self.HVSTD, self.IGD, self.IGDSTD, self.PFS, self.PFSSTD, self.purity
-            , self.MinDistance, self.AverageDistance, self.MaxDistance, self.DistanceSTD
-            , self.MinTime, self.AverageTime, self.MaxTime, self.TimeSTD]      
-         )
+         for i, metodName in enumerate(self.methodResults):
+            result = self.methodResults[metodName]
+            writer.writerow([result.instanceName, result.methodName, result.metrics.time
+               , result.metrics.TPFS, result.metrics.MPFS, result.metrics.HV, result.metrics.HVSTD, result.metrics.IGD, result.metrics.IGDSTD, result.metrics.PFS, result.metrics.PFSSTD, result.metrics.purity
+               , result.metrics.MinDistance, result.metrics.AverageDistance, result.metrics.MaxDistance, result.metrics.DistanceSTD
+               , result.metrics.MinTime, result.metrics.AverageTime, result.metrics.MaxTime, result.metrics.TimeSTD]      
+            )
 
-def RunDrawParetoFront(loop: asyncio.BaseEventLoop
-   , dataDirectory: str
-   , methodName
-   , instanceName
-   , time
-   , singleObjective: bool = False
-):
-   manager = MatplotlibManager(dataDirectory, methodName, instanceName, time, singleObjective)
-   manager.DrawParetoFront()
-
-class MatplotlibManager():
+class BulkParetoDrawer(Drawable):
    def __init__(self
-         , dataDirectory: str
-         , methodName: str
+         , paretoDirectory: str
+         , resultDirectory: str
          , instanceName: str
-         , time: float | None
          , singleObjective: bool
-      ) -> None:
-      self.DataDirectory: str = dataDirectory
-      self.MethodName: str = methodName
+      ):
+      self.paretoDirectory: str = paretoDirectory
+      self.resultDirectory: str = resultDirectory
       self.InstanceName: str = instanceName
-      self.npData = None
+      self.methodResults: t.Dict[str, MethodResult] = {}
       self.LastPickedIndex = None
       self.paretofig = None
       self.eventId = 0
-      self.time = time
       self.singleObjective = singleObjective
 
-   def DrawParetoFront(self):
-      #Read parreto front data
-      with open(os.path.join(self.DataDirectory, self.MethodName, 'results.csv')) as resultsCsv:
-         reader = csv.reader(resultsCsv, delimiter=';')
-         data = []
-         for row in reader:
-            if row[2] == '0' or self.singleObjective:
-               data.append(np.array(row).astype(np.float32))
-         self.npData = np.array(data)
-      
+   def Draw(self):
+      colorGenerator = self.__GetPredefinedColor()
+      for path, subdirectories, files in os.walk(self.paretoDirectory):
+         for file in files:
+            if file.endswith('_merged.csv'):    
+               methodName = '_'.join(file.split("_")[:-1])
+               #Read parreto front data
+               with open(os.path.join(self.paretoDirectory,  f'{methodName}_merged.csv')) as resultsCsv:
+                  reader = csv.reader(resultsCsv, delimiter=';')
+                  data = []
+                  for row in reader:
+                     data.append(np.array(row).astype(np.float32))
+                  self.methodResults[methodName] = MethodResult(methodName, self.InstanceName, next(colorGenerator))
+                  self.methodResults[methodName].data = np.array(data)
+
       #Read true parreto front data
-      with open(os.path.join(self.DataDirectory, 'true_pareto_front_approximation.csv')) as trueParretoCsv:
+      with open(os.path.join(self.paretoDirectory, 'true_pareto_front_approximation.csv')) as trueParretoCsv:
          reader = csv.reader(trueParretoCsv, delimiter=';')
          trueData = []
          for row in reader:
-            if row[2] == '0' or self.singleObjective:
-               trueData.append(np.array(row).astype(np.float32))
+            trueData.append(np.array(row).astype(np.float32))
          trueData = np.array(trueData)
 
       #Read quality data
-      with open(os.path.join(self.DataDirectory, 'quality.txt')) as qualityTxt:
+      with open(os.path.join(self.paretoDirectory, 'quality.txt')) as qualityTxt:
          for line in qualityTxt.readlines():
-            methodName = line.split(';')[0]
+            methodName = line.split(';')[0]     
             if line.startswith('TPFS:'):
                tpfs = int(line.split(':')[1])
-            if methodName == self.MethodName:
+            elif not methodName.startswith('---') and line.strip():
                qualitiesText = line.split(';')[1:]
+               methodName = line.split(';')[0]
+               infoLines = open(os.path.join(self.resultDirectory, methodName, 'info', self.InstanceName, 'info.txt')).readlines()
+               time = float(infoLines[2])
                qualities = []
                for quality in qualitiesText:
                   splitedQulity = quality.split(":")
@@ -136,6 +148,31 @@ class MatplotlibManager():
                   igdStd = float('inf')
                pfs = float(qualities[9])
                pfsStd = float(qualities[10])
+               scatterColors = []
+               truePointsCount = 0.
+               methodResult = self.methodResults[methodName]
+               for i, row in enumerate(methodResult.data):
+                  found = False
+                  for j, trueDataInfo in enumerate(trueData):
+                     if trueDataInfo[0] == row[0] and trueDataInfo[1] == row[1]:
+                        scatterColors.append([0, 0, 0])
+                        truePointsCount = truePointsCount + 1.
+                        found = True
+                        break
+                  if not found:
+                     scatterColors.append(methodResult.color)
+               methodResult.scatterColorArray = scatterColors
+               purity = truePointsCount/(np.size(trueData)/2)
+               if len(methodResult.data) == 0:
+                  methodResult.metrics = Metrics(time, 0, 0, 0, 0, 1, 0, 0, 0, 0
+                     , 0, 0, 0, 0
+                     , 0, 0, 0, 0
+                     )
+               else:
+                  methodResult.metrics = Metrics(time, tpfs, mpfs, hv, hvStd, igd, igdStd, pfs, pfsStd, purity
+                     , np.amin(methodResult.data[:, 0]), np.average(methodResult.data[:, 0]), np.amax(methodResult.data[:, 0]), np.std(methodResult.data[:, 0])
+                     , np.amin(methodResult.data[:, 1]), np.average(methodResult.data[:, 1]), np.amax(methodResult.data[:, 1]), np.std(methodResult.data[:, 1])
+                     )
 
       #Set style
       plt.style.use('_mpl-gallery')
@@ -143,39 +180,36 @@ class MatplotlibManager():
       #Draw Scatter plot
       self.paretofig = plt.figure()
       self.ax = self.paretofig.add_subplot()
+      markerGenerator = self.__GetPredefinedMarker()
+      for i, metodName in enumerate(self.methodResults):
+         if len(self.methodResults[metodName].data) == 0:
+            self.ax.scatter([]
+               , []
+               , label=metodName
+               , marker=next(markerGenerator)
+               , picker=True
+               , pickradius=5
+               , c=[]
+            )
+         else:
+            self.sc = self.ax.scatter(self.methodResults[metodName].data[:, 0]
+               , self.methodResults[metodName].data[:, 1]
+               , label=metodName
+               , marker=next(markerGenerator)
+               , picker=True
+               , pickradius=5
+               , c=self.methodResults[metodName].scatterColorArray
+            )
+      self.ax.set_title(f"Instancja: {self.InstanceName}")
 
-      scatterColors = []
-      truePointsCount = 0.
-      for i, row in enumerate(self.npData):
-         found = False
-         for j, trueDataInfo in enumerate(trueData):
-            if trueDataInfo[0] == row[0] and trueDataInfo[1] == row[1]:
-               scatterColors.append([0, 0, 0])
-               truePointsCount = truePointsCount + 1.
-               found = True
-               break
-         if not found:
-            scatterColors.append([0, 0, 1])
-      purity = truePointsCount/(np.size(trueData)/3)
-
-      self.sc = self.ax.scatter(self.npData[:, 0], self.npData[:, 1], picker=True, pickradius=5, c=scatterColors)
-      distanceText = f"Distance: Best: {np.amin(self.npData[:, 0]):0.2f} Average: {np.average(self.npData[:, 0]):0.2f} Worst: {np.amax(self.npData[:, 0]):0.2f} Std: {np.std(self.npData[:, 0]):0.2f}"
-      timeText = f"Time: Best: {np.amin(self.npData[:, 1]):0.2f} Average: {np.average(self.npData[:, 1]):0.2f} Worst: {np.amax(self.npData[:, 1]):0.2f} Std: {np.std(self.npData[:, 1]):0.2f}"
-      paretoFrontText = f"True pareto front approximation\nTPFS: {tpfs} MPFS: {mpfs:0.6f} HV: {hv:0.6f}\nIGD: {igd:0.6f} PFS: {pfs:0.6f} Purity: {purity:0.3f}"
-      self.ax.set_title(f"Method: {self.MethodName} Instance: {self.InstanceName} Average time: {self.time:0.2f}\n{distanceText}\n{timeText}\n{paretoFrontText}")
-
-      #Draw True Pareto Scatter plot
-      # axTrue.scatter(trueData[:, 0], trueData[:, 1], color="black")
-      # axTrue.set_title(f"True pareto front approximation\nTPFS: {tpfs} MPFS: {mpfs:0.6f} HV: {hv:0.6f}\nIGD: {igd:0.6f} PFS: {pfs:0.6f} Purity: {purity:0.6f}")
-      # axTrue.set_xlabel("Distance")
-      # axTrue.set_ylabel("Time")
+      self.ax.legend()
 
       #Name axis
-      self.ax.set_xlabel("Distance")
-      self.ax.set_ylabel("Time")
+      self.ax.set_xlabel("Dystans")
+      self.ax.set_ylabel("Czas")
 
       #Setup OnClick event
-      self.eventId = self.paretofig.canvas.mpl_connect('pick_event', self.__OnPick)
+      # self.eventId = self.paretofig.canvas.mpl_connect('pick_event', self.__OnPick)
 
       #Setup figure width
       self.paretofig.set_figwidth(FIGSIZE)
@@ -184,11 +218,7 @@ class MatplotlibManager():
 
       #Add export button
       tm = self.paretofig.canvas.manager.toolmanager
-      tm.add_tool("export", ExportTool
-                  , methodName=self.MethodName, instanceName=self.InstanceName, time=self.time
-                  , TPFS=tpfs, MPFS=mpfs, HV=hv, HVSTD=hvStd, IGD=igd, IGDSTD=igdStd, PFS=pfs, PFSSTD=pfsStd, purity=purity
-                  , MinDistance=np.amin(self.npData[:, 0]), AverageDistance=np.average(self.npData[:, 0]), MaxDistance=np.amax(self.npData[:, 0]), DistanceSTD=np.std(self.npData[:, 0])
-                  , MinTime=np.amin(self.npData[:, 1]), AverageTime=np.average(self.npData[:, 1]), MaxTime=np.amax(self.npData[:, 1]), TimeSTD=np.std(self.npData[:, 1]))
+      tm.add_tool("export", ExportTool, methodResults=self.methodResults)
       self.paretofig.canvas.manager.toolbar.add_tool(tm.get_tool("export"), "toolgroup")
 
       #Show
@@ -214,6 +244,26 @@ class MatplotlibManager():
 
    def __GetColor(self):
       return np.random.choice(range(256), size=3)/255.
+
+   def __GetPredefinedColor(self):
+      colorArray = [[1, 0, 0], [0, 1, 0], [0, 0, 1], [0.6, 0.6, 0], [0, 1, 1], [1, 0, 1], [0.5, 0.7, 0.5]]
+      i = 0
+      while True:
+         for color in colorArray:
+            if i == 10:
+               return color
+            yield color
+            i = i+1
+
+   def __GetPredefinedMarker(self):
+      markerArray = ["o", "v", "s", "D", "x", "*", "2"]
+      i = 0
+      while True:
+         for marker in markerArray:
+            if i == 10:
+               return marker
+            yield marker
+            i = i+1
 
    def __DrawQuiver(self, ax, x_data, y_data, color):
       u = np.diff(x_data)

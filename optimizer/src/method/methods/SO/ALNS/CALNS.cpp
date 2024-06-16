@@ -52,9 +52,11 @@ void CALNS::RunOptimization()
 
 SMOIndividual* CALNS::RunOptimization(SMOIndividual& individual)
 {
-    auto* newIndividual = RunALNS(SSOIndividual(individual));
-    auto* convertedIndividual = new SMOIndividual(individual);
+    auto* convertedOriginalIndividual = new SSOIndividual(individual);
+    auto* newIndividual = RunALNS(*convertedOriginalIndividual);
+    auto* convertedIndividual = new SMOIndividual(*newIndividual);
     delete newIndividual;
+    delete convertedOriginalIndividual;
     return convertedIndividual;
 }
 

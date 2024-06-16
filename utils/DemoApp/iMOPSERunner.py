@@ -6,30 +6,9 @@ import fileManager as fm
 import numpy as np
 import shutil
 import os
+import csv
 
-def RunIMOPSE(loop: asyncio.BaseEventLoop
-   , methodConfigFileName
-   , problemInstanceFileName
-   , problemName
-   , outputDirectory
-   , runCount
-   , onProgressUpdated: type.Callable[[int], None]
-   , onError: type.Callable[[int, str], None]
-   , onSuccess: type.Callable[[], None]
-   , parrarel: bool):  
-   runner = Runner()
-   task = loop.create_task(runner.Run(methodConfigFileName
-      , problemInstanceFileName
-      , problemName
-      , outputDirectory
-      , runCount
-      , onProgressUpdated
-      , onError
-      , onSuccess
-      , parrarel))
-   return task, runner
-
-class Runner():
+class iMOPSERunner():
    def __init__(self) -> None:
       self.terminated = False
       self.loop = None
@@ -45,7 +24,7 @@ class Runner():
       , runCount
       , onProgressUpdated: type.Callable[[int], None]
       , onError: type.Callable[[int, str], None]
-      , onSuccess: type.Callable[[], None]
+      , onSuccess: type.Callable[[str], None]
       , parrarel: bool):
       await self.__RunIMOPSE(methodConfigFileName
          , problemInstanceFileName
@@ -77,6 +56,11 @@ class Runner():
             if data != None:
                print(data)
 
+   def __ClearData(self):
+      self.processes = []
+      self.readLines = []
+      self.timeArray = []
+
    async def __RunIMOPSE(self
       , methodConfigFileName
       , problemInstanceFileName
@@ -85,8 +69,11 @@ class Runner():
       , runCount
       , onProgressUpdated: type.Callable[[int], None]
       , onError: type.Callable[[int, str], None]
-      , onSuccess: type.Callable[[], None]
+      , onSuccess: type.Callable[[str], None]
       , parrarel: bool):
+      
+      self.__ClearData()
+      outputDirectory = os.path.join(outputDirectory, fm.ReadMethodName(methodConfigFileName), fm.ReadInstanceName(problemInstanceFileName))
       actualRunCount = runCount
       processCount=1
       if parrarel == True:
@@ -143,6 +130,19 @@ class Runner():
                elif self.processes[i].returncode == 0:
                   shutil.copytree(os.path.join(outputDirectory, str(i)), outputDirectory)
                shutil.rmtree(os.path.join(outputDirectory, str(i)))
+            # TO MOVE LATER SHOULD BE PROBLEM BASED -> MOVE TO POST RUN STRATEGY
+            for path, subdirectories, files in os.walk(outputDirectory):
+               for subdirectory in subdirectories:
+                  dataToSave = []
+                  with open(os.path.join(outputDirectory, subdirectory, 'results.csv')) as resultsFile:                     
+                        reader = csv.reader(resultsFile, delimiter=';')                   
+                        for row in reader:
+                           if row[2] == '0':
+                              dataToSave.append(row[:-1])
+                  with open(os.path.join(outputDirectory, subdirectory, 'results.csv'), mode='w', newline='') as outputFile:
+                     writer = csv.writer(outputFile, delimiter=';')
+                     for data in dataToSave:
+                        writer.writerow(data)
             timesRead = fm.ReadTime(fm.DirectoryBack(outputDirectory), fm.ReadInstanceName(problemInstanceFileName))
             if timesRead != None:
                self.timeArray.extend(timesRead)
@@ -150,6 +150,6 @@ class Runner():
                self.timeArray
             fm.SaveInfo(fm.DirectoryBack(outputDirectory), fm.ReadMethodName(methodConfigFileName), fm.ReadInstanceName(problemInstanceFileName), np.average(self.timeArray))
             fm.SaveTime(fm.DirectoryBack(outputDirectory), fm.ReadInstanceName(problemInstanceFileName), self.timeArray)
-            onSuccess()
+            onSuccess(fm.ReadMethodName(methodConfigFileName))
       except Exception as e:
          print(f"iMOPSE runner: {e}")

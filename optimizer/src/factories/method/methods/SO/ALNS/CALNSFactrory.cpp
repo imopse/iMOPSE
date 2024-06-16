@@ -23,19 +23,16 @@ CALNS* CALNSFactory::CreateALNS(SConfigMap* configMap, AProblem& problem, AIniti
     }
     else 
     {
-        if (*objectiveIndex == 0) {
-            *objectiveWeights = { 1.0f, 0.f };
-        }
-        else {
-            *objectiveWeights = { 0.f, 1.0f };
-        }
+        auto objectives = problem.GetProblemEncoding().m_objectivesNumber;
+        objectiveWeights = new std::vector<float>(objectives, 0);
+        (*objectiveWeights)[*objectiveIndex] = 1;
     }
 
     s_removalOperators = CALNSMutationFactory::CreateRemovalOperators(problem, *objectiveWeights);
     s_insertionOperators = CALNSMutationFactory::CreateInsertionOperators(problem, *objectiveWeights);
 
     return new CALNS(
-        *objectiveWeights,
+        *(new std::vector<float>(*objectiveWeights)),
         problem,
         *initialization,
         configMap,
