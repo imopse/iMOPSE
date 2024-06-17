@@ -21,10 +21,10 @@ Our library provides a set of optimization algorithms, problems and ready-to-use
 - **Extensive Customization**: Offers numerous customization options to facilitate research into diverse optimization methods and scenarios.
 - **User-Friendly Interface**: Features an intuitive interface with straightforward input parameters and configuration files, making it accessible to a wide audience of users.
 
-## Compile project
+# Compile project
 To start working with iMOPSE, clone the repository, it consists of two C++ projects `optimizer` and `paretoAnalyzer`, both of them contain CMakeLists.txt files.
 In this subsection we present a few example methods to compile C++ project.
-### using CMake
+## using CMake
 - Verify CMake and Make 
   Verify if CMake and Make are installed on your system. If not, you will need to install them. Visit the [CMake Website](https://cmake.org) and the [GNU Make Manual](https://www.gnu.org/software/make/manual/make.html#Installing-Make) for installation instructions.
 - Enter optimizer directory, create new `build` directory and enter it
@@ -47,17 +47,17 @@ make
 ```
 Expected output should be: `Usage: <pathToExecutable> <MethodConfigPath> <ProblemName> <ProblemDefinitionPath> <OutputDirectory> [ExecutionsCount] [Seed]`
 
-### using Clion IDE
+## using Clion IDE
 - Open project in CLion.
 - In one of project directories find `CMakeLists.txt`, right-click it and select `Load CMake Project` option.
 - CLion will automatically build the project.
 - After building the run button will be available in the top-right corner. Expected output should be: `Usage: <pathToExecutable> <MethodConfigPath> <ProblemName> <ProblemDefinitionPath> [ExecutionsCount] [Seed]`
 
-## Optimizer
+# Optimizer
 Optimizer is the main iMOPSE component responsible for problem optimization with usage of metaheuristic algorithms.
 The optimizer architecture emphasizes modularity with two primary modules: the `method` module and the `problem` module, alongside additional utilities. The `method` module includes an `operators` submodule, designed for flexibility and extensibility, allowing for the incorporation of a range of optimization algorithms via a generic `AMethod` interface. The `problem` module contains implementations for various optimization problems, adhering to a `AProblem` interface that supports integration with the `method` module.
 
-### Input parameters
+## Input parameters
 The optimizer executable takes the following parameters when run:
 1. **Method Configuration Path:** Path to the configuration file for the optimization method. This file contains settings specific to the algorithm you wish to use.
 2. **Problem Name:** The name of the optimization problem you are addressing. List of available problem names is listed below.
@@ -79,7 +79,7 @@ List of possible to input problem names:
   - **TTP2**: Multi-objective TTP
 - **Capacitated Vehicle Routing Problem**: CVRP
 
-### Architecture
+## Architecture
 The optimizer is organized into two main modules: `method` and `problem`.
 
 - The `method` module contains implementations of metaheuristic algorithms. Within this module, there is an `operators` submodule that includes various operators which can be used across different methods for various types of problems.
@@ -92,29 +92,29 @@ To add new problems or methods, you need to implement the appropriate interfaces
 
 ![UML Diagram](additions/imopse_basic_class_diagram.png)
 
-## Pareto Analyzer
+# Pareto Analyzer
 
-### Input Parameters
+## Input Parameters
 The `paretoAnalyzer` executable requires the following parameters:
 1. **Config File Path:** Path to the configuration file containing paths to result directories.
 2. **Instance Name:** The specific instance to analyze, used for filtering result data.
 3. **Output Directory:** Directory where Pareto Front Approximation files will be saved.
 
-### Features
+## Features
 The `ParetoAnalyzer` project is essential for analyzing and comparing multi-objective optimization results. It offers the following features:
 - **True Pareto Front Calculation:** Generates the best possible Pareto Front Approximation using results from all runs of compared methods.
 - **Nadir Point Calculation:** Determines the worst possible values for all objectives.
 - **Pareto Visualization:** Uses Python scripts to visualize Pareto Front Approximations, offering clear insights into optimization outcomes.
 - **Quality Measures for Multi-Objective Optimization:** Calculates metrics such as Inverted Generational Distance (IGD), HyperVolume (HV), Pareto Front Size (PFS), and Purity to assess the quality of Pareto Front Approximations.
 
-## Additional Tools
+# Additional Tools
 iMOPSE includes various tools for visualization, and validation, enhancing its research capabilities. These additional tools are implemented as Python scripts:
 
 - **msrcpsp_solution_visualizer:** Validates and visualizes MS-RCPSP solutions.
 - **multi-objective_visualizer:** Visualizes trade-offs between competing objectives for multi-objective optimization.
 - **single-objective_visualizer:** Provides a graphical overview of fitness values for single-objective optimization.
 
-## Example of Use
+# Example of Use
 This section provides instructions on how to use iMOPSE to compare two methods, BNTGA and MOEAD, on the MSRCPSP problem.
 
 First, specify and optionally edit the method configuration file and other parameters as listed below:
@@ -137,7 +137,7 @@ First, specify and optionally edit the method configuration file and other param
 
 Here, we use `BNTGA_MSRCPSP.cfg` and `MOEAD_MSRCPSP.cfg` configuration files for the methods, as well as `MSRCPSP_TA2` described previously. The instance is from the Regular set and is named `200_20_150_9_D5`. We also specify the output directory with the instance name, which will be helpful later during Pareto analysis. Additionally, we specify the repetition number.
 
-### Configuration Files
+Configuration Files:
 
 **BNTGA Configuration File:**
 
@@ -199,13 +199,14 @@ Using the generated files, we can compare Pareto Front Approximations from each 
 
 On plot we can visually compare quality of each method result.
 
-## Support
+# Support
 For support, feature requests, or bug reports, please file an issue through the GitHub issue tracker associated with the project.
 
-## Authors and Acknowledgment
+# Authors and Acknowledgment
 Thanks to all the contributors who have invested their time and expertise in developing iMOPSE.
 
-### Current Contributors
+# Contributors
+## Current
 - **Paweł Myszkowski** (2011 - Now)
 - **Michał Antkiewicz** (2021 - Now)
 - **Konrad Gmyrek** (2023 - Now)
@@ -214,7 +215,7 @@ Thanks to all the contributors who have invested their time and expertise in dev
 - **Adrian Żak** (2024 - Now)
 
 
-### Past Collaborators
+## Past Collaborators
 - **Maciej Laszczyk** (2014 - 2021)
 - **Kamil Król** (2021 - 2022)
 - **Jacek Wernikowski** (2014 - 2016)
