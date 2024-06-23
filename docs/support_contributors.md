@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Key Features
+title: Support & Contributors
 permalink: /docs/support_contributors/
 ---
 

@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Key Features
+title: Pareto Analyzer
 permalink: /docs/pareto_analyzer/
 ---
 

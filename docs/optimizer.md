@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Key Features
+title: Optimizer
 permalink: /docs/optimizer/
 ---
 
