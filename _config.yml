@@ -1,4 +1,4 @@
-title: iMOPSE Documentation
+title: iMOPSE
 description: Documentation for the iMOPSE project.
 remote_theme: just-the-docs/just-the-docs
 
@@ -13,8 +13,6 @@ just_the_docs:
   navigation:
     - title: "Home"
       url: "/"
-    - title: "Key Features"
-      url: "/docs/key_features/"
     - title: "Compile Project"
       url: "/docs/compile_project/"
     - title: "Optimizer"

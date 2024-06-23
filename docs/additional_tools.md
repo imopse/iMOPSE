@@ -2,6 +2,7 @@
 layout: default
 title: Additional Tools
 permalink: /docs/additional_tools/
+nav_order: 5
 ---
 
 # Additional Tools

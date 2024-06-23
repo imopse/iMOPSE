@@ -2,6 +2,7 @@
 layout: default
 title: Support & Contributors
 permalink: /docs/support_contributors/
+nav_order: 7
 ---
 
 # Support

@@ -2,6 +2,7 @@
 layout: default
 title: Optimizer
 permalink: /docs/optimizer/
+nav_order: 3
 ---
 
 # Optimizer
@@ -41,4 +42,4 @@ Both methods and problems are instantiated using corresponding factory classes i
 
 To add new problems or methods, you need to implement the appropriate interfaces (`AProblem` and `AMethod`) and extend the corresponding factory classes.
 
-![UML Diagram](additions/imopse_basic_class_diagram.png)
+![UML Diagram](../additions/imopse_basic_class_diagram.png)

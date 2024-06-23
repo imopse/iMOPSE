@@ -2,6 +2,7 @@
 layout: default
 title: Pareto Analyzer
 permalink: /docs/pareto_analyzer/
+nav_order: 4
 ---
 
 # Pareto Analyzer

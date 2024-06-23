@@ -2,6 +2,7 @@
 layout: default
 title: Compile Project
 permalink: /docs/compile_project/
+nav_order: 2
 ---
 
 # Compile project
