@@ -1,6 +1,5 @@
 title: iMOPSE Documentation
 description: Documentation for the iMOPSE project.
-theme: just-the-docs
 remote_theme: just-the-docs/just-the-docs
 
 # Enable Jekyll to look for Markdown files in 'docs' folder
@@ -26,5 +25,9 @@ just_the_docs:
       url: "/docs/additional_tools/"
     - title: "Example of Use"
       url: "/docs/example_of_use/"
-    - title: "Support & Contributors"
-      url: "/docs/support_contributors/"
+    - title: "Support"
+      url: "/docs/support/"
+    - title: "Authors and Acknowledgment"
+      url: "/docs/authors/"
+    - title: "Contributors"
+      url: "/docs/contributors/"
