@@ -86,6 +86,6 @@ Based on the metrics provided, we can observe and compare the performance of BNT
 
 Using the generated files, we can compare Pareto Front Approximations from each method.
 
-![UML Diagram](additions/BNTGA_MOEAD_comparison.png)
+![UML Diagram](../additions/BNTGA_MOEAD_comparison.png)
 
 On plot we can visually compare quality of each method result.
