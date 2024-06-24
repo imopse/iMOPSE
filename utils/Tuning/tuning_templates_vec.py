@@ -20,5 +20,5 @@ generate_configs_for_method(
        'ALNSStartTemperature': [300],
        'ALNSTemperatureAnnealingRate': [0.91],
     },
-    configs_path='C:/Users/adria/source/repos/iMOPSE_public/configurations/vec_configs'
+    configs_path=''
 )

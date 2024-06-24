@@ -3,7 +3,6 @@
 #include "../utils/aggregatedFitness/CAggregatedFitness.h"
 #include "../utils/experiment/CSOExperimentUtils.h"
 #include "../../../../utils/logger/ErrorUtils.h"
-#include <method/methods/MO/utils/archive/ArchiveUtils.h>
 
 CTS::CTS(std::vector<float>& objectiveWeights, AProblem& evaluator, AInitialization& initialization,
          SConfigMap* configMap)
@@ -49,15 +48,7 @@ void CTS::RunOptimization()
         CExperimentLogger::AddLine((std::to_string(delta) + ";" + std::to_string(m_CurrentSolution->m_Fitness)).c_str());
     }
 
-    auto best = m_CurrentSolution;
-    CSOExperimentUtils::LogResultData(*best, m_Problem);
-    CExperimentLogger::LogProgress(1);
-    auto* bestMo = new SMOIndividual(*best);
-    m_Problem.Evaluate(*bestMo);
-    ArchiveUtils::LogParetoFront(std::vector<SMOIndividual*> { bestMo });
-    m_Problem.LogSolution(*best);
-    CExperimentLogger::LogData();
-    m_Problem.LogAdditionalData();
+    CSOExperimentUtils::LogResultData(*m_CurrentSolution, m_Problem);
 }
 
 void CTS::InitializeSolution()

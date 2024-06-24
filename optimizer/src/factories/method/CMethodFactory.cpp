@@ -34,8 +34,10 @@ AMethod* CMethodFactory::CreateMethod(
         AProblem& problem
 )
 {
-    /*std::string test;
-    std::cin >> test;*/
+#if _DEBUG
+    //std::string test;
+    //std::cin >> test;
+#endif
 
     // Create a configuration map from the provided path using the CConfigFactory.
     configMap = CConfigFactory::CreateConfigMap(optimizerConfigPath);

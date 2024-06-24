@@ -1,7 +1,7 @@
 import os
 import numpy as np
 
-OUTPUT_PATH_ROOT = "C:/Users/adria/source/repos/iMOPSE_public/utils/DemoApp/results/MOEAD/info"
+OUTPUT_PATH_ROOT = ""
 SKIP=1
 
 for path, subdirectories, files in os.walk(OUTPUT_PATH_ROOT):

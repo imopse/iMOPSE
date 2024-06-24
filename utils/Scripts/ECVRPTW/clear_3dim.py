@@ -1,7 +1,7 @@
 import os
 import csv
 
-OUTPUT_PATH_ROOT = "C:/Users/adria/source/repos/iMOPSE_public/utils/DemoApp/results"
+OUTPUT_PATH_ROOT = ""
 
 for path, subdirectories, files in os.walk(OUTPUT_PATH_ROOT):
    for subdirectory in subdirectories:

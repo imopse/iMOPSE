@@ -1,7 +1,7 @@
 import os
 import csv
 
-OUTPUT_PATH_ROOT = "C:/Users/adria/source/repos/iMOPSE_public/utils/DemoApp/config"
+OUTPUT_PATH_ROOT = ""
 KEEP = "NTGA2_ALNS"
 
 for path, subdirectories, files in os.walk(OUTPUT_PATH_ROOT):

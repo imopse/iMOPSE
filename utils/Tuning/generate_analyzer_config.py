@@ -1,6 +1,6 @@
 import os
 
-OUTPUT_PATH_ROOT = "C:/Users/adria/source/repos/iMOPSE_public/configurations/vec_output"
+OUTPUT_PATH_ROOT = ""
 DEF_OPTION = "WTA_comp_30"
 OUTPUT_ROOT_DIR = OUTPUT_PATH_ROOT
 

@@ -55,7 +55,7 @@ class MethodResult():
 
 
 class ExportTool(ToolBase):
-   image=r"C:\\Users\\adria\\source\\repos\\iMOPSE_public\\utils\\DemoApp\\assets\\ios_share_24dp.png"
+   #image= <- Provide path to png
 
    def __init__(self, *args, methodResults: t.Dict[str, MethodResult] , **kwarg):
       super().__init__(*args, **kwarg)

@@ -17,7 +17,7 @@ ANNOTATIONOFFSETX = 0.5
 ANNOTATIONOFFSETY = 0.5
 
 class ExportTool(ToolBase):
-   image=r"C:\\Users\\adria\\source\\repos\\iMOPSE_public\\utils\\DemoApp\\assets\\ios_share_24dp.png"
+   #image= <- Provide path to png
 
    def __init__(self, *args, methodName, instanceName, time
                   , TPFS, MPFS, HV, HVSTD, IGD, IGDSTD, PFS, PFSSTD, purity

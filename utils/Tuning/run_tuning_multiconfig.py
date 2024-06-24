@@ -3,10 +3,10 @@ import subprocess
 import multiprocessing as mp
 
 PROB_NAME = "ECVRPTW"
-PROBLEM_DEF_ROOT = "C:/Users/adria/source/repos/iMOPSE_public/configurations/vec_tuning_inst"
-OPTIMIZER_PATH = "C:/Users/adria/source/repos/iMOPSE_public/utils/DemoApp/resources/imopse.exe"
-ARCH_PATH_DIR = "C:/Users/adria/source/repos/iMOPSE_public/configurations/vec_out"
-CONFIGS_DEF_DIR = "C:/Users/adria/source/repos/iMOPSE_public/configurations/vec_configs"
+PROBLEM_DEF_ROOT = ""
+OPTIMIZER_PATH = ""
+ARCH_PATH_DIR = ""
+CONFIGS_DEF_DIR = ""
 
 EXECUTION_COUNT = 5
 SEED = 0
