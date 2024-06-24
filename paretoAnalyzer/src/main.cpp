@@ -10,6 +10,11 @@
 int main(int argc, char* argv[]) {
     std::vector<ConfigData*> configsToAnalyze;
     
+#if _DEBUG
+    std::string test;
+    std::cin >> test;
+#endif
+
     if (argc != 4) {
         std::cerr << "Usage: " << argv[0] << " <configurationFilePath> <instanceName> <outputDir>" << std::endl;
         return 1;
