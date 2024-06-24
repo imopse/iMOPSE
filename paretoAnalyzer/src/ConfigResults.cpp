@@ -62,8 +62,20 @@ ParetoMetrics ConfigResults::EvaluateByTrueParetoFront(const std::string& instan
 
 		for (size_t i = 0; i < frontsSize; ++i)
 		{
-			ParetoMetrics paretoMetrics = paretoEvaluator.EvaluateParetoFront(paretoFronts[i], trueParetoFront);
-			allParetoMetrics.push_back(paretoMetrics);
+			if (paretoFronts[i].solutions.size() > 0) {
+				ParetoMetrics paretoMetrics = paretoEvaluator.EvaluateParetoFront(paretoFronts[i], trueParetoFront);
+				allParetoMetrics.push_back(paretoMetrics);
+			}
+			else {
+				ParetoMetrics paretoMetrics;
+				paretoMetrics.SetMetric("HV", 0);
+				paretoMetrics.SetMetric("IGD", 1);
+				paretoMetrics.SetMetric("GD", 1);
+				paretoMetrics.SetMetric("PFS", 0);
+				paretoMetrics.SetMetric("ND", 0);
+				paretoMetrics.SetMetric("ND/TPFS", 0);
+				allParetoMetrics.push_back(paretoMetrics);
+			}
 			// Temp
 			//std::cout << paretoMetrics.ToString() << std::endl;
 		}

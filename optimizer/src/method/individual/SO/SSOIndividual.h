@@ -13,6 +13,9 @@ public:
 
     SSOIndividual(const SSOIndividual &other) : AIndividual(other)
     {};
+
+    SSOIndividual(const AIndividual& other) : AIndividual(other)
+    {};
     
     float m_Fitness = 0;
 };

@@ -63,6 +63,24 @@ void CExperimentLogger::LogData()
     m_Data.clear();
 }
 
+void CExperimentLogger::LogData(const std::string& fileName)
+{
+    std::ofstream outFile;
+    std::string outputDataPath = m_OutputDataPathPrefix + "/" + fileName;
+    outFile.open(outputDataPath, std::ofstream::out | std::ofstream::app); // Open in append mode
+    if (!outFile.is_open())
+    {
+        std::cerr << "Unable to open file: " << outputDataPath << std::endl;
+    }
+
+    for (const auto& line : m_Data)
+    {
+        outFile << line << std::endl;
+    }
+    outFile.close();
+    m_Data.clear();
+}
+
 void CExperimentLogger::LogResult(const char* result)
 {
     LogResult(result, "results.csv");

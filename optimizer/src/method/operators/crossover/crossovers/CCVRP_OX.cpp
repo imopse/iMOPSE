@@ -1,6 +1,7 @@
 #include "../../../../utils/random/CRandom.h"
 #include <algorithm>
 #include "CCVRP_OX.h"
+#include <climits>
 
 void CCVRP_OX::FixChild(AIndividual &child) {
     auto &childGenes = child.m_Genotype.m_IntGenotype;

@@ -8,6 +8,6 @@
 class CALNSMutationFactory
 {
 public:
-    static std::vector<AMutation*>* CreateRemovalOperators(AProblem& problem);
-    static std::vector<AMutation*>* CreateInsertionOperators(AProblem& problem);
+    static std::vector<AMutation*>* CreateRemovalOperators(AProblem& problem, std::vector<float>& objectiveWeights);
+    static std::vector<AMutation*>* CreateInsertionOperators(AProblem& problem, std::vector<float>& objectiveWeights);
 };

@@ -134,12 +134,12 @@ void CECVRPTWTemplate::CalculateContextData()
 	m_DistanceInfoMatrix = std::vector<std::vector<SDistanceInfo>>(dim, std::vector<SDistanceInfo>(dim, SDistanceInfo{0, 0, 0}));
 	for (size_t i = 0; i < dim; ++i)
 	{
-		for (size_t j = i + 1; j < dim; ++j)
+		for (size_t j = 0; j < dim; ++j)
 		{
 			float dist = sqrtf(powf((*m_Cities)[i].m_PosX - (*m_Cities)[j].m_PosX, 2) + powf((*m_Cities)[i].m_PosY - (*m_Cities)[j].m_PosY, 2));
 			float time = dist / m_averageVelocity;
 			float fuelConsumptionRate = dist * m_FuelConsumptionRate;
-			m_DistanceInfoMatrix[i][j] = m_DistanceInfoMatrix[j][i] = SDistanceInfo
+			m_DistanceInfoMatrix[i][j] = SDistanceInfo
 			{
 				dist, //m_distance
 				time, //m_travelTime

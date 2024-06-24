@@ -4,6 +4,7 @@
 #include "../utils/archive/ArchiveUtils.h"
 #include "../utils/clustering/CNonDominatedSorting.h"
 #include "../../../../utils/logger/ErrorUtils.h"
+#include "../../../../utils/logger/CExperimentLogger.h"
 
 CNTGA2::CNTGA2(AProblem &evaluator,
                AInitialization &initialization,
@@ -48,6 +49,7 @@ void CNTGA2::RunOptimization()
 
     while (generation < m_GenerationLimit)
     {
+        CExperimentLogger::LogProgress(generation / (float)m_GenerationLimit);
         if ((generation % 100) < (100 - m_GapSelectionPercent))
         {
             // Without Gap
@@ -92,9 +94,16 @@ void CNTGA2::RunOptimization()
         m_NextPopulation.reserve(m_Population.size());
 
         ++generation;
+        CExperimentLogger::LogProgress((float)generation/m_GenerationLimit);
     }
 
+    CExperimentLogger::LogProgress(1);
     ArchiveUtils::LogParetoFront(m_Archive);
+    for (int i = 0; i < m_Archive.size(); i++) {
+        m_Problem.LogSolution(*m_Archive[i]);
+    }
+    CExperimentLogger::LogData();
+    m_Problem.LogAdditionalData();
 }
 
 void CNTGA2::CrossoverAndMutate(SMOIndividual &firstParent, SMOIndividual &secondParent)

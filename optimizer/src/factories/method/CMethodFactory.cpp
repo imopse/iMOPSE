@@ -7,10 +7,10 @@
 #include "methods/MO/NTGA2_ALNS/CNTGA2_ALNSFactory.h"
 #include "methods/MO/NSGAII/CNSGAIIFactory.h"
 #include "methods/SO/ACO/CACOFactory.h"
+#include "methods/SO/ALNS/CALNSFactory.h"
 #include "operators/initialization/CInitializationFactory.h"
 #include "operators/crossover/CCrossoverFactory.h"
 #include "operators/mutation/CMutationFactory.h"
-#include "operators/mutation/CALNSMutationFactory.h"
 #include "methods/SO/PSO/CPSOFactory.h"
 #include <cstring>
 #include "methods/SO/DE/CDEFactory.h"
@@ -19,6 +19,8 @@
 #include "methods/MO/BNTGA/CBNTGAFactory.h"
 #include "methods/MO/SPEA2/CSPEA2Factory.h"
 #include "../../utils/fileReader/CReadUtils.h"
+#include "../../method/methods/SO/ALNS/CALNS.h"
+#include <iostream>
 
 // Static members of CMethodFactory, initialized to nullptr. These will hold various components of an optimization method.
 SConfigMap* CMethodFactory::configMap = nullptr;
@@ -32,6 +34,11 @@ AMethod* CMethodFactory::CreateMethod(
         AProblem& problem
 )
 {
+#if _DEBUG
+    //std::string test;
+    //std::cin >> test;
+#endif
+
     // Create a configuration map from the provided path using the CConfigFactory.
     configMap = CConfigFactory::CreateConfigMap(optimizerConfigPath);
     if (configMap == nullptr) {
@@ -44,8 +51,20 @@ AMethod* CMethodFactory::CreateMethod(
         throw std::runtime_error("MethodName not provided in method configuration");
     }
 
+    std::string initializationName;
+    // Extract the method name from the configuration map. If it's not provided, throw an error.
+    if (!configMap->TakeValue("InitializationName", initializationName)) {
+        throw std::runtime_error("InitializationName not provided in method configuration");
+    }
+
     // Create initialization strategy based on the configuration map.
-    initialization = CInitializationFactory::Create(configMap);
+    if(strcmp(initializationName.c_str(), "Generic") == 0)
+        initialization = CInitializationFactory::Create(configMap);
+    if (strcmp(initializationName.c_str(), "ECVRPTW") == 0)
+        initialization = CInitializationFactory::CreateECVRPTW(configMap, problem);
+
+    if (initialization == nullptr)
+        throw std::runtime_error("Initialization method " + initializationName + " not supported");
 
     // Create and return a specific optimization method based on the method name.
     if (strcmp(methodName.c_str(), "ACO") == 0)
@@ -85,15 +104,20 @@ AMethod* CMethodFactory::CreateMethod(
         return CSPEA2Factory::CreateSPEA2(configMap, problem, initialization, crossover, mutation);
     if (strcmp(methodName.c_str(), "NTGA2_ALNS") == 0) 
     {
+        std::vector<CALNS*>* alnsInstances = new std::vector<CALNS*>();
+        for (int i = 0; i < problem.GetProblemEncoding().m_objectivesNumber; i++) {
+            alnsInstances->push_back(CALNSFactory::CreateALNS(configMap, problem, initialization, false, &i));
+        }
         return CNTGA2_ALNSFactory::CreateNTGA2_ALNS(configMap,
             problem,
             initialization,
             crossover,
             mutation,
-            CALNSMutationFactory::CreateRemovalOperators(problem),
-            CALNSMutationFactory::CreateInsertionOperators(problem)
+            alnsInstances
         );
     }
+    if (strcmp(methodName.c_str(), "ALNS") == 0)
+        return CALNSFactory::CreateALNS(configMap, problem, initialization, true);
     
     // If the method name is not supported, throw an error.
     throw std::runtime_error("Method name: " + std::string(methodName) + " not supported");
@@ -121,4 +145,5 @@ void CMethodFactory::DeleteObjects() {
     CSPEA2Factory::DeleteObjects();
     CACOFactory::DeleteObjects();
     CNTGA2_ALNSFactory::DeleteObjects();
+    CALNSFactory::DeleteObjects();
 }

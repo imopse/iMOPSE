@@ -14,6 +14,12 @@ CRankedTournament *CSelectionFactory::CreateRankedTournamentSelection(SConfigMap
     return new CRankedTournament(tournamentSize);
 }
 
+CRankedTournament* CSelectionFactory::CreateRankedTournamentSelection(SConfigMap* configMap, std::string& selectionName)
+{
+    int tournamentSize = ValidateSelectionAndReturnTournamentSize(configMap, selectionName);
+    return new CRankedTournament(tournamentSize);
+}
+
 CGapSelectionByRandomDim *CSelectionFactory::CreateGapSelection(SConfigMap *configMap, bool bntga)
 {
     int tournamentSize = ValidateSelectionAndReturnTournamentSize(configMap, "GapSelection");

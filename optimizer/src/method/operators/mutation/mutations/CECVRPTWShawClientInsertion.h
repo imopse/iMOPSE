@@ -13,10 +13,23 @@
 class CECVRPTWShawClientInsertion : public AMutation
 {
 public:
-	explicit CECVRPTWShawClientInsertion(AProblem& problem) : m_problem((CECVRPTW&)problem) {};
-	~CECVRPTWShawClientInsertion() override = default;
+	explicit CECVRPTWShawClientInsertion(AProblem& problem) 
+		: m_problem((CECVRPTW&)problem) 
+	{
+		m_genotypeCopy = new std::vector<int>();
+		m_missingCustomers = new std::vector<int>();
+		m_genotypeCopy->reserve(GENOTYPEBUFFERSIZE);
+		m_missingCustomers->reserve(GENOTYPEBUFFERSIZE);
+	};
+	~CECVRPTWShawClientInsertion() override
+	{
+		delete m_genotypeCopy;
+		delete m_missingCustomers;
+	};
 
 	void Mutate(SProblemEncoding& problemEncoding, AIndividual& child) override;
 private:
 	CECVRPTW& m_problem;
+	std::vector<int>* m_genotypeCopy;
+	std::vector<int>* m_missingCustomers;
 };

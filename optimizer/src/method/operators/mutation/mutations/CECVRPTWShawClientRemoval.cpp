@@ -1,9 +1,9 @@
 #include "CECVRPTWShawClientRemoval.h"
 
 void CECVRPTWShawClientRemoval::Mutate(SProblemEncoding& problemEncoding, AIndividual& child) {
+	m_customerIndexes->clear();
+
 	int customersToRemove = CRandom::GetInt(1, problemEncoding.m_Encoding[0].m_SectionDescription.size() - m_problem.GetECVRPTWTemplate().GetVehicleCount() - 1);
-	std::vector<int> customerIndexes;
-	customerIndexes.reserve(customersToRemove);
 	int firstCustomerIdx = CRandom::GetInt(1, problemEncoding.m_Encoding[0].m_SectionDescription.size());
 	auto& genotype = child.m_Genotype.m_IntGenotype;
 	while (child.m_Genotype.m_IntGenotype[firstCustomerIdx] == VEHICLE_DELIMITER) {
@@ -14,12 +14,12 @@ void CECVRPTWShawClientRemoval::Mutate(SProblemEncoding& problemEncoding, AIndiv
 	auto& cities = problemTemplate.GetCities();
 	auto& distanceMatrix = problemTemplate.GetDistInfoMtx();
 
-	customerIndexes.push_back(genotype[firstCustomerIdx]);
+	m_customerIndexes->push_back(genotype[firstCustomerIdx]);
 
 	genotype.erase(genotype.begin() + firstCustomerIdx);
 	for (int i = 1; i < customersToRemove; i++) {
-		size_t customerToCompareIdx = CRandom::GetInt(0, customerIndexes.size());
-		auto& customerToCompare = cities[customerIndexes[customerToCompareIdx]];
+		size_t customerToCompareIdx = CRandom::GetInt(0, m_customerIndexes->size());
+		auto& customerToCompare = cities[(*m_customerIndexes)[customerToCompareIdx]];
 		float minDistance = std::numeric_limits<float>::max();
 		size_t customerWithMinDistanceIdx = -1;
 		for (int j = 0; j < genotype.size(); j++) {
@@ -33,7 +33,7 @@ void CECVRPTWShawClientRemoval::Mutate(SProblemEncoding& problemEncoding, AIndiv
 				}
 			}
 		}
-		customerIndexes.push_back(genotype[customerWithMinDistanceIdx]);
+		m_customerIndexes->push_back(genotype[customerWithMinDistanceIdx]);
 		genotype.erase(genotype.begin() + customerWithMinDistanceIdx);
 	}
 }

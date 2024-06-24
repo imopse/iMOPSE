@@ -11,7 +11,6 @@ public:
     SSOIndividual* CreateSOIndividual(SProblemEncoding &encoding) override;
     SSOIndividual* CreateSOIndividual(SProblemEncoding &encoding, SGenotype& genotype) override;
     SMOIndividual* CreateMOIndividual(SProblemEncoding &encoding) override;
-    SMOIndividual* CreateMOIndividualForECVRPTW(SProblemEncoding &encoding, CECVRPTW& ecvrptwProblem) override;
     SSOIndividual* CreateNeighborSolution(SProblemEncoding &encoding, const SSOIndividual &baseSolution) override;
     SParticle* CreateParticle(SProblemEncoding &encoding) override;
 private:

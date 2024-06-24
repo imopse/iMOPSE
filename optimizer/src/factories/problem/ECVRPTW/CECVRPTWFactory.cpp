@@ -1,6 +1,7 @@
 #include "CECVRPTWFactory.h"
 #include "../../../utils/fileReader/CReadUtils.h"
 #include <regex>
+#include <iostream>
 
 #define READ_ECVRPTW 1
 
@@ -28,6 +29,9 @@ CECVRPTWTemplate* CECVRPTWFactory::ReadECVRPTWTemplate(const char* problemDefini
     auto* result = new CECVRPTWTemplate();
 
     std::ifstream readFileStream(problemDefinitionPath);
+
+    /*std::string test;
+    std::cin >> test;*/
 
     int dimension = 0;
     std::vector<SCityECVRPTW>* cities = new std::vector<SCityECVRPTW>();
@@ -67,6 +71,7 @@ CECVRPTWTemplate* CECVRPTWFactory::ReadECVRPTWTemplate(const char* problemDefini
         switch ((*cities)[i].m_type) {
             case ENodeType::Depot:
                 depotIndexes->emplace_back(i);
+                chargingStationIndexes->emplace_back(i);
                 break;
             case ENodeType::ChargingStation:
                 chargingStationIndexes->emplace_back(i);

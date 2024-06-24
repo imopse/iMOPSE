@@ -26,4 +26,5 @@ Q Vehicle fuel tank capacity /60.63/
 C Vehicle load capacity /1000.0/
 r fuel consumption rate /1.0/
 g inverse refueling rate /0.49/
-v average Velocity /1.0/
+v average Velocity /2.0/
+n vehicle Count /2.0/

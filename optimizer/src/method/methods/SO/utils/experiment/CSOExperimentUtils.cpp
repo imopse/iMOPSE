@@ -78,7 +78,7 @@ SSOIndividual* CSOExperimentUtils::FindBest(const std::vector<SParticle *> &swar
 
 void CSOExperimentUtils::LogResultData(SSOIndividual& best, AProblem& problem)
 {
-    CExperimentLogger::LogData();
+    CExperimentLogger::LogData("experiment.csv");
 
     std::string resultString = BestToCSVString(best);
     CExperimentLogger::LogResult(resultString.c_str());

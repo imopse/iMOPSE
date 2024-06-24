@@ -31,26 +31,6 @@ SMOIndividual* CInitialization::CreateMOIndividual(SProblemEncoding &encoding)
     return new SMOIndividual(genotype, emptyEvaluation, emptyNormalizedEvaluation);
 }
 
-SMOIndividual* CInitialization::CreateMOIndividualForECVRPTW(SProblemEncoding& encoding, CECVRPTW& ecvrptwProblem)
-{
-    SGenotype genotype;
-    InitGenotype(encoding, genotype);
-    float toAdd = encoding.m_Encoding[0].m_SectionDescription[0].m_MinValue;
-    float maxCustomerIndex = encoding.m_Encoding[0].m_SectionDescription[0].m_MaxValue;
-    for (int i = 0; i < genotype.m_IntGenotype.size(); i++) {
-        genotype.m_IntGenotype[i] += toAdd;
-    }
-    int vehicleCount = ecvrptwProblem.GetECVRPTWTemplate().GetVehicleCount() - 1;
-    for (int i = 1; i <= vehicleCount; i++) {
-        auto it = std::find(genotype.m_IntGenotype.begin(), genotype.m_IntGenotype.end(), maxCustomerIndex + i);
-        *it = VEHICLE_DELIMITER;
-    }
-    std::vector<float> emptyEvaluation(encoding.m_objectivesNumber, 0);
-    std::vector<float> emptyNormalizedEvaluation(encoding.m_objectivesNumber, 0);
-
-    return new SMOIndividual(genotype, emptyEvaluation, emptyNormalizedEvaluation);
-}
-
 SParticle* CInitialization::CreateParticle(SProblemEncoding &encoding)
 {
     SGenotype genotype;
