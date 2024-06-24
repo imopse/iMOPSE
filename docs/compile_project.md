@@ -7,11 +7,15 @@ nav_order: 2
 
 # Compile project
 To start working with iMOPSE, clone the repository, it consists of two C++ projects `optimizer` and `paretoAnalyzer`, both of them contain CMakeLists.txt files.
-In this subsection we present a few example methods to compile C++ project.
+In this section we present a few example methods to compile C++ project.
 ## using CMake
 - Verify CMake and Make
-  Verify if CMake and Make are installed on your system. If not, you will need to install them. Visit the [CMake Website](https://cmake.org) and the [GNU Make Manual](https://www.gnu.org/software/make/manual/make.html#Installing-Make) for installation instructions.
-- Enter optimizer directory, create new `build` directory and enter it
+```bash
+cmake --version
+make --version
+```
+- Verify if CMake and Make are installed on your system. If not, you will need to install them. Visit the [CMake Website](https://cmake.org) and the [GNU Make Manual](https://www.gnu.org/software/make/manual/make.html#Installing-Make) for installation instructions.
+- Enter `optimizer` directory, create new `build` directory and enter it
 ```bash
 cd optimizer
 mkdir build

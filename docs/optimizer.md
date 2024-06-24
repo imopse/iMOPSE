@@ -11,25 +11,21 @@ The optimizer architecture emphasizes modularity with two primary modules: the `
 
 ## Input parameters
 The optimizer executable takes the following parameters when run:
-1. **Method Configuration Path:** Path to the configuration file for the optimization method. This file contains settings specific to the algorithm you wish to use.
-2. **Problem Name:** The name of the optimization problem you are addressing. List of available problem names is listed below.
-3. **Problem Definition Path:** Path to the file that defines the problem instance. This includes data like distances in TSP or resources and tasks in MS-RCPSP.
+1. **Method Configuration File:** Path to the configuration file for the optimization method. This file contains settings specific to the algorithm you wish to use, you can find more specific information in **Methods** section.
+2. **Problem Name:** The name of the optimization problem you are addressing. List of available problem names is listed in **Problems** section.
+3. **Problem Instance Path:** Path to the file that defines the problem instance. This includes data like distances in TSP or resources and tasks in MS-RCPSP.
 4. **Output directory:** Path to directory where optimization results will be saved.
-5. **Executions Count (Optional):** The number of times the optimization should be run. Useful for statistical analysis.
+5. **Number of Runs (Optional):** The number of repetitions of the experiment. Useful for statistical analysis.
 6. **Seed (Optional):** A seed value for the random number generator to ensure reproducibility of the results.
    Note: This value applies only to the first run. For each subsequent run, the seed is incremented by one.
 
-List of possible to input problem names:
-- **Multi-Skill Resource-Constrained Project Scheduling Problem**:
-    - **MSRCPSP_TA**: Task-resource association-based solution encoding and greedy order of tasks execution
-    - **MSRCPSP_TA2**: Task-resource association-based solution encoding and greedy order of tasks execution, with only two objectives (makespan, cost)
-    - **MSRCPSP_TO**: Order permutation-based solution with greedy task association
-    - **MSRCPSP_TO2**: Order permutation-based solution with greedy task association, with only two objectives (makespan, cost)
-- **Traveling Salesman Problem**: TSP
-- **Traveling Thief Problem**:
-    - **TTP1**: Single-objective TTP
-    - **TTP2**: Multi-objective TTP
-- **Capacitated Vehicle Routing Problem**: CVRP
+**example:**
+- Method Configuration File: `../../configurations/methods/BNTGA/BNTGA_MSRCPSP.cfg`
+- Problem Name: `MSRCPSP_TA2`
+- Problem Instance File: `../../configurations/problems/MSRCPSP/Regular/200_20_150_9_D5.def`
+- Output Directory: `../experiments/BNTGA/200_20_150_9_D5/`
+- Number of Runs: `10`
+- Seed: `0`
 
 ## Architecture
 The optimizer is organized into two main modules: `method` and `problem`.

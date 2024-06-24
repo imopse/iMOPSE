@@ -13,6 +13,11 @@ The `paretoAnalyzer` executable requires the following parameters:
 2. **Instance Name:** The specific instance to analyze, used for filtering result data.
 3. **Output Directory:** Directory where Pareto Front Approximation files will be saved.
 
+**example:**
+ - Config File Path: ../config.cfg
+ - Instance Name: rc103C15
+ - Output Directory: ../results/
+
 ## Features
 The `ParetoAnalyzer` project is essential for analyzing and comparing multi-objective optimization results. It offers the following features:
 - **True Pareto Front Calculation:** Generates the best possible Pareto Front Approximation using results from all runs of compared methods.
