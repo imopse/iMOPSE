@@ -1,5 +1,6 @@
 #include "../../../../utils/random/CRandom.h"
 #include <algorithm>
+#include <climits>
 #include "CCVRP_OX.h"
 
 void CCVRP_OX::FixChild(AIndividual &child) {
