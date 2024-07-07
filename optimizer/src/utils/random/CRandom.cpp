@@ -45,4 +45,5 @@ int CRandom::GetWeightedInt(const std::vector<float>& weights)
             return i;
         rnd -= copiedWeights[i];
     }
+    return 0;
 }

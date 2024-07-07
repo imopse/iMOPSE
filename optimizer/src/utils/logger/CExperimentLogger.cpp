@@ -101,7 +101,7 @@ bool CExperimentLogger::WriteSchedulerToFile(const CScheduler& schedule, const A
     // TODO - generic logger should not contain Scheduler logic
     char archive_filename[256];
     std::string outputDataPath = m_OutputDataPathPrefix + "/best_solution.sol";
-    snprintf(archive_filename, 256, outputDataPath.c_str());
+    snprintf(archive_filename, 256, "%s",outputDataPath.c_str());
     std::ofstream arch_file(archive_filename);
 
     arch_file << "Instance name;Duration;Cost;AvgCashFlowDev;AvgSkillOverUse;AvgUseOfResTime " << std::endl;
