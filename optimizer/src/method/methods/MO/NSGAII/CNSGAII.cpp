@@ -5,6 +5,7 @@
 #include "../utils/archive/ArchiveUtils.h"
 #include "../utils/clustering/CNonDominatedSorting.h"
 #include "../../../../utils/logger/ErrorUtils.h"
+#include <utils/logger/CExperimentLogger.h>
 
 CNSGAII::CNSGAII(AProblem &evaluator,
                  AInitialization &initialization,
@@ -97,10 +98,18 @@ void CNSGAII::RunOptimization()
         m_NextPopulation.reserve(m_Population.size());
 
         generation++;
+        CExperimentLogger::LogProgress((float)generation / m_GenerationLimit);
     }
 
     ArchiveUtils::CopyToArchiveWithFiltering(m_NextPopulation, m_Archive);
+
+    CExperimentLogger::LogProgress(1);
     ArchiveUtils::LogParetoFront(m_Archive);
+    for (int i = 0; i < m_Archive.size(); i++) {
+        m_Problem.LogSolution(*m_Archive[i]);
+    }
+    CExperimentLogger::LogData();
+    m_Problem.LogAdditionalData();
 }
 
 void CNSGAII::EvolveToNextGeneration()

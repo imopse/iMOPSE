@@ -14,10 +14,10 @@ public:
 	ParetoMetrics EvaluateByTrueParetoFront(const std::string& instanceName, const ParetoFront& trueParetoFront);
 	ParetoMetrics EvaluateByTrueParetoFront_IGD(const std::string& instanceName, const ParetoFront& trueParetoFront);
 	bool NormalizeByMinMax(const std::string& instanceName, const std::vector<float>& minValues, const std::vector<float>& maxValues);
+	std::map<std::string, std::vector<ParetoFront>> m_ConfigParetos;
 
 private:
 
-	std::map<std::string, std::vector<ParetoFront>> m_ConfigParetos;
 };
 
 struct ConfigData

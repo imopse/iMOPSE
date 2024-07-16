@@ -18,7 +18,6 @@ public:
     void Evaluate(AIndividual& individual) override;
     void LogSolution(AIndividual& individual) override;
     void LogAdditionalData() override;
-    float GetScore(AIndividual& individual) { return individual.m_Evaluation[0] + individual.m_Evaluation[1]; }
 
     CECVRPTWTemplate& GetECVRPTWTemplate() { return m_ECVRPTWTemplate; }
     std::vector<int>* GetRealPath(AIndividual& individual);
@@ -46,7 +45,8 @@ private:
     float CalculateRefuelTime(float tankCapacity, float currentTankCapacity);
 
     void PrepareData(AIndividual& individual);
-    void MoveToDepoAndThenToCity(size_t& currentIdx,
+    void MoveToDepoAndThenToCity(AIndividual& individual,
+        size_t& currentIdx,
         int& rechargeStationVisitInSeries,
         size_t& cityIdx,
         size_t& nextCityIdx,
@@ -54,14 +54,15 @@ private:
         size_t& depotIdx
     );
 
-    void MoveToNextCity(int& rechargeStationVisitInSeries,
+    void MoveToNextCity(AIndividual& individual,
+        int& rechargeStationVisitInSeries,
         size_t& cityIdx,
         size_t& nextCityIdx,
         int& currentCar,
         size_t& depotIdx
     );
 
-    void HandleTimeOnCity(int& currentCar, size_t& nextCityIdx);
+    void HandleTimeOnCity(AIndividual& individual, int& currentCar, size_t& nextCityIdx);
 
     void MoveToRechargeStation(size_t& currentIdx, size_t& cityIdx, int& currentCar);
 };

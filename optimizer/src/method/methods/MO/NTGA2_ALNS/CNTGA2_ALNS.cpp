@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <sstream>
 #include "CNTGA2_ALNS.h"
+#include "../../SO/ALNS/CALNS.h"
 #include "../utils/archive/ArchiveUtils.h"
 #include "../utils/clustering/CNonDominatedSorting.h"
 #include "../../../../utils/logger/ErrorUtils.h"
@@ -10,18 +11,18 @@
 CNTGA2_ALNS::CNTGA2_ALNS(AProblem &evaluator,
     AInitialization &initialization,
     CRankedTournament &rankedTournament,
+    CRankedTournament& alnsRankedTournament,
     CGapSelectionByRandomDim &gapSelection,
     ACrossover &crossover,
     AMutation &mutation,
     SConfigMap *configMap,
-    std::vector<AMutation*>& alnsRemovalMutations,
-    std::vector<AMutation*>& alnsInsertionMutations
+    std::vector<CALNS*>& alnsInstances
 ) :
         AMOGeneticMethod(evaluator, initialization, crossover, mutation),
         m_RankedTournament(rankedTournament),
         m_GapSelection(gapSelection),
-        m_alnsRemovalMutations(alnsRemovalMutations),
-        m_alnsInsertionMutations(alnsInsertionMutations)
+        m_ALNSInstances(alnsInstances),
+        m_AlnsRankedTournament(alnsRankedTournament)
 {
     configMap->TakeValue("GapSelectionPercent", m_GapSelectionPercent);
     ErrorUtils::OutOfScopeF("NTGA2_ALNS", "GapSelectionPercent", m_GapSelectionPercent / 100.f); // Assuming this checks for a valid percentage range
@@ -35,26 +36,8 @@ CNTGA2_ALNS::CNTGA2_ALNS(AProblem &evaluator,
     configMap->TakeValue("GenerationLimit", m_GenerationLimit);
     ErrorUtils::LowerThanZeroI("NTGA2_ALNS", "GenerationLimit", m_GenerationLimit);
 
-    configMap->TakeValue("EffectivnessThreshold", m_effectivnessThreshold);
-    ErrorUtils::LowerThanZeroF("NTGA2_ALNS", "EffectivnessThreshold", m_effectivnessThreshold);
-
-    configMap->TakeValue("ALNSIterations", m_ALNSIterations);
-    ErrorUtils::LowerThanZeroI("NTGA2_ALNS", "ALNSIterations", m_ALNSIterations);
-
-    configMap->TakeValue("ALNSNoImprovementIterations", m_ALNSNoImprovementIterations);
-    ErrorUtils::LowerThanZeroI("NTGA2_ALNS", "ALNSNoImprovementIterations", m_ALNSNoImprovementIterations);
-
-    configMap->TakeValue("ALNSProbabilityStepsIterations", m_ALNSProbabilityStepsIterations);
-    ErrorUtils::LowerThanZeroI("NTGA2_ALNS", "ALNSProbabilityStepsIterations", m_ALNSProbabilityStepsIterations);
-
-    configMap->TakeValue("ALNSStartTemperature", m_ALNSStartTemperature);
-    ErrorUtils::LowerThanZeroI("NTGA2_ALNS", "ALNSStartTemperature", m_ALNSStartTemperature);
-
-    configMap->TakeValue("ALNSTemperatureAnnealingRate", m_ALNSTemperatureAnnealingRate);
-    ErrorUtils::LowerThanZeroI("NTGA2_ALNS", "ALNSTemperatureAnnealingRate", m_ALNSTemperatureAnnealingRate);
-
-    configMap->TakeValue("ALNSProbabilityPercent", m_ALNSProbabilityPercent);
-    ErrorUtils::OutOfScopeF("NTGA2_ALNS", "ALNSProbabilityPercent", m_ALNSProbabilityPercent / 100.f);
+    configMap->TakeValue("EliteSize", m_EliteSize);
+    ErrorUtils::LowerThanZeroI("NTGA2_ALNS", "EliteSize", m_EliteSize);
 }
 
 void CNTGA2_ALNS::RunOptimization()
@@ -64,7 +47,7 @@ void CNTGA2_ALNS::RunOptimization()
     for (size_t i = 0; i < m_PopulationSize; ++i)
     {
         SProblemEncoding& problemEncoding = m_Problem.GetProblemEncoding();
-        auto* newInd = m_Initialization.CreateMOIndividualForECVRPTW(problemEncoding, (CECVRPTW&)m_Problem);
+        auto* newInd = m_Initialization.CreateMOIndividual(problemEncoding);
 
         m_Problem.Evaluate(*newInd);
 
@@ -85,6 +68,14 @@ void CNTGA2_ALNS::RunOptimization()
             RunGenerationWithGap();
         }
 
+        for (size_t i = 0; i < m_EliteSize; i++) {
+            auto* parent = m_AlnsRankedTournament.Select(m_NextPopulation);
+            m_NextPopulation.erase(std::find(m_NextPopulation.begin(), m_NextPopulation.end(), parent));
+            auto* newIndividual = RunALNS(*parent);
+            delete parent;
+            m_NextPopulation.push_back(newIndividual);
+        }
+
         ArchiveUtils::CopyToArchiveWithFiltering(m_NextPopulation, m_Archive);
 
         for (SMOIndividual *ind: m_PreviousPopulation)
@@ -98,7 +89,7 @@ void CNTGA2_ALNS::RunOptimization()
 
         ++generation;
     }
-
+    CExperimentLogger::LogProgress(1);
     LogResult();
 }
 
@@ -113,22 +104,12 @@ void CNTGA2_ALNS::RunGeneration()
     std::vector<std::vector<size_t>> combinedClusters;
     nonDominatedSorting.Cluster(parentsVector, combinedClusters);
 
-    bool shouldUseALNS = ShouldUseALNS(m_PreviousPopulation, m_Population);
-
     for (size_t i = 0; i < m_PopulationSize; i += 2)
     {
         auto* firstParent = m_RankedTournament.Select(m_Population);
         auto* secondParent = m_RankedTournament.Select(m_Population);
 
-        if (shouldUseALNS && CRandom::GetInt(0, 101) < m_ALNSProbabilityPercent) {
-            auto* firstChild = RunALNS(*firstParent);
-            auto* secondChild = RunALNS(*secondParent);
-            EvaluateAndAdd(*firstChild);
-            EvaluateAndAdd(*secondChild);
-        }
-        else {
-            CrossoverAndMutate(*firstParent, *secondParent);
-        }
+        CrossoverAndMutate(*firstParent, *secondParent);
     }
 }
 
@@ -142,15 +123,7 @@ void CNTGA2_ALNS::RunGenerationWithGap()
     bool shouldUseALNS = ShouldUseALNS(m_PreviousPopulation, m_Population);
 
     for (auto parentsPair : parents) {
-        if (shouldUseALNS && CRandom::GetInt(0, 101) < m_ALNSProbabilityPercent) {
-            auto* firstChild = RunALNS(*parentsPair.first);
-            auto* secondChild = RunALNS(*parentsPair.second);
-            EvaluateAndAdd(*firstChild);
-            EvaluateAndAdd(*secondChild);
-        }
-        else {
-            CrossoverAndMutate(*parentsPair.first, *parentsPair.second);
-        }
+        CrossoverAndMutate(*parentsPair.first, *parentsPair.second);
     }
 }
 
@@ -198,152 +171,17 @@ bool CNTGA2_ALNS::ShouldUseALNS(std::vector<SMOIndividual*>& previousPopulation,
         }
     }
     currentAverageEvaluation += evaluationPoints / m_PreviousPopulation.size();
-    if ((currentAverageEvaluation / previousAverageEvaluation) - 1 < m_effectivnessThreshold) {
+    if ((currentAverageEvaluation / previousAverageEvaluation) - 1 < 1) {
         return true;
     }
     return false;
 }
 
-bool CNTGA2_ALNS::AcceptWorseSolution(SMOIndividual& generated, SMOIndividual& current, float temperature)
-{
-    return CRandom::GetFloat(0, 1) < exp((generated.m_Evaluation[0] - current.m_Evaluation[0]) / temperature);
-}
 
 SMOIndividual* CNTGA2_ALNS::RunALNS(SMOIndividual& parent) 
 {
-    auto* best = new SMOIndividual{ parent };
-    auto* current = new SMOIndividual{ *best };
-    int iteration = 1;
-    int iterationsWithoutImprovement = 0;
-    float temperature = 0;
-    std::vector<float> removalOperatorsProbabilityDistribution(m_alnsRemovalMutations.size(), 1.0f/m_alnsRemovalMutations.size());
-    std::vector<float> insertionOperatorsProbabilityDistribution(m_alnsInsertionMutations.size(), 1.0f / m_alnsInsertionMutations.size());
-    std::map<AMutation*, std::tuple<float, int>> removalOperatorsScores;
-    std::map<AMutation*, std::tuple<float, int>> insertOperatorsScores;
-    m_Problem.Evaluate(*current);
-    while (iteration < (m_ALNSIterations + 1) && iterationsWithoutImprovement < m_ALNSNoImprovementIterations) 
-    {
-        auto* generated = new SMOIndividual(*current);
-        auto& removalOperator = m_alnsRemovalMutations[CRandom::GetWeightedInt(removalOperatorsProbabilityDistribution)];
-        auto& insertOperator = m_alnsInsertionMutations[CRandom::GetWeightedInt(insertionOperatorsProbabilityDistribution)];
-        removalOperator->Mutate(m_Problem.GetProblemEncoding(), *generated);
-        insertOperator->Mutate(m_Problem.GetProblemEncoding(), *generated);
-        m_Problem.Evaluate(*generated);
-        if (generated->m_isValid) 
-        {
-            if (generated->m_Evaluation[0] + generated->m_Evaluation[1] < current->m_Evaluation[0] + current->m_Evaluation[1])
-            {
-                delete current;
-                current = generated;
-                iterationsWithoutImprovement = 0;
-                if (current->m_Evaluation[0] + current->m_Evaluation[1] < best->m_Evaluation[0] + best->m_Evaluation[1])
-                {
-                    delete best;
-                    best = new SMOIndividual{ *current };
-                }
-            }
-            else if(AcceptWorseSolution(*generated, *current, temperature)) 
-            {
-                delete current;
-                current = generated;
-                iterationsWithoutImprovement++;
-            }
-        }
-        else if(AcceptWorseSolution(*generated, *current, temperature)) 
-        {
-            delete current;
-            current = generated;
-            iterationsWithoutImprovement++;
-        }
-        else 
-        {
-            iterationsWithoutImprovement++;
-        }
-
-        UpdateScores(current, 
-            best, 
-            removalOperator, 
-            insertOperator, 
-            removalOperatorsScores, 
-            insertOperatorsScores
-        );
-
-        if (iteration % m_ALNSProbabilityStepsIterations == 0)
-        {
-            UpdateProbabilityTables(removalOperatorsScores,
-                removalOperatorsProbabilityDistribution,
-                insertOperatorsScores,
-                insertionOperatorsProbabilityDistribution
-            );
-        }
-
-        iteration++;      
-
-        temperature = temperature * m_ALNSTemperatureAnnealingRate;
-    }
-    return best;
-}
-
-void CNTGA2_ALNS::UpdateScores(SMOIndividual* current, 
-    SMOIndividual* best, 
-    AMutation*& removalOperator,
-    AMutation*& insertOperator,
-    std::map<AMutation*, std::tuple<float, int>>& removalOperatorsScores,
-    std::map<AMutation*, std::tuple<float, int>>& insertOperatorsScores
-) 
-{
-    float scoreIncrease = (current->m_Evaluation[0] + current->m_Evaluation[1]) - (best->m_Evaluation[0] + best->m_Evaluation[1]);
-    if (removalOperatorsScores.count(removalOperator))
-    {
-        removalOperatorsScores[removalOperator] = std::tuple<float, int>(std::get<0>(removalOperatorsScores[removalOperator]) + scoreIncrease, ++std::get<1>(removalOperatorsScores[removalOperator]));
-    }
-    else
-    {
-        removalOperatorsScores.emplace(removalOperator, std::tuple<float, int>(scoreIncrease, 1));
-    }
-    if (insertOperatorsScores.count(insertOperator))
-    {
-        insertOperatorsScores[insertOperator] = std::tuple<float, int>(std::get<0>(insertOperatorsScores[insertOperator]) + scoreIncrease, ++std::get<1>(insertOperatorsScores[insertOperator]));
-    }
-    else
-    {
-        insertOperatorsScores.emplace(insertOperator, std::tuple<float, int>(scoreIncrease, 1));
-    }
-}
-
-void CNTGA2_ALNS::UpdateProbabilityTables(std::map<AMutation*, std::tuple<float, int>>& removalOperatorsScores, 
-    std::vector<float>& removalOperatorsProbabilityDistribution,
-    std::map<AMutation*, std::tuple<float, int>>& insertOperatorsScores,
-    std::vector<float>& insertionOperatorsProbabilityDistribution
-)
-{
-    float probabilityChange = CRandom::GetFloat(0.01f, 0.05f);
-    if (removalOperatorsScores.size() >= 2) {
-        using pair_type = std::map<AMutation*, std::tuple<float, int>>::value_type;
-        auto best = std::min_element(removalOperatorsScores.begin(), removalOperatorsScores.end(), [](const pair_type& p1, const pair_type& p2)
-            {
-                return std::get<0>(p1.second) / std::get<1>(p1.second) < std::get<0>(p2.second) / std::get<1>(p2.second);
-            });
-        auto worst = std::max_element(removalOperatorsScores.begin(), removalOperatorsScores.end(), [](const pair_type& p1, const pair_type& p2)
-            {
-                return std::get<0>(p1.second) / std::get<1>(p1.second) < std::get<0>(p2.second) / std::get<1>(p2.second);
-            });
-        removalOperatorsProbabilityDistribution[std::find(m_alnsRemovalMutations.begin(), m_alnsRemovalMutations.end(), best->first) - m_alnsRemovalMutations.begin()] += probabilityChange;
-        removalOperatorsProbabilityDistribution[std::find(m_alnsRemovalMutations.begin(), m_alnsRemovalMutations.end(), worst->first) - m_alnsRemovalMutations.begin()] -= probabilityChange;
-    }
-    if (insertOperatorsScores.size() >= 2) {
-        using pair_type = std::map<AMutation*, std::tuple<float, int>>::value_type;
-        auto best = std::min_element(insertOperatorsScores.begin(), insertOperatorsScores.end(), [](const pair_type& p1, const pair_type& p2)
-            {
-                return std::get<0>(p1.second) / std::get<1>(p1.second) < std::get<0>(p2.second) / std::get<1>(p2.second);
-            });
-        auto worst = std::max_element(insertOperatorsScores.begin(), insertOperatorsScores.end(), [](const pair_type& p1, const pair_type& p2)
-            {
-                return std::get<0>(p1.second) / std::get<1>(p1.second) < std::get<0>(p2.second) / std::get<1>(p2.second);
-            });
-        insertionOperatorsProbabilityDistribution[std::find(m_alnsInsertionMutations.begin(), m_alnsInsertionMutations.end(), best->first) - m_alnsInsertionMutations.begin()] += probabilityChange;
-        insertionOperatorsProbabilityDistribution[std::find(m_alnsInsertionMutations.begin(), m_alnsInsertionMutations.end(), worst->first) - m_alnsInsertionMutations.begin()] -= probabilityChange;
-    }
+    int instanceToUse = CRandom::GetInt(0, m_ALNSInstances.size());
+    return m_ALNSInstances[instanceToUse]->RunOptimization(parent);
 }
 
 void CNTGA2_ALNS::LogResult()

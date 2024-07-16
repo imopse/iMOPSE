@@ -20,3 +20,4 @@ C Vehicle load capacity /1000.0/
 r fuel consumption rate /1.0/
 g inverse refueling rate /0.39/
 v average Velocity /1.0/
+n vehicle Count /1.0/

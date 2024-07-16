@@ -5,6 +5,7 @@
 #include "../utils/DasDennis/CDasDennis.h"
 #include "../../../../utils/random/CRandom.h"
 #include "../../../../utils/logger/ErrorUtils.h"
+#include <utils/logger/CExperimentLogger.h>
 
 CSPEA2::CSPEA2(AProblem &problem, AInitialization &initialization, ACrossover &crossover, AMutation &mutation, SConfigMap *configMap)
         : AMOGeneticMethod(problem, initialization, crossover, mutation)
@@ -55,6 +56,7 @@ void CSPEA2::RunOptimization()
         UpdateFineGrainedFitness(combinedPop, neighborhood);
         EnviroSelection(combinedPop);
         
+        CExperimentLogger::LogProgress((float)generation / m_GenerationLimit);
         generation++;
     }
 
@@ -67,7 +69,14 @@ void CSPEA2::RunOptimization()
     }
     
     ArchiveUtils::CopyToArchiveWithFiltering(m_NextPopulation, m_Archive);
+
+    CExperimentLogger::LogProgress(1);
     ArchiveUtils::LogParetoFront(m_Archive);
+    for (int i = 0; i < m_Archive.size(); i++) {
+        m_Problem.LogSolution(*m_Archive[i]);
+    }
+    CExperimentLogger::LogData();
+    m_Problem.LogAdditionalData();
 }
 
 void CSPEA2::EvolveToNextGeneration()

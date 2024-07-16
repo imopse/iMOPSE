@@ -5,6 +5,7 @@
 #include "../utils/DasDennis/CDasDennis.h"
 #include "../../../../utils/random/CRandom.h"
 #include "../../../../utils/logger/ErrorUtils.h"
+#include <utils/logger/CExperimentLogger.h>
 
 CMOEAD::CMOEAD(AProblem &problem, AInitialization &initialization, ACrossover &crossover, AMutation &mutation, SConfigMap *configMap)
         : AMOGeneticMethod(problem, initialization, crossover, mutation)
@@ -44,9 +45,16 @@ void CMOEAD::RunOptimization()
     {
         EvolveToNextGeneration();
         generation++;
+        CExperimentLogger::LogProgress((float)generation / m_GenerationLimit);
     }
 
+    CExperimentLogger::LogProgress(1);
     ArchiveUtils::LogParetoFront(m_Archive);
+    for (int i = 0; i < m_Archive.size(); i++) {
+        m_Problem.LogSolution(*m_Archive[i]);
+    }
+    CExperimentLogger::LogData();
+    m_Problem.LogAdditionalData();
 }
 
 void CMOEAD::ConstructSubproblems(size_t partitionsNumber, size_t neighborhoodSize)

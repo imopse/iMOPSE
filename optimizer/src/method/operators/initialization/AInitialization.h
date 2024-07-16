@@ -16,7 +16,6 @@ public:
     virtual SSOIndividual* CreateSOIndividual(SProblemEncoding &encoding) = 0;
     virtual SSOIndividual* CreateSOIndividual(SProblemEncoding &encoding, SGenotype& genotype) = 0;
     virtual SMOIndividual* CreateMOIndividual(SProblemEncoding &encoding) = 0;
-    virtual SMOIndividual* CreateMOIndividualForECVRPTW(SProblemEncoding& encoding, CECVRPTW& ecvrptwProblem) = 0;
     virtual SSOIndividual* CreateNeighborSolution(SProblemEncoding &encoding, const SSOIndividual &baseSolution) = 0;
     virtual SParticle* CreateParticle(SProblemEncoding &encoding) = 0;
 };

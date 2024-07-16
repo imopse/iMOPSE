@@ -12,10 +12,18 @@
 class CECVRPTWShawClientRemoval : public AMutation
 {
 public:
-	explicit CECVRPTWShawClientRemoval(AProblem& problem) : m_problem((CECVRPTW&)problem) {};
-	~CECVRPTWShawClientRemoval() override = default;
+	explicit CECVRPTWShawClientRemoval(AProblem& problem) : m_problem((CECVRPTW&)problem) 
+	{
+		m_customerIndexes = new std::vector<int>();
+		m_customerIndexes->reserve(m_problem.GetProblemEncoding().m_Encoding[0].m_SectionDescription.size() - m_problem.GetECVRPTWTemplate().GetVehicleCount() - 1);
+	};
+	~CECVRPTWShawClientRemoval() override
+	{
+		delete m_customerIndexes;
+	};
 
 	void Mutate(SProblemEncoding& problemEncoding, AIndividual& child) override;
 private:
 	CECVRPTW& m_problem;
+	std::vector<int>* m_customerIndexes;
 };

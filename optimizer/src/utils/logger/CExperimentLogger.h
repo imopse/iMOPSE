@@ -14,6 +14,7 @@ public:
     static void CreateOutputDataPrefix();
     static void AddLine(const char* line);
     static void LogData();
+    static void LogData(const std::string& filename);
     static void LogResult(const char* result);
     static void LogResult(const char* result, const char* fileName);
     static void LogProgress(const float progress);
