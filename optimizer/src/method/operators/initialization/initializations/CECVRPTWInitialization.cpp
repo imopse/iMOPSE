@@ -1,19 +1,30 @@
 #include <algorithm>
-#include "CInitialization.h"
-#include "../../../../utils/random/CRandom.h"
+#include "CECVRPTWInitialization.h"
+#include "utils/random/CRandom.h"
 
-SSOIndividual* CInitialization::CreateSOIndividual(SProblemEncoding &encoding)
+SSOIndividual* CECVRPTWInitialization::CreateSOIndividual(SProblemEncoding &encoding)
 {
     SGenotype genotype;
     InitGenotype(encoding, genotype);
-
+    float toAdd = encoding.m_Encoding[0].m_SectionDescription[0].m_MinValue;
+    float maxCustomerIndex = encoding.m_Encoding[0].m_SectionDescription[0].m_MaxValue;
+    for (int i = 0; i < genotype.m_IntGenotype.size(); i++)
+    {
+        genotype.m_IntGenotype[i] += toAdd;
+    }
+    int vehicleCount = m_Problem.GetECVRPTWTemplate().GetVehicleCount() - 1;
+    for (int i = 1; i <= vehicleCount; i++)
+    {
+        auto it = std::find(genotype.m_IntGenotype.begin(), genotype.m_IntGenotype.end(), maxCustomerIndex + i);
+        *it = VEHICLE_DELIMITER;
+    }
     std::vector<float> emptyEvaluation(encoding.m_objectivesNumber, 0);
     std::vector<float> emptyNormalizedEvaluation(encoding.m_objectivesNumber, 0);
 
     return new SSOIndividual(genotype, emptyEvaluation, emptyNormalizedEvaluation);
 }
 
-SSOIndividual *CInitialization::CreateSOIndividual(SProblemEncoding &encoding, SGenotype &genotype)
+SSOIndividual * CECVRPTWInitialization::CreateSOIndividual(SProblemEncoding &encoding, SGenotype &genotype)
 {
     std::vector<float> emptyEvaluation(encoding.m_objectivesNumber, 0);
     std::vector<float> emptyNormalizedEvaluation(encoding.m_objectivesNumber, 0);
@@ -21,17 +32,29 @@ SSOIndividual *CInitialization::CreateSOIndividual(SProblemEncoding &encoding, S
     return new SSOIndividual(genotype, emptyEvaluation, emptyNormalizedEvaluation);
 }
 
-SMOIndividual* CInitialization::CreateMOIndividual(SProblemEncoding &encoding)
+SMOIndividual* CECVRPTWInitialization::CreateMOIndividual(SProblemEncoding &encoding)
 {
     SGenotype genotype;
     InitGenotype(encoding, genotype);
+    float toAdd = encoding.m_Encoding[0].m_SectionDescription[0].m_MinValue;
+    float maxCustomerIndex = encoding.m_Encoding[0].m_SectionDescription[0].m_MaxValue;
+    for (int i = 0; i < genotype.m_IntGenotype.size(); i++)
+    {
+        genotype.m_IntGenotype[i] += toAdd;
+    }
+    int vehicleCount = m_Problem.GetECVRPTWTemplate().GetVehicleCount() - 1;
+    for (int i = 1; i <= vehicleCount; i++)
+    {
+        auto it = std::find(genotype.m_IntGenotype.begin(), genotype.m_IntGenotype.end(), maxCustomerIndex + i);
+        *it = VEHICLE_DELIMITER;
+    }
     std::vector<float> emptyEvaluation(encoding.m_objectivesNumber, 0);
     std::vector<float> emptyNormalizedEvaluation(encoding.m_objectivesNumber, 0);
 
     return new SMOIndividual(genotype, emptyEvaluation, emptyNormalizedEvaluation);
 }
 
-SParticle* CInitialization::CreateParticle(SProblemEncoding &encoding)
+SParticle* CECVRPTWInitialization::CreateParticle(SProblemEncoding &encoding)
 {
     SGenotype genotype;
     InitGenotype(encoding, genotype);
@@ -42,7 +65,7 @@ SParticle* CInitialization::CreateParticle(SProblemEncoding &encoding)
     return new SParticle(genotype, emptyEvaluation, emptyNormalizedEvaluation, velocity);
 }
 
-SSOIndividual* CInitialization::CreateNeighborSolution(SProblemEncoding &encoding, const SSOIndividual &baseSolution)
+SSOIndividual* CECVRPTWInitialization::CreateNeighborSolution(SProblemEncoding &encoding, const SSOIndividual &baseSolution)
 {
     auto* newSolution = new SSOIndividual(baseSolution);
 
@@ -79,7 +102,7 @@ SSOIndividual* CInitialization::CreateNeighborSolution(SProblemEncoding &encodin
     return newSolution;
 }
 
-void CInitialization::InitGenotype(SProblemEncoding &encoding, SGenotype &genotype) const
+void CECVRPTWInitialization::InitGenotype(SProblemEncoding &encoding, SGenotype &genotype) const
 {
     for (const SEncodingSection &encodingSection: encoding.m_Encoding)
     {

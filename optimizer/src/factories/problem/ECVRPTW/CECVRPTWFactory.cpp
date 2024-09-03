@@ -1,8 +1,8 @@
 #include "CECVRPTWFactory.h"
-#include "../../../utils/fileReader/CReadUtils.h"
+#include "utils/fileReader/CReadUtils.h"
 #include <regex>
+#include <iostream>
 
-#define READ_ECVRPTW 1
 
 const std::string CECVRPTWFactory::s_Delimiter = ": ";
 const std::string CECVRPTWFactory::s_CapacityKey = "C";
@@ -30,8 +30,8 @@ CECVRPTWTemplate* CECVRPTWFactory::ReadECVRPTWTemplate(const char* problemDefini
     std::ifstream readFileStream(problemDefinitionPath);
 
     int dimension = 0;
-    std::vector<SCityECVRPTW>* cities = new std::vector<SCityECVRPTW>();
-    ReadCities(readFileStream, dimension, *cities);
+    std::vector<SCityECVRPTW> cities;
+    ReadCities(readFileStream, dimension, cities);
 
     auto const regex = std::regex{ "[0-9]+[.][0-9]+" };
 
@@ -59,70 +59,77 @@ CECVRPTWTemplate* CECVRPTWFactory::ReadECVRPTWTemplate(const char* problemDefini
     if (!CReadUtils::GoToReadFloatByKeyAndRegex(readFileStream, s_VehicleCountKey, regex, vehicleCount))
         throw std::runtime_error("Error reading velocity for CVRP");
 
-    std::vector<size_t>* depotIndexes = new std::vector<size_t>();
-    std::vector<size_t>* chargingStationIndexes = new std::vector<size_t>();
-    std::vector<size_t>* customerIndexes = new std::vector<size_t>();
+    readFileStream.close();
 
-    for (int i = 0; i < cities->size(); i++) {
-        switch ((*cities)[i].m_type) {
+    std::vector<size_t> depotIndexes;
+    std::vector<size_t> chargingStationIndexes;
+    std::vector<size_t> customerIndexes;
+
+    for (int i = 0; i < cities.size(); i++)
+    {
+        switch (cities[i].m_Type)
+        {
             case ENodeType::Depot:
-                depotIndexes->emplace_back(i);
+                depotIndexes.emplace_back(i);
+                chargingStationIndexes.emplace_back(i);
                 break;
             case ENodeType::ChargingStation:
-                chargingStationIndexes->emplace_back(i);
+                chargingStationIndexes.emplace_back(i);
                 break;
             case ENodeType::Customer:
-                customerIndexes->emplace_back(i);
+                customerIndexes.emplace_back(i);
                 break;
         }
     }
 
-    int trucks = 1;
     std::string pathString(problemDefinitionPath);
     size_t fileNameStartPos = pathString.rfind("/") + 1;
     size_t fileNameEndPos = pathString.rfind(".");
     result->SetFileName(pathString.substr(fileNameStartPos, fileNameEndPos - fileNameStartPos));
-#if READ_ECVRPTW
-    result->SetData(*cities,
-        capacity,
-        trucks,
-        fuelTankCapacity,
-        fuelConsumptionRate,
-        inverseRefuelingRate,
-        velocity,
-        *chargingStationIndexes,
-        *depotIndexes,
-        *customerIndexes,
-        vehicleCount
+    result->SetData(cities,
+                    capacity,
+                    fuelTankCapacity,
+                    fuelConsumptionRate,
+                    inverseRefuelingRate,
+                    velocity,
+                    chargingStationIndexes,
+                    depotIndexes,
+                    customerIndexes,
+                    (int)vehicleCount
     );
-#endif
 
-    readFileStream.close();
+    if (!result->Validate())
+    {
+        throw std::runtime_error("Instance is invalid: " + std::string(problemDefinitionPath));
+    }
+
     return result;
 }
 
 void CECVRPTWFactory::ReadCities(std::ifstream& fileStream, int& dimension, std::vector<SCityECVRPTW>& cities) {
     std::string line;
 
-    if (CReadUtils::GotoLineByKey(fileStream, s_CitiesSectionKey, line)) {
+    if (CReadUtils::GotoLineByKey(fileStream, s_CitiesSectionKey, line))
+    {
         dimension = 0;
-        while (std::getline(fileStream, line) && !line.empty()) {
+        while (std::getline(fileStream, line) && !line.empty())
+        {
             auto const re = std::regex{ R"(\s+)" };
             auto const vec = std::vector<std::string>(std::sregex_token_iterator{ line.begin(), line.end(), re, -1 }, std::sregex_token_iterator{});
             cities.emplace_back(dimension++,
-                vec[0],
-                (ENodeType)vec[1][0],
-                std::stof(vec[2]),
-                std::stof(vec[3]),
-                std::stof(vec[4]),
-                std::stof(vec[5]),
-                std::stof(vec[6]),
-                std::stof(vec[7])
-
+                                vec[0],
+                                (ENodeType)vec[1][0],
+                                std::stof(vec[2]),
+                                std::stof(vec[3]),
+                                (int)std::stof(vec[4]),
+                                std::stof(vec[5]),
+                                std::stof(vec[6]),
+                                std::stof(vec[7])
             );
         }
     }
-    else {
+    else
+    {
         throw std::runtime_error("Error reading cities for ECVRPTW");
     }
 }
