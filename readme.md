@@ -211,7 +211,7 @@ Thanks to all the contributors who have invested their time and expertise in dev
 - **Michał Antkiewicz** (2021 - Now)
 - **Konrad Gmyrek** (2023 - Now)
 - **Łukasz Olech** (2024 - Now)
-- **Aleksandra Stecka** (2024 - Now)
+- **Adam Krzeminski** (2024 - Now)
 - **Adrian Żak** (2024 - Now)
 
 
