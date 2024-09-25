@@ -1,21 +1,17 @@
 #pragma once
 
-#define PENALTYMULTIPLIER 50
-#define DISTANCE_WEIGHT 20
-#define TIME_WEIGHT 10
-#define COST_WEIGHT 1
-
 #include <string>
 #include <vector>
 #include <algorithm>
 #include <cmath>
 #include <cfloat>
-#include <cstdint>
 #include "ENodeType.h"
 
 constexpr int VEHICLE_DELIMITER = INT32_MAX;
+constexpr int DEPOT_CITY_ID = 0;
 
-struct SCityECVRPTW {
+struct SCityECVRPTW
+{
     SCityECVRPTW(const int& id
         , const std::string& strId
         , const ENodeType type
@@ -28,29 +24,28 @@ struct SCityECVRPTW {
     );
 
     int m_ID;
-    ENodeType m_type;
-    const std::string& m_StrID;
+    std::string m_StrID;
+    ENodeType m_Type;
     float m_PosX, m_PosY;
-    int m_demand;
-    float m_readyTime, m_dueTime, m_serviceTime;
+    int m_Demand;
+    float m_ReadyTime, m_DueTime, m_ServiceTime;
 };
 
 struct SDistanceInfo
 {
-    float m_distance;
-    float m_travelTime;
-    float m_fuelConsumption;
+    float m_Distance;
+    float m_TravelTime;
+    float m_FuelConsumption;
 };
 
-class CECVRPTWTemplate {
+class CECVRPTWTemplate
+{
 public:
-
     void Clear();
     const std::string& GetFileName() const { return m_FileName; }
     void SetFileName(const std::string& fileName) { m_FileName = fileName; }
     void SetData(std::vector<SCityECVRPTW>& cities
         , int capacity
-        , int trucks
         , float tankCapacity
         , float fuelConsumptionRate
         , float refuelingRate
@@ -58,35 +53,35 @@ public:
         , std::vector<size_t>& chargingStationIndexes
         , std::vector<size_t>& depotIndexes
         , std::vector<size_t>& customerIndexes
-        , float vehicleCount
+        , int vehicleCount
     );
 
-    const std::vector<SCityECVRPTW>& GetCities() const { return *m_Cities; }
+    const std::vector<SCityECVRPTW>& GetCities() const { return m_Cities; }
     const std::vector<std::vector<SDistanceInfo>>& GetDistInfoMtx() const { return m_DistanceInfoMatrix; }
     const std::vector<float>& GetMinDistVec() const { return m_MinDistanceVec; }
-    const std::vector<size_t>& GetDepots() const { return *m_DepotIndexes; }
-    const std::vector<size_t>& GetChargingStations() const { return *m_ChargingStationIndexes; }
-    const std::vector<size_t>& GetCustomers() const { return *m_CutomerIndexes; }
+    const std::vector<size_t>& GetDepots() const { return m_DepotIndexes; }
+    const std::vector<size_t>& GetChargingStations() const { return m_ChargingStationIndexes; }
+    const std::vector<size_t>& GetCustomers() const { return m_CustomerIndexes; }
 
     int GetCapacity() const { return m_Capacity; }
-    int GetTrucks() const { return m_Trucks; }
     float GetTankCapcity() const { return m_TankCapacity; }
     float GetFuelConsumptionRate() const { return m_FuelConsumptionRate; }
     float GetRefuelingRate() const { return m_RefuelingRate; }
-    float GetAverageVelociy() const { return m_averageVelocity; }
-    int GetVehicleCount() const { return (int)m_vehicleCount; }
+    float GetAverageVelociy() const { return m_AverageVelocity; }
+    int GetVehicleCount() const { return m_VehicleCount; }
 
-    size_t GetCitiesSize() const { return m_Cities->size(); }
+    size_t GetCitiesSize() const { return m_Cities.size(); }
 
     float GetMinDistance() const;
     float GetMaxDistance() const;
     float GetMaxTimeService() const;
-    float GetMaxDueTime() const { return (*m_Cities)[0].m_dueTime; }
-    float GetMaxCost() const { 
-        return (this->GetMaxDistance() * DISTANCE_WEIGHT
-            + this->GetMaxDueTime()  * TIME_WEIGHT
-            + fminf(this->GetMaxTimeService() * PENALTYMULTIPLIER, powf(this->GetMaxDueTime(), 2)) * m_Cities->size() * COST_WEIGHT) * this->GetVehicleCount();
-    }
+    float GetMaxDueTime() const { return m_Cities[0].m_DueTime; }
+
+    float GetRequiredFuel(size_t cityIdx, size_t nextCityIdx) const;
+    size_t GetNearestDepotIdx(size_t cityIdx) const;
+    size_t GetNearestChargingStationIdx(size_t cityIdx) const;
+
+    bool Validate() const;
 
 private:
     void CalculateContextData();
@@ -94,17 +89,16 @@ private:
     std::string m_FileName;
 
     // File data
-    std::vector<SCityECVRPTW>* m_Cities;
-    std::vector<size_t>* m_DepotIndexes;
-    std::vector<size_t>* m_ChargingStationIndexes;
-    std::vector<size_t>* m_CutomerIndexes;
+    std::vector<SCityECVRPTW> m_Cities;
+    std::vector<size_t> m_DepotIndexes;
+    std::vector<size_t> m_ChargingStationIndexes;
+    std::vector<size_t> m_CustomerIndexes;
     int m_Capacity;
-    int m_Trucks;
     float m_TankCapacity;
     float m_FuelConsumptionRate;
     float m_RefuelingRate;
-    float m_averageVelocity;
-    float m_vehicleCount;
+    float m_AverageVelocity;
+    int m_VehicleCount;
 
     // Context data
     std::vector<std::vector<SDistanceInfo>> m_DistanceInfoMatrix;

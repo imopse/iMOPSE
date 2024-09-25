@@ -45,7 +45,7 @@ AMethod* CMethodFactory::CreateMethod(
     }
 
     // Create initialization strategy based on the configuration map.
-    initialization = CInitializationFactory::Create(configMap);
+    initialization = CInitializationFactory::Create(configMap, problem);
 
     // Create and return a specific optimization method based on the method name.
     if (strcmp(methodName.c_str(), "ACO") == 0)

@@ -64,7 +64,7 @@ void CNTGA2_ALNS::RunOptimization()
     for (size_t i = 0; i < m_PopulationSize; ++i)
     {
         SProblemEncoding& problemEncoding = m_Problem.GetProblemEncoding();
-        auto* newInd = m_Initialization.CreateMOIndividualForECVRPTW(problemEncoding, (CECVRPTW&)m_Problem);
+        auto* newInd = m_Initialization.CreateMOIndividual(problemEncoding);
 
         m_Problem.Evaluate(*newInd);
 
