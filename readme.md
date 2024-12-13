@@ -4,6 +4,21 @@ The Intelligent Multi-Objective Problem Solving Environment is an open-source C+
 in single- and multi-objective metaheuristic optimization especially in the area of NP-hard optimization problems.
 Our library provides a set of optimization algorithms, problems and ready-to-use problem instances and tools useful in research and benchmarking.
 
+### Citation policy
+
+If you use iMOPSE library in a scientific work, We would appreciate citation to the following paper(s):
+
+@inproceedings{imopse-lib,
+author = {Gmyrek, Konrad and Myszkowski, Pawe\l{} B. and Antkiewicz, Micha\l{} and Olech, \L{}ukasz P.},
+title = {iMOPSE: a Comprehensive Open Source Library for Single- and Multi-objective Metaheuristic Optimization},
+year = {2024},
+url = {https://doi.org/10.1007/978-3-031-70068-2_11},
+doi = {10.1007/978-3-031-70068-2_11},
+booktitle = {Parallel Problem Solving from Nature – PPSN XVIII: 18th International Conference, PPSN 2024, Hagenberg, Austria, September 14–18, 2024, Proceedings, Part II},
+pages = {170–184}
+}
+
+
 ### Key Features
 - **State-of-the-art Optimization Methods**:
   - Multi-Objective Evolutionary Algorithm Based on Decomposition (MOEAD)
@@ -210,12 +225,11 @@ Thanks to all the contributors who have invested their time and expertise in dev
 - **Paweł Myszkowski** (2011 - Now)
 - **Michał Antkiewicz** (2021 - Now)
 - **Konrad Gmyrek** (2023 - Now)
-- **Łukasz Olech** (2024 - Now)
-- **Adam Krzeminski** (2024 - Now)
-- **Adrian Żak** (2024 - Now)
-
+- **Łukasz Olech** (2023 - Now)
 
 ## Past Collaborators
+- **Adam Krzeminski** (2023 - 2024)
+- **Adrian Żak** (2023 - 2024)
 - **Maciej Laszczyk** (2014 - 2021)
 - **Kamil Król** (2021 - 2022)
 - **Jacek Wernikowski** (2014 - 2016)
