@@ -1,5 +1,6 @@
 
 #include <stdexcept>
+#include <cstring>
 #include "CInitializationFactory.h"
 #include "method/operators/initialization/initializations/CInitialization.h"
 #include "method/operators/initialization/initializations/CECVRPTWInitialization.h"

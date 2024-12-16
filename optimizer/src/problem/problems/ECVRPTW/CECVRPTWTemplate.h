@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cfloat>
+#include <cstdint>
 #include "ENodeType.h"
 
 constexpr int VEHICLE_DELIMITER = INT32_MAX;

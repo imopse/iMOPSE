@@ -60,48 +60,33 @@ void CDE::CreateIndividual()
 
 void CDE::EvolveToNextGeneration()
 {
-    SGenotype donor;
-
-    for (size_t i = 0; i < m_PopulationSize; i += 2)
+    for (int i = 0; i < m_PopulationSize; i++)
     {
-        SSOIndividual* donor = m_Population[i];
+        auto* donor = new SSOIndividual(*m_Population[i]);
+        std::vector<int> indices(m_Population.size());
+        std::iota(indices.begin(), indices.end(), 0);
+        CRandom::Shuffle(0, indices.size(), indices);
+        auto& random1 = m_Population[indices[0]]->m_Genotype;
+        auto& random2 = m_Population[indices[1]]->m_Genotype;
+        auto& random3 = m_Population[indices[2]]->m_Genotype;
 
-        size_t r1, r2, r3;
+        DifferentialEvolutionStep(donor->m_Genotype, random1, random2, random3);
+        m_Problem.Evaluate(*donor);
+        CAggregatedFitness::CountFitness(*donor, m_ObjectiveWeights);
 
-        // Randomly select 3 different individuals, probably there is a better way of doing it
-        do
+        if (donor->m_Fitness < m_Population[i]->m_Fitness)
         {
-            r1 = CRandom::GetInt(0, m_Population.size());
-        } while (r1 == i);
-        const auto& gens1 = m_Population[r1]->m_Genotype;
-
-        do
+            delete m_Population[i];
+            m_Population[i] = donor;
+        }
+        else
         {
-            r2 = CRandom::GetInt(0, m_Population.size());
-        } while (r2 == r1 || r2 == i);
-        const auto& gens2 = m_Population[r2]->m_Genotype;
-
-        do
-        {
-            r3 = CRandom::GetInt(0, m_Population.size());
-        } while (r3 == r2 || r3 == r1 || r3 == i);
-        const auto& gens3 = m_Population[r3]->m_Genotype;
-
-        DifferentialEvolutionStep(donor->m_Genotype, gens1, gens2, gens3);
-        SSOIndividual trialIndividual(*m_Population[i]);
-        m_Problem.Evaluate(trialIndividual);
-        CAggregatedFitness::CountFitness(trialIndividual, m_ObjectiveWeights);
-
-        // One to one selection (if better)
-        if (trialIndividual.m_NormalizedEvaluation[0] < m_Population[i]->m_NormalizedEvaluation[0])
-        {
-            *(m_Population[i]) = trialIndividual;
+            delete donor;
         }
     }
 }
 
-void CDE::DifferentialEvolutionStep(SGenotype& donor, const SGenotype& gens1, const SGenotype& gens2,
-                                          const SGenotype& gens3)
+void CDE::DifferentialEvolutionStep(SGenotype& donor, const SGenotype& gens1, const SGenotype& gens2, const SGenotype& gens3)
 {
     size_t sectionStartIndex = 0;
     for (const auto& encodingSection: m_Problem.GetProblemEncoding().m_Encoding)
