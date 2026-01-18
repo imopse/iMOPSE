@@ -26,6 +26,10 @@ public:
     const std::vector<std::vector<float>>& GetDistMtx() const { return m_DistanceMatrix; }
     const std::vector<float>& GetMinDistVec() const { return m_MinDistanceVec; }
     const std::vector<size_t>& GetDepots()const { return m_DepotIndexes; }
+ 
+    // Cached getters for performance
+    size_t GetCachedNearestDepotIdx(size_t cityIdx) const { return m_NearestDepotCache[cityIdx]; }
+    const std::vector<size_t>& GetNearestNeighborsCache(size_t cityIdx) const { return m_NearestNeighborsCache[cityIdx]; }
 
     int GetCapacity() const { return m_Capacity; }
     int GetTrucks() const { return m_Trucks; }
@@ -34,9 +38,14 @@ public:
 
     float GetMinDistance() const;
     float GetMaxDistance() const;
+    
+    float GetOptimalValue() const { return m_OptimalValue; }
+    void SetOptimalValue(float optimalValue) { m_OptimalValue = optimalValue; }
 
 private:
     void CalculateContextData();
+    void CalculateNearestDepotCache();
+    void CalculateNearestNeighborsCache();
 
     std::string m_FileName;
 
@@ -45,8 +54,13 @@ private:
     std::vector<size_t> m_DepotIndexes;
     int m_Capacity;
     int m_Trucks;
+    float m_OptimalValue = 0.0f;
 
     // Context data
     std::vector<std::vector<float>> m_DistanceMatrix;
     std::vector<float> m_MinDistanceVec;
+    
+    // Performance caches
+    std::vector<size_t> m_NearestDepotCache;  // Cache nearest depot index for each city
+    std::vector<std::vector<size_t>> m_NearestNeighborsCache;  // Cache K nearest neighbors for each city
 };

@@ -18,7 +18,10 @@
 #include "methods/MO/ANTGA/CANTGAFactory.h"
 #include "methods/MO/BNTGA/CBNTGAFactory.h"
 #include "methods/MO/SPEA2/CSPEA2Factory.h"
+#include "methods/SO/GPHH/CGPHHFactory.h"
 #include "../../utils/fileReader/CReadUtils.h"
+#include <iostream> 
+using namespace std;
 
 // Static members of CMethodFactory, initialized to nullptr. These will hold various components of an optimization method.
 SConfigMap* CMethodFactory::configMap = nullptr;
@@ -28,97 +31,106 @@ AMutation* CMethodFactory::mutation = nullptr;
 
 // Static method to create an optimization method based on a configuration file and a problem instance.
 AMethod* CMethodFactory::CreateMethod(
-        const char* optimizerConfigPath,
-        AProblem& problem
+	const char* optimizerConfigPath,
+	AProblem& problem
 )
 {
-    // Create a configuration map from the provided path using the CConfigFactory.
-    configMap = CConfigFactory::CreateConfigMap(optimizerConfigPath);
-    if (configMap == nullptr) {
-        throw std::runtime_error("Error while reading method configuration");
-    }
+	// Create a configuration map from the provided path using the CConfigFactory.
+	configMap = CConfigFactory::CreateConfigMap(optimizerConfigPath);
+	if (configMap == nullptr) {
+		throw std::runtime_error("Error while reading method configuration");
+	}
 
-    std::string methodName;
-    // Extract the method name from the configuration map. If it's not provided, throw an error.
-    if (!configMap->TakeValue("MethodName", methodName)) {
-        throw std::runtime_error("MethodName not provided in method configuration");
-    }
+	std::string methodName;
+	// Extract the method name from the configuration map. If it's not provided, throw an error.
+	if (!configMap->TakeValue("MethodName", methodName)) {
+		throw std::runtime_error("MethodName not provided in method configuration");
+	}
 
-    // Create initialization strategy based on the configuration map.
-    initialization = CInitializationFactory::Create(configMap, problem);
+	// Create initialization strategy based on the configuration map.
+	initialization = CInitializationFactory::Create(configMap, problem);
 
     // Create and return a specific optimization method based on the method name.
-    if (strcmp(methodName.c_str(), "ACO") == 0)
-        return CACOFactory::CreateACO(configMap, problem, initialization, optimizerConfigPath);
-    if (strcmp(methodName.c_str(), "SA") == 0)
-        return CSAFactory::CreateSA(configMap, problem, initialization);
-    if (strcmp(methodName.c_str(), "TS") == 0)
-        return CTSFactory::CreateTS(configMap, problem, initialization);
-    if (strcmp(methodName.c_str(), "DE") == 0)
-        return CDEFactory::CreateDE(configMap, problem, initialization);
-    if (strcmp(methodName.c_str(), "PSO") == 0)
-        return CPSOFactory::CreatePSO(configMap, problem, initialization);
+	if (strcmp(methodName.c_str(), "ACO") == 0)
+		return CACOFactory::CreateACO(configMap, problem, initialization, optimizerConfigPath);
+	if (strcmp(methodName.c_str(), "SA") == 0)
+		return CSAFactory::CreateSA(configMap, problem, initialization);
+	if (strcmp(methodName.c_str(), "TS") == 0)
+		return CTSFactory::CreateTS(configMap, problem, initialization);
+	if (strcmp(methodName.c_str(), "DE") == 0)
+		return CDEFactory::CreateDE(configMap, problem, initialization);
+	if (strcmp(methodName.c_str(), "PSO") == 0)
+		return CPSOFactory::CreatePSO(configMap, problem, initialization);
 
-    // Create crossover and mutation strategies based on the configuration map.
-    crossover = CCrossoverFactory::Create(configMap, "Crossover", problem);
-    if (crossover == nullptr) {
-        throw std::runtime_error("Error while reading crossover configuration");
-    }
-    mutation = CMutationFactory::Create(configMap, "Mutation", problem);
-    if (mutation == nullptr) {
-        throw std::runtime_error("Error while reading mutation configuration");
-    }
-    
-    if (strcmp(methodName.c_str(), "GA") == 0)
-        return CGAFactory::CreateGA(configMap, problem, initialization, crossover, mutation);
-    if (strcmp(methodName.c_str(), "NTGA2") == 0)
-        return CNTGA2Factory::CreateNTGA2(configMap, problem, initialization, crossover, mutation);
-    if (strcmp(methodName.c_str(), "NSGAII") == 0)
-        return CNSGAIIFactory::CreateNSGAII(configMap, problem, initialization, crossover, mutation);
-    if (strcmp(methodName.c_str(), "MOEAD") == 0)
-        return CMOEADFactory::CreateMOEAD(configMap, problem, initialization, crossover, mutation);
-    if (strcmp(methodName.c_str(), "ANTGA") == 0)
-        return CANTGAFactory::CreateANTGA(configMap, problem, initialization, crossover, mutation);
-    if (strcmp(methodName.c_str(), "BNTGA") == 0)
-        return CBNTGAFactory::CreateBNTGA(configMap, problem, initialization, crossover, mutation);
-    if (strcmp(methodName.c_str(), "SPEA2") == 0)
-        return CSPEA2Factory::CreateSPEA2(configMap, problem, initialization, crossover, mutation);
-    if (strcmp(methodName.c_str(), "NTGA2_ALNS") == 0) 
-    {
-        return CNTGA2_ALNSFactory::CreateNTGA2_ALNS(configMap,
-            problem,
-            initialization,
-            crossover,
-            mutation,
-            CALNSMutationFactory::CreateRemovalOperators(problem),
-            CALNSMutationFactory::CreateInsertionOperators(problem)
-        );
-    }
-    
-    // If the method name is not supported, throw an error.
-    throw std::runtime_error("Method name: " + std::string(methodName) + " not supported");
+	// GPHH creates its own operators internally, so handle it before standard operator creation
+	if (strcmp(methodName.c_str(), "GPHH") == 0) {
+		cout << "Creating GPHH method" << endl;
+		return CGPHHFactory::CreateGPHH(configMap, problem);
+	}
+
+
+
+	// Create crossover and mutation strategies based on the configuration map.
+	crossover = CCrossoverFactory::Create(configMap, "Crossover", problem);
+	if (crossover == nullptr) {
+		throw std::runtime_error("Error while reading crossover configuration");
+	}
+	mutation = CMutationFactory::Create(configMap, "Mutation", problem);
+	if (mutation == nullptr) {
+		throw std::runtime_error("Error while reading mutation configuration");
+	}
+
+	if (strcmp(methodName.c_str(), "GA") == 0)
+		return CGAFactory::CreateGA(configMap, problem, initialization, crossover, mutation);
+	if (strcmp(methodName.c_str(), "NTGA2") == 0)
+		return CNTGA2Factory::CreateNTGA2(configMap, problem, initialization, crossover, mutation);
+	if (strcmp(methodName.c_str(), "NSGAII") == 0)
+		return CNSGAIIFactory::CreateNSGAII(configMap, problem, initialization, crossover, mutation);
+	if (strcmp(methodName.c_str(), "MOEAD") == 0)
+		return CMOEADFactory::CreateMOEAD(configMap, problem, initialization, crossover, mutation);
+	if (strcmp(methodName.c_str(), "ANTGA") == 0)
+		return CANTGAFactory::CreateANTGA(configMap, problem, initialization, crossover, mutation);
+	if (strcmp(methodName.c_str(), "BNTGA") == 0)
+		return CBNTGAFactory::CreateBNTGA(configMap, problem, initialization, crossover, mutation);
+	if (strcmp(methodName.c_str(), "SPEA2") == 0)
+		return CSPEA2Factory::CreateSPEA2(configMap, problem, initialization, crossover, mutation);
+	if (strcmp(methodName.c_str(), "NTGA2_ALNS") == 0)
+	{
+		return CNTGA2_ALNSFactory::CreateNTGA2_ALNS(configMap,
+			problem,
+			initialization,
+			crossover,
+			mutation,
+			CALNSMutationFactory::CreateRemovalOperators(problem),
+			CALNSMutationFactory::CreateInsertionOperators(problem)
+		);
+	}
+
+	// If the method name is not supported, throw an error.
+	throw std::runtime_error("Method name: " + std::string(methodName) + " not supported");
 }
 
 // Static method to delete the objects created by the factory.
 void CMethodFactory::DeleteObjects() {
-    // Delete the created objects (configMap, initialization, crossover, mutation)
-    delete configMap;
-    delete initialization;
-    if (crossover != nullptr)
-        delete crossover;
-    if (mutation != nullptr)
-        delete mutation;
+	// Delete the created objects (configMap, initialization, crossover, mutation)
+	delete configMap;
+	delete initialization;
+	if (crossover != nullptr)
+		delete crossover;
+	if (mutation != nullptr)
+		delete mutation;
 
-    // Call the DeleteObjects methods of other factories involved in creating the method components.
-    CGAFactory::DeleteObjects();
-    CSAFactory::DeleteObjects();
-    CTSFactory::DeleteObjects();
-    CNTGA2Factory::DeleteObjects();
-    CNSGAIIFactory::DeleteObjects();
-    CPSOFactory::DeleteObjects();
-    CMOEADFactory::DeleteObjects();
-    CBNTGAFactory::DeleteObjects();
-    CSPEA2Factory::DeleteObjects();
-    CACOFactory::DeleteObjects();
-    CNTGA2_ALNSFactory::DeleteObjects();
+	// Call the DeleteObjects methods of other factories involved in creating the method components.
+	CGAFactory::DeleteObjects();
+	CSAFactory::DeleteObjects();
+	CTSFactory::DeleteObjects();
+	CNTGA2Factory::DeleteObjects();
+	CNSGAIIFactory::DeleteObjects();
+	CPSOFactory::DeleteObjects();
+	CMOEADFactory::DeleteObjects();
+	CBNTGAFactory::DeleteObjects();
+	CSPEA2Factory::DeleteObjects();
+	CACOFactory::DeleteObjects();
+	CGPHHFactory::DeleteObjects();
+	CNTGA2_ALNSFactory::DeleteObjects();
 }
