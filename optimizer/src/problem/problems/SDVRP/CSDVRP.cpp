@@ -132,18 +132,6 @@ void CSDVRP::LogSolution(AIndividual &individual) {
             std::cout << genotype[i] + 1 << " ]" << std::endl;
         }
     }
-
-    const std::vector<int> realPath = EvaluateAndBuildRealPath(individual);
-    std::cout << "Route: " << "(routeSize: " << realPath.size() << ")" << std::endl;
-    std::cout << "[ ";
-    const int lastCityIdx = realPath.size() - 1;
-    for (int i = 0; i < realPath.size(); ++i) {
-        if (i != lastCityIdx) {
-            std::cout << realPath[i] << ", ";
-        } else {
-            std::cout << realPath[i] << " ]" << std::endl;
-        }
-    }
 }
 
 size_t CSDVRP::GetNearestDepotIdx(size_t cityIdx) const {

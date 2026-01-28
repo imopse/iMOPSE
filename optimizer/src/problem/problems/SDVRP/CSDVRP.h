@@ -18,12 +18,6 @@ public:
 
     void Evaluate(AIndividual &individual) override;
 
-    std::vector<int> EvaluateAndBuildRealPath(AIndividual &individual) const;
-
-    std::vector<int> GreedyEvaluate(AIndividual &individual) const;
-
-    std::vector<int> DoublyLinkedEvaluate(AIndividual &individual) const;
-
     void LogSolution(AIndividual &individual) override;
 
     void LogAdditionalData() override {
