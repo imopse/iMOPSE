@@ -6,6 +6,7 @@
 #include "method/operators/mutation/mutations/CCVRPReverseFlip.h"
 #include "method/operators/mutation/mutations/CCheapestResourceMutation.h"
 #include "method/operators/mutation/mutations/CLeastAssignedResourceMutation.h"
+#include "method/operators/mutation/mutations/CSDVRPSwap.h"
 #include "utils/fileReader/CReadUtils.h"
 #include "problem/problems/MSRCPSP/CMSRCPSP_TA.h"
 #include "problem/problems/ECVRPTW/CECVRPTW.h"
@@ -41,6 +42,11 @@ AMutation *CMutationFactory::Create(SConfigMap *configMap, const std::string& co
     {
         float mutProb = std::stof(vec[1]);
         return new CCVRPReverseFlip(mutProb);
+    }
+    else if (strcmp(opName, "SDVRP_Swap") == 0 && encodingTypes.find(EEncodingType::PERMUTATION) != encodingTypes.end())
+    {
+        float mutProb = std::stof(vec[1]);
+        return new CSDVRPSwap(mutProb);
     }
     else if (strcmp(opName, "CheapestResourceMutation") == 0)
     {

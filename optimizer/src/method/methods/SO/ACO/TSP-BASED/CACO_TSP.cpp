@@ -2,6 +2,7 @@
 #include "../../CAggregatedFitness.h"
 #include "../../../../../utils/logger/CExperimentLogger.h"
 #include "../../../../../utils/random/CRandom.h"
+#include "../../../../../utils/experiment/CSOExperimentUtils.h"
 #include <algorithm>
 #include <fstream>
 #include <filesystem>
@@ -309,8 +310,5 @@ void CACO_TSP::LogResultData() {
                                                 return a->m_Fitness < b->m_Fitness;
                                             });
     CExperimentLogger::LogResult(std::to_string(best->m_Fitness).c_str());
+    CSOExperimentUtils::LogResultData(*best, m_Problem);
 }
-
-
-
-
