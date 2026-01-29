@@ -2,6 +2,7 @@
 #include "../../CAggregatedFitness.h"
 #include "../../../../../utils/logger/CExperimentLogger.h"
 #include "../../../../../utils/random/CRandom.h"
+#include "../../../../methods/SO/utils/experiment/CSOExperimentUtils.h"
 #include <algorithm>
 #include <fstream>
 #include <filesystem>
@@ -94,6 +95,7 @@ void CACO_TSP::GetBestRoute() {
 
     for (int i = 1; i < numberOfCities; i++) {
         float maxEvaluation = std::numeric_limits<float>::min();
+        // TODO: nextPosition should be initialized with a value, ex. -1, which would be a signal that it is invalid. Later on in the loop the value of nextPosition can be checked, to make sure it was set properly.
         int nextPosition;
         for (int ii = 0; ii < numberOfCities; ii++) {
             auto found_element = std::find(visited.begin(), visited.end(), ii);
@@ -103,10 +105,15 @@ void CACO_TSP::GetBestRoute() {
             if (ii == currentPosition) {
                 continue;
             }
+            /* TODO: it is somehow possible that this condition is never met, which results in nextPosition never being assigned a value, leading to undefined behaviour - 
+            * a random int (because it is never initialized) is pushed into the genotype and set as the current position, which is used as an index to access an array.
+            * It may work, cause a segmentation fault or make the algorithm loop between one city and the depot.
+            */
             if (m_PheromoneMap[currentPosition][ii] > maxEvaluation) {
                 maxEvaluation = m_PheromoneMap[currentPosition][ii];
                 nextPosition = ii;
             }
+            // TODO: check the value of nextPosition, if it is invalid (ex. -1 as proposed above) - handle it
         }
 
         newGenotype.m_IntGenotype.push_back(nextPosition);
@@ -265,6 +272,7 @@ void CACO_TSP::ResetPheromoneMap(){
             if(i == ii ){
                 m_PheromoneMap[i][ii]=0;
             }else{
+                // TODO: switch cases missing breaks at the end. In this particular instance it does not matter, however it is bad practice to do so. If fall-through is intended, it should be highlighted.
                 switch(m_InitType){
                     case Uniform:
                         m_PheromoneMap[i][ii]=1;
@@ -309,8 +317,5 @@ void CACO_TSP::LogResultData() {
                                                 return a->m_Fitness < b->m_Fitness;
                                             });
     CExperimentLogger::LogResult(std::to_string(best->m_Fitness).c_str());
+    CSOExperimentUtils::LogResultData(*best, m_Problem);
 }
-
-
-
-

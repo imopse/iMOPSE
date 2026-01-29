@@ -18,13 +18,15 @@ CACO *CACOFactory::CreateACO(SConfigMap *configMap, AProblem &problem, AInitiali
     }
 
     std::string strVariable(optimizerConfigPath);
-    
-    if (strVariable.find("CVRP") != std::string::npos) {
+
+    if (strVariable.find("CVRP") != std::string::npos
+        || strVariable.find("SDVRP") != std::string::npos
+    ) {
         return new CACO_TSP(
-                problem,
-                *initialization,
-                configMap,
-                *objectiveWeights
+            problem,
+            *initialization,
+            configMap,
+            *objectiveWeights
         );
     }
     throw std::runtime_error("Method ACO not supported for problem " + std::string(optimizerConfigPath) );
