@@ -23,8 +23,7 @@
 
 static double g_weight = 0.5;
 
-bool g_trace = false;
-
+extern bool g_trace;
 static bool g_useNormalization = true;
 
 static bool g_normFromArgs = false;

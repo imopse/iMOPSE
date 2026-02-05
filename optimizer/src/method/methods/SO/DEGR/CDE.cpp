@@ -1,4 +1,5 @@
 #include "CDE.h"
+#include <numeric>
 
 #include "../../../../utils/random/CRandom.h"
 #include "../utils/experiment/CSOExperimentUtils.h"

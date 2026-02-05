@@ -44,7 +44,7 @@ ImopseBounds compute_imopse_bounds(const Instance& I) {
     // MIN makespan = długość ścieżki krytycznej (CPM – bez ograniczeń zasobów)
     gp::CPMPrecalc local;
     gp::buildCPM(I, local);
-    int ms_min = std::max(0, local.cpathLen);
+    int ms_min = std::max(0, local.cmaxCPM);
 
     // MAX makespan = pesymistyczna sekwencja (suma czasów wszystkich zadań)
     int ms_max = 0;

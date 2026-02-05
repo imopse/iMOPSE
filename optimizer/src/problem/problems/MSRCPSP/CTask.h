@@ -11,6 +11,8 @@ public:
 
     CTask(TTaskID id, const std::vector<SSkill> &skills, TTime duration, const std::vector<TTaskID> &predecessors);
 
+    TTaskID GetTaskID() const { return m_ID; }
+
     TTime GetStart() const
     { return m_Start; }
 

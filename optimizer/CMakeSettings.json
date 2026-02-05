@@ -1,0 +1,24 @@
+﻿{
+    "configurations": [
+        {
+            "name": "x64-Debug",
+            "generator": "Ninja",
+            "configurationType": "Debug",
+            "inheritEnvironments": [ "msvc_x64_x64" ],
+            "buildRoot": "${projectDir}\\out\\build\\${name}",
+            "installRoot": "${projectDir}\\out\\install\\${name}",
+            "cmakeCommandArgs": "",
+            "ctestCommandArgs": "",
+            "args": [
+                "C:\\Users\\awesd\\Source\\Repos\\iMOPSE\\configurations\\methods\\GPHH\\GPHH_MSRCPSP.cfg",
+                "MSRCPSP_TA2",
+                "C:\\Users\\awesd\\Source\\Repos\\iMOPSE\\configurations\\problems\\MSRCPSP\\d45\\10_3_5_3.def",
+                "C:\\Users\\awesd\\Source\\Repos\\iMOPSE\\results\\gphh_test",
+                "1",
+                "123"
+            ],
+            "cwd": "C:\\Users\\awesd\\Source\\Repos\\iMOPSE\\optimizer\\out\\build\\x64-Debug"
+            ]
+        }
+    ]
+}
