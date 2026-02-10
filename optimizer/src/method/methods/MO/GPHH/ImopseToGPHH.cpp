@@ -1,5 +1,6 @@
 #include "ImopseToGPHH.h"
 #include <string>
+#include <algorithm>
 
 static std::string skillName(unsigned typeId) {
     return "Q" + std::to_string(typeId);
@@ -43,6 +44,16 @@ Instance GPHHAdapter::FromScheduler(const CScheduler& sch) {
         tt.assignedResources.clear();
 
         I.tasks.push_back(std::move(tt));
+    }
+
+    std::sort(I.resources.begin(), I.resources.end(),
+        [](const Resource& a, const Resource& b) { return a.id < b.id; });
+
+    std::sort(I.tasks.begin(), I.tasks.end(),
+        [](const Task& a, const Task& b) { return a.id < b.id; });
+
+    for (auto& t : I.tasks) {
+        std::sort(t.predecessors.begin(), t.predecessors.end());
     }
 
     I.buildIndex();

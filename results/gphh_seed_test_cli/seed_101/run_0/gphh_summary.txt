@@ -1,0 +1,1 @@
+SeedUsed=1108957615 Best: makespan=489 cost=121517.801472

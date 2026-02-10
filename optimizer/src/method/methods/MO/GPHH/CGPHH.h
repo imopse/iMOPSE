@@ -1,6 +1,7 @@
 #pragma once
 #include "method/AMethod.h"
 #include "method/configMap/SConfigMap.h"
+#include <cstdint>
 
 class CGPHH : public AMethod {
 public:
@@ -10,4 +11,7 @@ public:
 
 private:
     SConfigMap* m_Cfg;
+
+    bool     m_HasSeedOverride = false;
+    uint64_t m_SeedOverride = 0;
 };
