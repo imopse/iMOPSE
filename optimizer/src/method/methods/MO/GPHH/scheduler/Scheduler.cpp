@@ -1,12 +1,12 @@
-﻿#include "scheduler/Scheduler.hpp"
+﻿#include "Scheduler.hpp"
 #include <vector>
 #include <limits>
 #include <algorithm>
 #include <optional>
 #include <cmath>
-#include "alloc/ResourceAllocator.hpp"
-#include "rules/GPTreeRule.hpp"
-#include "rules/GPTreeResRule.hpp"
+#include "../alloc/ResourceAllocator.hpp"
+#include "../rules/GPTreeRule.hpp"
+#include "../rules/GPTreeResRule.hpp"
 #include <iostream>
 #include <iomanip>
 #include <unordered_map>

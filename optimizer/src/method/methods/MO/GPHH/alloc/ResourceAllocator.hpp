@@ -3,7 +3,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
-#include "domain/Instance.hpp"
+#include "../domain/Instance.hpp"
 
 class ResourceAllocator {
 public:

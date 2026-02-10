@@ -4,8 +4,8 @@
 #include <random>
 #include <sstream>
 #include <algorithm>
-#include "gp/Op.hpp"
-#include "gp/Features.hpp"
+#include "Op.hpp"
+#include "Features.hpp"
 
 
 enum class FeatureId {

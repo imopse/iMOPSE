@@ -3,8 +3,8 @@
 #include <vector>
 #include <optional>
 #include <limits>
-#include "domain/Instance.hpp"
-#include "alloc/ResourceAllocator.hpp"
+#include "../domain/Instance.hpp"
+#include "../alloc/ResourceAllocator.hpp"
 
 struct PriorityContext {
     const Instance* inst = nullptr;

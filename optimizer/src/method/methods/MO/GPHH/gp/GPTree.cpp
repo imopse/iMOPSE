@@ -1,7 +1,7 @@
-﻿#include "gp/GPTree.hpp"
-#include "rules/GPTreeRule.hpp"
-#include "gp/Features.hpp"
-#include "alloc/ResourceAllocator.hpp"
+﻿#include "GPTree.hpp"
+#include "../rules/GPTreeRule.hpp"
+#include "Features.hpp"
+#include "../alloc/ResourceAllocator.hpp"
 #include <sstream>
 #include <iomanip>
 #include <limits>

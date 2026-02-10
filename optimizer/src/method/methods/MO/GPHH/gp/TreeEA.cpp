@@ -1,6 +1,6 @@
 ﻿#include "TreeEA.hpp"
-#include "rules/GPTreeRule.hpp"
-#include "rules/GPTreeResRule.hpp"
+#include "../rules/GPTreeRule.hpp"
+#include "../rules/GPTreeResRule.hpp"
 #include <cmath>
 #include <cassert>
 #include <algorithm>

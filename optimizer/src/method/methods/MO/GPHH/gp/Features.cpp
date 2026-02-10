@@ -1,11 +1,12 @@
-﻿#include "gp/Features.hpp"
+﻿#include "Features.hpp"
 #include <algorithm>
 #include <limits>
 #include <unordered_set> 
 #include <unordered_map>
 #include <string> 
-#include "gp/Precompute.hpp"
-#include "alloc/ResourceAllocator.hpp"
+#include <cmath>
+#include "Precompute.hpp"
+#include "../alloc/ResourceAllocator.hpp"
 
 
 

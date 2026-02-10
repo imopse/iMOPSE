@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
-#include "domain/Task.hpp"
+#include "../domain/Task.hpp"
 
 class Instance;
 

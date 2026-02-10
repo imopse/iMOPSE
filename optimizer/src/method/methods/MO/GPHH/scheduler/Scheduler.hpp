@@ -1,10 +1,10 @@
 ﻿#pragma once
 #include <string>
 #include <vector>
-#include "domain/Instance.hpp"
-#include "rules/IDispatchingRule.hpp"
-#include "rules/GPTreeRule.hpp"
-#include "rules/GPTreeResRule.hpp"
+#include "../domain/Instance.hpp"
+#include "../rules/IDispatchingRule.hpp"
+#include "../rules/GPTreeRule.hpp"
+#include "../rules/GPTreeResRule.hpp"
 
 struct ScheduleResult {
     int makespan = 0;

@@ -1,4 +1,4 @@
-#include "gp/Precompute.hpp"
+#include "Precompute.hpp"
 #include <queue>
 #include <algorithm>
 #include <unordered_set>

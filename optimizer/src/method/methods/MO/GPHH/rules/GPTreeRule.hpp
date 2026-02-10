@@ -1,10 +1,10 @@
 #pragma once
 #include <string>
 #include <limits>
-#include "rules/IDispatchingRule.hpp"
-#include "gp/GPTree.hpp"
-#include "gp/Features.hpp"
-#include "domain/Instance.hpp"
+#include "IDispatchingRule.hpp"
+#include "../gp/GPTree.hpp"
+#include "../gp/Features.hpp"
+#include "../domain/Instance.hpp"
 
 struct ScoreTrace {
     double   score = std::numeric_limits<double>::infinity();

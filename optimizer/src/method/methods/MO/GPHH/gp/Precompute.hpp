@@ -1,6 +1,6 @@
 #pragma once
 #include <vector>
-#include "domain/Instance.hpp"
+#include "../domain/Instance.hpp"
 
 namespace gp {
 

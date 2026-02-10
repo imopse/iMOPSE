@@ -1,9 +1,9 @@
 #pragma once
-#include "gp/GPTree.hpp"
-#include "gp/Features.hpp"
-#include "domain/Instance.hpp"
-#include "domain/Task.hpp"
-#include "domain/Resource.hpp"
+#include "../gp/GPTree.hpp"
+#include "../gp/Features.hpp"
+#include "../domain/Instance.hpp"
+#include "../domain/Task.hpp"
+#include "../domain/Resource.hpp"
 
 class GPTreeResRule {
 public:

@@ -1,4 +1,6 @@
-﻿#include <iostream>
+﻿#ifdef GPHH_RUNNER
+
+#include <iostream>
 #include <memory>
 #include <random>
 #include <chrono>
@@ -677,3 +679,5 @@ int main(int argc, char** argv) {
     std::cout << "JSON zapisany: " << jsonPath.string() << "\n";
     return 0;
 }
+
+#endif

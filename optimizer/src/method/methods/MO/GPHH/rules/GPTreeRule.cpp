@@ -1,8 +1,6 @@
 ﻿#include <cmath>
 #include <limits>
-#include "rules/GPTreeRule.hpp"
-#include "gp/Features.hpp"
-
+#include "GPTreeRule.hpp"
 
 ScoreTrace GPTreeRule::scoreWithTrace(const Task& t) const {
     ScoreTrace out;

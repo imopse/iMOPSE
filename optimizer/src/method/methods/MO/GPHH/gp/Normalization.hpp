@@ -1,6 +1,7 @@
 #pragma once
-#include "Instance.hpp"
-#include "gp/Precompute.hpp"
+#include "../domain/Instance.hpp"
+#include "Precompute.hpp"
+
 
 struct ImopseBounds {
     int    ms_min;
@@ -9,7 +10,9 @@ struct ImopseBounds {
     double cost_max;
 };
 
+
 ImopseBounds compute_imopse_bounds(const Instance& I);
+
 
 inline std::pair<double, double> imopse_minmax_normalize(int ms, double cost, const ImopseBounds& b) {
     auto safe01 = [](double x, double lo, double hi) {

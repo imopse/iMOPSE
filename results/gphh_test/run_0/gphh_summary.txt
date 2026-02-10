@@ -1,0 +1,1 @@
+Best: makespan=495 cost=122172.801479 msNorm=0.178129 costNorm=0.318895
