@@ -7,13 +7,12 @@
 #include <string>
 #include <stdexcept>
 
-extern bool g_trace;   // <-- DODAJ TO
+extern bool g_trace;
 
 CGPHH::CGPHH(AProblem& problem, AInitialization& init, SConfigMap* cfg)
     : AMethod(problem, init), m_Cfg(cfg) {
 }
 
-// helpers: TakeValue usuwa wpis z mapy po odczycie
 static int GetInt(SConfigMap* cfg, const char* key, int def)
 {
     int v = def;
@@ -38,7 +37,6 @@ void CGPHH::RunOptimization()
         throw std::runtime_error("GPHH works only with MSRCPSP_TA/MSRCPSP_TO problems.");
     }
 
-    // ---- read parameters from iMOPSE config ----
     GPEA_Params P;
 
     P.popSize = (size_t)GetInt(m_Cfg, "PopulationSize", (int)P.popSize);
@@ -46,10 +44,9 @@ void CGPHH::RunOptimization()
 
     P.pCrossover = GetDouble(m_Cfg, "CrossoverProb", P.pCrossover);
 
-    // Mutacje: wspólny klucz MutationProb jako "domyœlny"
     const double mutDefault = GetDouble(m_Cfg, "MutationProb", P.pMutParam);
     P.pMutParam = GetDouble(m_Cfg, "ParamMutationProb", mutDefault);
-    P.pMutStruct = GetDouble(m_Cfg, "StructMutationProb", P.pMutStruct); // jeœli brak, zostaje default z TreeEA.hpp
+    P.pMutStruct = GetDouble(m_Cfg, "StructMutationProb", P.pMutStruct); 
 
     P.maxDepth = GetInt(m_Cfg, "MaxDepth", P.maxDepth);
     P.weight = GetDouble(m_Cfg, "Weight", P.weight);
@@ -61,13 +58,11 @@ void CGPHH::RunOptimization()
 
     g_trace = (GetInt(m_Cfg, "Trace", 0) != 0);
 
-    // seed per run (na razie prosty; póŸniej podepniemy seed z iMOPSE CLI)
-    P.seed = (uint64_t)(1234567 + AMethod::m_ExperimentRunCounter);
+    P.seed = (uint64_t)GetInt(m_Cfg, "Seed", 123);
 
-    // ---- adapter: iMOPSE -> Twoje Instance ----
+
     Instance inst = GPHHAdapter::FromScheduler(*sch);
 
-    // ---- run EA ----
     TreeEA ea(inst, P);
     auto best = ea.run();
 
