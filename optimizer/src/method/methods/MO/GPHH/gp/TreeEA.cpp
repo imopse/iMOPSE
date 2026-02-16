@@ -6,6 +6,16 @@
 #include <algorithm>
 #include <numeric>
 
+static bool dominates(const GP_ParetoPoint& a, const GP_ParetoPoint& b) {
+    const bool noWorse = (a.makespan <= b.makespan) && (a.cost <= b.cost);
+    const bool strictlyBetter = (a.makespan < b.makespan) || (a.cost < b.cost);
+    return noWorse && strictlyBetter;
+}
+
+static bool samePoint(const GP_ParetoPoint& a, const GP_ParetoPoint& b) {
+    return (a.makespan == b.makespan) && (std::abs(a.cost - b.cost) < 1e-9);
+}
+
 static const std::vector<FeatureId>& taskFeatPool() {
     static const std::vector<FeatureId> v = GPTree::allFeatures();
     return v;
@@ -278,11 +288,34 @@ void TreeEA::mutateStruct(GPTree& t, bool isResTree) {
     clampDepth(t, P.maxDepth, isResTree);
 }
 
+void TreeEA::updatePareto(const GP_Individual& ind) {
+    GP_ParetoPoint p;
+    p.makespan = ind.makespan;
+    p.cost = ind.cost;
+    p.msNorm = ind.msNorm;
+    p.costNorm = ind.costNorm;
+
+    for (const auto& q : pareto_) {
+        if (dominates(q, p) || samePoint(q, p)) return;
+    }
+
+    pareto_.erase(
+        std::remove_if(pareto_.begin(), pareto_.end(),
+            [&](const GP_ParetoPoint& q) { return dominates(p, q); }),
+        pareto_.end()
+    );
+
+    pareto_.push_back(p);
+}
+
 
 GP_Individual TreeEA::run() {
     std::vector<GP_Individual> pop;
     initPopulation(pop);
 
+    pareto_.clear();
+    pareto_.reserve(P.popSize * 2);
+    for (const auto& ind : pop) updatePareto(ind);
     histBest_.clear();
     histAvg_.clear();
     histWorst_.clear();
@@ -339,9 +372,16 @@ GP_Individual TreeEA::run() {
             if (rand01() < P.pMutStruct) mutateStruct(c1.resTree, true);
             if (rand01() < P.pMutStruct) mutateStruct(c2.resTree, true);
 
-            next.push_back(evaluate(c1));
-            if (next.size() < pop.size())
-                next.push_back(evaluate(c2));
+            auto e1 = evaluate(c1);
+            updatePareto(e1);
+            next.push_back(e1);
+
+            if (next.size() < pop.size()) {
+                auto e2 = evaluate(c2);
+                updatePareto(e2);
+                next.push_back(e2);
+            }
+
         }
 
         pop.swap(next);

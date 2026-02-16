@@ -13,6 +13,8 @@
 #include <cstdint>
 #include <string>
 #include <stdexcept>
+#include <sstream>
+#include <vector>
 
 extern bool g_trace;
 
@@ -130,6 +132,35 @@ void CGPHH::RunOptimization()
     if (useBaseline) ea.setSeedTrees(startTreeTask, startTreeRes);
 
     auto best = ea.run();
+
+    {
+        std::vector<GP_ParetoPoint> pf = ea.getPareto();
+        std::sort(pf.begin(), pf.end(), [](const GP_ParetoPoint& a, const GP_ParetoPoint& b) {
+            if (a.makespan != b.makespan) return a.makespan < b.makespan;
+            return a.cost < b.cost;
+            });
+
+        std::ostringstream oss;
+        for (const auto& p : pf) {
+            oss << p.makespan << ";" << p.cost << "\n";
+        }
+        CExperimentLogger::LogResult(oss.str().c_str());
+    }
+
+    {
+        std::vector<GP_ParetoPoint> pf = ea.getPareto();
+        std::sort(pf.begin(), pf.end(), [](const GP_ParetoPoint& a, const GP_ParetoPoint& b) {
+            if (a.msNorm != b.msNorm) return a.msNorm < b.msNorm;
+            return a.costNorm < b.costNorm;
+            });
+
+        std::ostringstream oss;
+        for (const auto& p : pf) {
+            oss << p.msNorm << ";" << p.costNorm << "\n";
+        }
+        CExperimentLogger::LogResult(oss.str().c_str(), "results_norm.csv");
+    }
+
 
     if (useBaseline) {
         std::string s =

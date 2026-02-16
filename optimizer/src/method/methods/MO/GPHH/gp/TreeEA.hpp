@@ -37,6 +37,13 @@ struct GP_Individual {
     double costNorm = 0.0;
 };
 
+struct GP_ParetoPoint {
+    int    makespan = 0;
+    double cost = 0.0;
+    double msNorm = 0.0;
+    double costNorm = 0.0;
+};
+
 class TreeEA {
 public:
     TreeEA(Instance& I, const GPEA_Params& P);
@@ -50,6 +57,7 @@ public:
     const std::vector<double>& getHistWorst() const { return histWorst_; }
     const std::vector<double>& getHistory()   const { return histBest_; }
     const GP_Individual& getBestGen0() const { return bestGen0_; }
+    const std::vector<GP_ParetoPoint>& getPareto() const { return pareto_; }
     bool hasBestGen0() const { return hasBestGen0_; }
 
 
@@ -83,6 +91,8 @@ private:
     std::vector<double> histBest_;
     std::vector<double> histAvg_;
     std::vector<double> histWorst_;
+    std::vector<GP_ParetoPoint> pareto_;
+    void updatePareto(const GP_Individual& ind);
 
     bool  hasSeed_ = false;
     GPTree seedTask_;
