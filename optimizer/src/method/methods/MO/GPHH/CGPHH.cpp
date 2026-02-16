@@ -103,7 +103,7 @@ void CGPHH::RunOptimization()
         P.seed = m_SeedOverride;
     }
     else {
-        P.seed = (uint64_t)CRandom::GetInt(1, std::numeric_limits<int>::max());
+        P.seed = (uint64_t)CRandom::GetSeed();
     }
 
     Instance inst = GPHHAdapter::FromScheduler(*sch);
