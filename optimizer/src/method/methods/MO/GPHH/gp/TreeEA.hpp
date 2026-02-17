@@ -25,6 +25,7 @@ struct GPEA_Params {
     bool     useNormalization = true;
     int    tournamentK = 3;
     size_t eliteCount = 1;
+    bool useNSGA2 = false;
 };
 
 struct GP_Individual {
@@ -35,6 +36,8 @@ struct GP_Individual {
     double cost = 0.0;
     double msNorm = 0.0;
     double costNorm = 0.0;
+    int    rank = 0;
+    double crowding = 0.0;
 };
 
 struct GP_ParetoPoint {
@@ -99,4 +102,11 @@ private:
     GPTree seedRes_;
     bool hasBestGen0_ = false;
     GP_Individual bestGen0_{};
+
+    bool dominatesMO(const GP_Individual& a, const GP_Individual& b) const;
+    std::vector<std::vector<int>> nonDominatedSort(std::vector<GP_Individual>& pop) const;
+    void calcCrowdingDistance(std::vector<GP_Individual>& pop, const std::vector<int>& front) const;
+    const GP_Individual& tournamentMO(const std::vector<GP_Individual>& pop, int k);
+    std::vector<GP_Individual> selectNextPopulationNSGA2(std::vector<GP_Individual>& combined);
+
 };

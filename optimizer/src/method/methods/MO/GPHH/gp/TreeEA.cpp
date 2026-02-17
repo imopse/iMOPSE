@@ -308,6 +308,140 @@ void TreeEA::updatePareto(const GP_Individual& ind) {
     pareto_.push_back(p);
 }
 
+bool TreeEA::dominatesMO(const GP_Individual& a, const GP_Individual& b) const {
+    const bool noWorse = (a.makespan <= b.makespan) && (a.cost <= b.cost);
+    const bool strictlyBetter = (a.makespan < b.makespan) || (a.cost < b.cost);
+    return noWorse && strictlyBetter;
+}
+
+std::vector<std::vector<int>> TreeEA::nonDominatedSort(std::vector<GP_Individual>& pop) const
+{
+    const int N = (int)pop.size();
+    std::vector<std::vector<int>> S(N);   
+    std::vector<int> n(N, 0);
+    std::vector<std::vector<int>> fronts;
+
+    fronts.push_back({});
+
+    for (int p = 0; p < N; ++p) {
+        S[p].clear();
+        n[p] = 0;
+
+        for (int q = 0; q < N; ++q) {
+            if (p == q) continue;
+
+            if (dominatesMO(pop[p], pop[q])) {
+                S[p].push_back(q);
+            }
+            else if (dominatesMO(pop[q], pop[p])) {
+                n[p]++;
+            }
+        }
+
+        if (n[p] == 0) {
+            pop[p].rank = 0;
+            fronts[0].push_back(p);
+        }
+    }
+
+    int i = 0;
+    while (i < (int)fronts.size() && !fronts[i].empty()) {
+        std::vector<int> Q;
+        for (int p : fronts[i]) {
+            for (int q : S[p]) {
+                n[q]--;
+                if (n[q] == 0) {
+                    pop[q].rank = i + 1;
+                    Q.push_back(q);
+                }
+            }
+        }
+        i++;
+        if (!Q.empty()) fronts.push_back(std::move(Q));
+        else break;
+    }
+
+    return fronts;
+}
+
+void TreeEA::calcCrowdingDistance(std::vector<GP_Individual>& pop, const std::vector<int>& front) const
+{
+    if (front.empty()) return;
+
+    for (int idx : front) pop[idx].crowding = 0.0;
+
+    auto setInfEnds = [&](auto getter) {
+        std::vector<int> idx = front;
+        std::sort(idx.begin(), idx.end(), [&](int a, int b) { return getter(pop[a]) < getter(pop[b]); });
+
+        pop[idx.front()].crowding = std::numeric_limits<double>::infinity();
+        pop[idx.back()].crowding = std::numeric_limits<double>::infinity();
+
+        for (int i = 1; i < (int)idx.size() - 1; ++i) {
+            if (!std::isfinite(pop[idx[i]].crowding)) continue;
+            const double plus = getter(pop[idx[i + 1]]);
+            const double minus = getter(pop[idx[i - 1]]);
+            pop[idx[i]].crowding += (plus - minus);
+        }
+        };
+
+    setInfEnds([](const GP_Individual& x) { return x.msNorm; });
+    setInfEnds([](const GP_Individual& x) { return x.costNorm; });
+}
+
+const GP_Individual& TreeEA::tournamentMO(const std::vector<GP_Individual>& pop, int k)
+{
+    int best = -1;
+
+    auto better = [&](int a, int b) {
+        if (pop[a].rank != pop[b].rank) return pop[a].rank < pop[b].rank;
+        if (pop[a].crowding != pop[b].crowding) return pop[a].crowding > pop[b].crowding;
+        return pop[a].fitness < pop[b].fitness;
+        };
+
+    for (int i = 0; i < k; ++i) {
+        int j = randInt(0, (int)pop.size() - 1);
+        if (best == -1 || better(j, best)) best = j;
+    }
+    return pop[best];
+}
+
+std::vector<GP_Individual> TreeEA::selectNextPopulationNSGA2(std::vector<GP_Individual>& combined)
+{
+    auto fronts = nonDominatedSort(combined);
+
+    for (const auto& f : fronts) calcCrowdingDistance(combined, f);
+
+    std::vector<GP_Individual> next;
+    next.reserve(P.popSize);
+
+    for (const auto& f : fronts) {
+        if (f.empty()) break;
+
+        if (next.size() + f.size() <= P.popSize) {
+            for (int idx : f) next.push_back(combined[idx]);
+        }
+        else {
+            std::vector<int> tmp = f;
+            std::sort(tmp.begin(), tmp.end(), [&](int a, int b) {
+                if (combined[a].crowding != combined[b].crowding) return combined[a].crowding > combined[b].crowding;
+                return combined[a].fitness < combined[b].fitness;
+                });
+
+            while (next.size() < P.popSize && !tmp.empty()) {
+                next.push_back(combined[tmp.front()]);
+                tmp.erase(tmp.begin());
+            }
+            break;
+        }
+    }
+
+    auto f2 = nonDominatedSort(next);
+    for (const auto& f : f2) calcCrowdingDistance(next, f);
+
+    return next;
+}
+
 
 GP_Individual TreeEA::run() {
     std::vector<GP_Individual> pop;
@@ -316,6 +450,12 @@ GP_Individual TreeEA::run() {
     pareto_.clear();
     pareto_.reserve(P.popSize * 2);
     for (const auto& ind : pop) updatePareto(ind);
+
+    if (P.useNSGA2) {
+        auto fronts0 = nonDominatedSort(pop);
+        for (const auto& f : fronts0) calcCrowdingDistance(pop, f);
+    }
+
     histBest_.clear();
     histAvg_.clear();
     histWorst_.clear();
@@ -339,22 +479,16 @@ GP_Individual TreeEA::run() {
 
 
     for (size_t gen = 0; gen < P.generations; ++gen) {
-        std::vector<GP_Individual> next;
-        next.reserve(pop.size());
 
-        {
-            size_t E = std::min<size_t>(P.eliteCount, pop.size());
-            std::vector<GP_Individual> tmp = pop;
-            std::partial_sort(tmp.begin(), tmp.begin() + E, tmp.end(),
-                [](const GP_Individual& a, const GP_Individual& b) {
-                    return a.fitness < b.fitness;
-                });
-            for (size_t e = 0; e < E; ++e) next.push_back(tmp[e]);
-        }
+        std::vector<GP_Individual> offspring;
+        offspring.reserve(P.popSize);
 
-        while (next.size() < pop.size()) {
-            const GP_Individual& p1 = tournament(pop, P.tournamentK);
-            const GP_Individual& p2 = tournament(pop, P.tournamentK);
+        while (offspring.size() < P.popSize) {
+
+            const GP_Individual& p1 = P.useNSGA2 ? tournamentMO(pop, P.tournamentK)
+                : tournament(pop, P.tournamentK);
+            const GP_Individual& p2 = P.useNSGA2 ? tournamentMO(pop, P.tournamentK)
+                : tournament(pop, P.tournamentK);
 
             GP_Individual c1 = p1;
             GP_Individual c2 = p2;
@@ -374,17 +508,41 @@ GP_Individual TreeEA::run() {
 
             auto e1 = evaluate(c1);
             updatePareto(e1);
-            next.push_back(e1);
+            offspring.push_back(e1);
 
-            if (next.size() < pop.size()) {
+            if (offspring.size() < P.popSize) {
                 auto e2 = evaluate(c2);
                 updatePareto(e2);
-                next.push_back(e2);
+                offspring.push_back(e2);
             }
-
         }
 
-        pop.swap(next);
+        if (P.useNSGA2) {
+            std::vector<GP_Individual> combined;
+            combined.reserve(pop.size() + offspring.size());
+            combined.insert(combined.end(), pop.begin(), pop.end());
+            combined.insert(combined.end(), offspring.begin(), offspring.end());
+
+            pop = selectNextPopulationNSGA2(combined);
+        }
+        else {
+            std::vector<GP_Individual> next;
+            next.reserve(pop.size());
+
+            size_t E = std::min<size_t>(P.eliteCount, pop.size());
+            if (E > 0) {
+                std::vector<GP_Individual> tmp = pop;
+                std::partial_sort(tmp.begin(), tmp.begin() + E, tmp.end(),
+                    [](const GP_Individual& a, const GP_Individual& b) { return a.fitness < b.fitness; });
+                for (size_t e = 0; e < E; ++e) next.push_back(tmp[e]);
+            }
+
+            for (size_t i = 0; i < offspring.size() && next.size() < pop.size(); ++i) {
+                next.push_back(offspring[i]);
+            }
+
+            pop.swap(next);
+        }
 
         auto itBest = std::min_element(pop.begin(), pop.end(),
             [](const GP_Individual& a, const GP_Individual& b) { return a.fitness < b.fitness; });
@@ -400,6 +558,7 @@ GP_Individual TreeEA::run() {
 
         if (itBest->fitness < bestSoFar.fitness) bestSoFar = *itBest;
     }
+
 
     return bestSoFar;
 }
