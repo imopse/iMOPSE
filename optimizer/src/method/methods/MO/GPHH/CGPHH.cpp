@@ -2,6 +2,7 @@
 #include "utils/logger/CExperimentLogger.h"
 #include "problem/problems/MSRCPSP/CMSRCPSP_TA.h"
 #include "problem/problems/MSRCPSP/CMSRCPSP_TO.h"
+#include "../utils/archive/ArchiveUtils.h"
 #include "ImopseToGPHH.h"
 #include "gp/TreeEA.hpp"
 #include "utils/random/CRandom.h"
@@ -76,6 +77,7 @@ void CGPHH::RunOptimization()
     P.maxDepth = 8;
     P.tournamentK = 2;
     P.eliteCount = 0;
+    P.useNSGA2 = (GetInt(m_Cfg, "UseNSGA2", 0) != 0);
 
 
     P.popSize = (size_t)GetInt(m_Cfg, "PopulationSize", (int)P.popSize);
@@ -133,19 +135,40 @@ void CGPHH::RunOptimization()
 
     auto best = ea.run();
 
-    {
-        std::vector<GP_ParetoPoint> pf = ea.getPareto();
-        std::sort(pf.begin(), pf.end(), [](const GP_ParetoPoint& a, const GP_ParetoPoint& b) {
+    const auto& pf = ea.getPareto();
+
+    std::vector<GP_ParetoPoint> pfSorted = pf;
+    std::sort(pfSorted.begin(), pfSorted.end(),
+        [](const GP_ParetoPoint& a, const GP_ParetoPoint& b) {
             if (a.makespan != b.makespan) return a.makespan < b.makespan;
             return a.cost < b.cost;
-            });
+        });
 
-        std::ostringstream oss;
-        for (const auto& p : pf) {
-            oss << p.makespan << ";" << p.cost << "\n";
-        }
-        CExperimentLogger::LogResult(oss.str().c_str());
+    std::vector<SMOIndividual*> archive;
+    archive.reserve(pfSorted.size());
+
+    for (const auto& p : pfSorted) {
+        SGenotype g;
+
+        std::vector<float> eval = {
+            (float)p.makespan,
+            (float)p.cost
+        };
+
+        std::vector<float> norm = {
+            (float)p.msNorm,
+            (float)p.costNorm
+        };
+
+        archive.push_back(new SMOIndividual(g, eval, norm));
     }
+
+    ArchiveUtils::LogParetoFront(archive);
+
+    for (auto* ind : archive) delete ind;
+    archive.clear();
+
+
 
     {
         std::vector<GP_ParetoPoint> pf = ea.getPareto();
