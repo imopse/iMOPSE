@@ -135,6 +135,18 @@ void CGPHH::RunOptimization()
 
     auto best = ea.run();
 
+    {
+        const auto& hv = ea.getHistHV();
+        std::ostringstream oss;
+        oss << "gen;ffe;hv\n";
+        for (size_t i = 0; i < hv.size(); ++i) {
+            size_t ffe = (i + 1) * P.popSize;
+            oss << i << ";" << ffe << ";" << hv[i] << "\n";
+        }
+        CExperimentLogger::LogResult(oss.str().c_str(), "hv_history.csv");
+    }
+
+
     const auto& pf = ea.getPareto();
 
     std::vector<GP_ParetoPoint> pfSorted = pf;

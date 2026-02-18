@@ -55,6 +55,7 @@ public:
 
     GP_Individual run();
 
+    const std::vector<double>& getHistHV() const { return histHV_; }
     const std::vector<double>& getHistBest()  const { return histBest_; }
     const std::vector<double>& getHistAvg()   const { return histAvg_; }
     const std::vector<double>& getHistWorst() const { return histWorst_; }
@@ -76,7 +77,7 @@ private:
     gp::CPMPrecalc cpm{};
     ImopseBounds   bounds{};
 
-
+    std::vector<double> histHV_;
     double rand01();
     int    randInt(int lo, int hi);
 
