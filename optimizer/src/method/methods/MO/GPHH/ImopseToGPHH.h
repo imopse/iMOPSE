@@ -1,7 +1,9 @@
 #pragma once
-#include "problem/problems/MSRCPSP/CScheduler.h"
 #include "domain/Instance.hpp"
 
+class CScheduler;
+
 namespace GPHHAdapter {
-    Instance FromScheduler(const CScheduler& sch);
-}
+	Instance FromScheduler(const CScheduler& sch);
+
+} // namespace GPHHAdapter

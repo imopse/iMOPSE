@@ -4,7 +4,6 @@
 #include <optional>
 #include <limits>
 #include "../domain/Instance.hpp"
-#include "../alloc/ResourceAllocator.hpp"
 
 struct PriorityContext {
     const Instance* inst = nullptr;
@@ -32,13 +31,12 @@ struct Features {
     double avgWageAvail = std::numeric_limits<double>::infinity();
     double teamSizeMinNow = std::numeric_limits<double>::infinity();
 
-    double RES_UTIL = 0.0;
-    double RES_WAGE = 0.0;
-    double RES_SKILL = 0.0;
-    double RES_FREE = 0.0;
-    double RES_MULTI = 0.0;
-
     double resWage = 0.0;
+    double resSkill = 0.0;
+    double resFree = 0.0;
+    double resMulti = 0.0;
+    double resUtil = 0.0;
+
     double resSkillLevel = 0.0;
     double resFreeTime = 0.0;
     double resMultiSkill = 0.0;
@@ -58,35 +56,4 @@ struct Features {
 Features computeFeatures(const PriorityContext& ctx, int taskIx);
 Features computeResourceFeatures(const Instance& I, const Task& t, const Resource& r, int now);
 
-namespace gp {
 
-    struct FeatureScaling {
-        double maxDuration = 1.0;
-        double maxReqLevel = 1.0;
-        double maxNumTasks = 1.0;
-        double maxResSkillLevel = 1.0;
-        double maxNumResources = 1.0;
-        double maxNumSkills = 1.0;
-        double maxTaskResCount = 1.0;
-        double maxAvgResCostForSkill = 1.0;
-        double maxUnschedTasks = 1.0;
-        double maxAvailSkill = 1.0;
-        double maxAvailGapPos = 1.0;
-        double maxWaitRes = 1.0;
-        double maxEstPrec = 1.0;
-        double maxCritLen = 1.0;
-        double maxSlackPos = 1.0;
-        double maxSuccCount = 1.0;
-        double maxTotPred = 1.0;
-        double maxCheapestCostNow = 1.0;
-        double maxCostPerSkillNow = 1.0;
-        double maxTeamSizeMinNow = 1.0;
-        double maxMinWageAvail = 1.0;
-        double maxAvgWageAvail = 1.0;
-    };
-
-    void initFeatureScaling(const Instance& I);
-
-    const FeatureScaling& getFeatureScaling();
-
-} // namespace gp

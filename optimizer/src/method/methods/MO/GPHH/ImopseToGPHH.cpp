@@ -1,4 +1,5 @@
 #include "ImopseToGPHH.h"
+#include "problem/problems/MSRCPSP/CScheduler.h"
 #include <string>
 #include <algorithm>
 

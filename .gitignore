@@ -41,3 +41,11 @@
 #build folder
 /build
 /out
+# Visual Studio CMake settings (local)
+optimizer/CMakeSettings.json
+CMakeSettings.json
+
+
+# Visual Studio workspace cache
+.vs/
+

@@ -6,7 +6,7 @@
 #include "ImopseToGPHH.h"
 #include "gp/TreeEA.hpp"
 #include "utils/random/CRandom.h"
-#include "gp/Features.hpp"
+#include "gp/FeatureScaling.hpp"
 #include <random>
 #include <algorithm>
 #include <cctype>

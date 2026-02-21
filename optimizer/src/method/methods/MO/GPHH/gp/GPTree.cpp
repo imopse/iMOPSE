@@ -11,34 +11,87 @@
 
 double GPTree::featureValue(FeatureId id, const Features& f) const {
     switch (id) {
-    case FeatureId::DURATION:             return f.duration;
-    case FeatureId::REQ_LEVEL:            return f.reqLevel;
-    case FeatureId::AVAIL_SKILL:          return f.availSkill;
-    case FeatureId::EST_PREC:             return f.estPrec;
-    case FeatureId::SUCC_COUNT:           return f.succCount;
-    case FeatureId::CRITLEN:              return f.critLen;
-    case FeatureId::SLACK:                return f.slack;
-    case FeatureId::AVAIL_GAP:            return f.availGap;
-    case FeatureId::WAIT_RES:             return f.waitRes;
-    case FeatureId::TOT_PRED:             return f.totPred;
-    case FeatureId::CHEAPEST_COST_NOW:    return f.cheapestCostNow;
-    case FeatureId::COST_PER_SKILL_NOW:   return f.costPerSkillNow;
-    case FeatureId::MIN_WAGE_AVAIL:       return f.minWageAvail;
-    case FeatureId::AVG_WAGE_AVAIL:       return f.avgWageAvail;
-    case FeatureId::TEAM_SIZE_MIN_NOW:    return f.teamSizeMinNow;
-    case FeatureId::NUM_TASKS:       return f.numTasks;
-    case FeatureId::NUM_RESOURCES:   return f.numResources;
-    case FeatureId::NUM_SKILLS:      return f.numSkills;
-    case FeatureId::TASK_RES_COUNT:  return f.taskResCount;
-    case FeatureId::AVG_RES_COST:    return f.avgResCostForSkill;
-    case FeatureId::UNSCHED_TASKS:   return f.unschedTasks;
-    case FeatureId::RES_WAGE:             return f.resWage;
-    case FeatureId::RES_SKILL_LEVEL:      return f.resSkillLevel;
-    case FeatureId::RES_FREE_TIME:        return f.resFreeTime;
-    case FeatureId::RES_MULTI_SKILL:      return f.resMultiSkill;
-    case FeatureId::RES_UTILIZATION:      return f.resUtilization;
+    case FeatureId::DURATION:
+        return f.duration;
+
+    case FeatureId::REQ_LEVEL:
+        return f.reqLevel;
+
+    case FeatureId::AVAIL_SKILL:
+        return f.availSkill;
+
+    case FeatureId::EST_PREC:
+        return f.estPrec;
+
+    case FeatureId::SUCC_COUNT:
+        return f.succCount;
+
+    case FeatureId::CRITLEN:
+        return f.critLen;
+
+    case FeatureId::SLACK:
+        return f.slack;
+
+    case FeatureId::AVAIL_GAP:
+        return f.availGap;
+
+    case FeatureId::WAIT_RES:
+        return f.waitRes;
+
+    case FeatureId::TOT_PRED:
+        return f.totPred;
+
+    case FeatureId::CHEAPEST_COST_NOW:
+        return f.cheapestCostNow;
+
+    case FeatureId::COST_PER_SKILL_NOW:
+        return f.costPerSkillNow;
+
+    case FeatureId::MIN_WAGE_AVAIL:
+        return f.minWageAvail;
+
+    case FeatureId::AVG_WAGE_AVAIL:
+        return f.avgWageAvail;
+
+    case FeatureId::TEAM_SIZE_MIN_NOW:
+        return f.teamSizeMinNow;
+
+    case FeatureId::NUM_TASKS:
+        return f.numTasks;
+
+    case FeatureId::NUM_RESOURCES:
+        return f.numResources;
+
+    case FeatureId::NUM_SKILLS:
+        return f.numSkills;
+
+    case FeatureId::TASK_RES_COUNT:
+        return f.taskResCount;
+
+    case FeatureId::AVG_RES_COST:
+        return f.avgResCostForSkill;
+
+    case FeatureId::UNSCHED_TASKS:
+        return f.unschedTasks;
+
+    case FeatureId::RES_WAGE:
+        return f.resWage;
+
+    case FeatureId::RES_SKILL_LEVEL:
+        return f.resSkillLevel;
+
+    case FeatureId::RES_FREE_TIME:
+        return f.resFreeTime;
+
+    case FeatureId::RES_MULTI_SKILL:
+        return f.resMultiSkill;
+
+    case FeatureId::RES_UTILIZATION:
+        return f.resUtilization;
+
+    default:
+        return 0.0;
     }
-    return 0.0;
 }
 
 

@@ -52,9 +52,7 @@ public:
     TreeEA(Instance& I, const GPEA_Params& P);
     ~TreeEA();
     void setSeedTrees(const GPTree& task, const GPTree& res);
-
     GP_Individual run();
-
     const std::vector<double>& getHistHV() const { return histHV_; }
     const std::vector<double>& getHistBest()  const { return histBest_; }
     const std::vector<double>& getHistAvg()   const { return histAvg_; }
@@ -63,51 +61,36 @@ public:
     const GP_Individual& getBestGen0() const { return bestGen0_; }
     const std::vector<GP_ParetoPoint>& getPareto() const { return pareto_; }
     bool hasBestGen0() const { return hasBestGen0_; }
-
-
-
-
-
-
 private:
     Instance& inst;
     GPEA_Params   P;
     mutable std::mt19937 rng;
-
     gp::CPMPrecalc cpm{};
     ImopseBounds   bounds{};
-
     std::vector<double> histHV_;
     double rand01();
     int    randInt(int lo, int hi);
-
     GP_Individual evaluate(const GP_Individual& ind) const;
-
     void initPopulation(std::vector<GP_Individual>& pop);
     const GP_Individual& tournament(const std::vector<GP_Individual>& pop, int k);
-
     void crossover(GPTree& a, GPTree& b, bool isResTree);
     void mutateParam(GPTree& t, bool isResTree);
     void mutateStruct(GPTree& t, bool isResTree);
     int  pickRandomNode(const GPTree& t);
     void clampDepth(GPTree& t, int maxDepth, bool isResTree);
-
     std::vector<double> histBest_;
     std::vector<double> histAvg_;
     std::vector<double> histWorst_;
     std::vector<GP_ParetoPoint> pareto_;
     void updatePareto(const GP_Individual& ind);
-
     bool  hasSeed_ = false;
     GPTree seedTask_;
     GPTree seedRes_;
     bool hasBestGen0_ = false;
     GP_Individual bestGen0_{};
-
     bool dominatesMO(const GP_Individual& a, const GP_Individual& b) const;
     std::vector<std::vector<int>> nonDominatedSort(std::vector<GP_Individual>& pop) const;
     void calcCrowdingDistance(std::vector<GP_Individual>& pop, const std::vector<int>& front) const;
     const GP_Individual& tournamentMO(const std::vector<GP_Individual>& pop, int k);
     std::vector<GP_Individual> selectNextPopulationNSGA2(std::vector<GP_Individual>& combined);
-
 };

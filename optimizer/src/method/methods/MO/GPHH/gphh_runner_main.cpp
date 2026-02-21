@@ -116,10 +116,10 @@ static void askNormalizationIfNeeded() {
         return;
     }
 
-    std::cout << "\nNormalizacja fitnessu (min-max na [0,1]):\n";
-    std::cout << "  [1] Wlacz (domyslne zachowanie)\n";
-    std::cout << "  [2] Wylacz (uzyj surowych ms i cost)\n";
-    std::cout << "Wpisz numer (Enter=1): ";
+    std::cout << "\nFitness normalization (min-max to [0,1]):\n";
+    std::cout << "  [1] Enable (default)\n";
+    std::cout << "  [2] Disable (use raw makespan and cost)\n";
+    std::cout << "Select option (Enter=1): ";
 
     std::string line;
     std::getline(std::cin, line);
@@ -219,30 +219,30 @@ int main(int argc, char** argv) {
     }
 
     while (path.empty()) {
-        std::cout << "Podaj sciezke do pliku .def: ";
+        std::cout << "Enter path to .def file: ";
         std::string tmp;
         std::getline(std::cin, tmp);
         if (!tmp.empty()) path = tmp;
         if (path.size() < 4 || toLower(path.substr(path.size() - 4)) != ".def") {
-            std::cout << "To nie wyglada na plik .def. Sprobuj ponownie.\n";
+            std::cout << "This does not look like a .def file. Try again.\n";
             path.clear();
         }
     }
 
     std::filesystem::path defPath(path);
     if (!std::filesystem::exists(defPath)) {
-        std::cerr << "Nie udalo sie wczytac: " << defPath.string() << "\n";
+        std::cerr << "Failed to load: " << defPath.string() << "\n";
         return 1;
     }
     defPath = std::filesystem::weakly_canonical(defPath);
     const std::string pathStr = defPath.string();
-    std::cout << "Sciezka do .def: " << pathStr << "\n";
+    std::cout << "DEF path: " << pathStr << "\n";
 
     if (!useEA) {
-        std::cout << "\nWybierz tryb:\n"
-            "  [1] Ewolucja drzew (EA)\n"
-            "  [2] Bez ewolucji\n"
-            "Wpisz numer (Enter=1): ";
+        std::cout << "\nSelect mode:\n"
+            "  [1] Evolve trees (EA)\n"
+            "  [2] No evolution\n"
+            "Select option (Enter=1): ";
         std::string in;
         std::getline(std::cin, in);
         if (in.empty()) in = "1";
@@ -252,29 +252,29 @@ int main(int argc, char** argv) {
         askNormalizationIfNeeded();
 
         if (useEA) {
-            std::cout << "\nParametry EA (Enter = domyślne):\n";
+            std::cout << "\nEA parameters (Enter = keep default):\n";
             std::string s;
-            std::cout << "  Populacja [obecnie " << eaPop << "]: ";
+            std::cout << "  Population [current " << eaPop << "]: ";
             std::getline(std::cin, s); if (!s.empty()) eaPop = (size_t)std::stoul(s);
-            std::cout << "  Generacje [obecnie " << eaGen << "]: ";
+            std::cout << "  Generations [current " << eaGen << "]: ";
             s.clear(); std::getline(std::cin, s); if (!s.empty()) eaGen = (size_t)std::stoul(s);
-            std::cout << "  pCrossover [obecnie " << eaPC << "]: ";
+            std::cout << "  pCrossover [current " << eaPC << "]: ";
             s.clear(); std::getline(std::cin, s); if (!s.empty()) eaPC = std::stod(s);
-            std::cout << "  pMutParam (mutacja param.) [obecnie " << eaMp << "]: ";
+            std::cout << "  pMutParam (parameter mutation) [current " << eaMp << "]: ";
             s.clear(); std::getline(std::cin, s); if (!s.empty()) eaMp = std::stod(s);
-            std::cout << "  pMutStruct (mutacja strukt.) [obecnie " << eaMs << "]: ";
+            std::cout << "  pMutStruct (structure mutation) [current " << eaMs << "]: ";
             s.clear(); std::getline(std::cin, s); if (!s.empty()) eaMs = std::stod(s);
-            std::cout << "  maxDepth [obecnie " << eaMaxD << "]: ";
+            std::cout << "  maxDepth [current " << eaMaxD << "]: ";
             s.clear(); std::getline(std::cin, s); if (!s.empty()) eaMaxD = std::stoi(s);
 
-            std::cout << "\nStartowa regula (baseline) dla EA:\n"
+            std::cout << "\nEA baseline start rule:\n"
                 "  [1] random\n"
                 "  [2] avail-gap\n"
                 "  [3] work\n"
                 "  [4] est+dur\n"
                 "  [5] cheapxdur\n"
                 "  [6] cheapps+est\n"
-                "Wpisz numer/nazwe (Enter=1): ";
+                "Enter option/name (Enter=1): ";
             {
                 std::string in2;
                 std::getline(std::cin, in2);
@@ -286,14 +286,14 @@ int main(int argc, char** argv) {
     askNormalizationIfNeeded();
 
     if (!useEA && rule.empty()) {
-        std::cout << "\nWybierz regula GP:\n"
+        std::cout << "\nSelect GP rule:\n"
             "  [1] random\n"
             "  [2] avail-gap\n"
             "  [3] work\n"
             "  [4] est+dur\n"
             "  [5] cheapxdur\n"
             "  [6] cheapps+est\n"
-            "Wpisz numer albo nazwe (Enter=1): ";
+            "Enter option or name (Enter=1): ";
         std::string in;
         std::getline(std::cin, in);
         if (in.empty()) in = "1";
@@ -301,7 +301,7 @@ int main(int argc, char** argv) {
     }
 
     if (!useEA)
-        std::cout << "Wybrana regula GP (--rule=" << rule << ")\n";
+        std::cout << "Selected GP rule (--rule=" << rule << ")\n";
     else
         std::cout << "Tryb: EVOLVE TREES (pop=" << eaPop
         << ", gen=" << eaGen
@@ -363,7 +363,7 @@ int main(int argc, char** argv) {
     if (!useEA) {
         tree = makeTreeByRule(rng, maxDepthSeed, canonicalRule(rule));
         std::cout << "[seed=" << seed << "]\n";
-        if (printTreeExpr) std::cout << "\nWyrazenie (GP static): " << tree.toString() << "\n";
+        if (printTreeExpr) std::cout << "\nExpression (GP static): " << tree.toString() << "\n";
     }
     else {
         GPEA_Params P;
@@ -383,7 +383,7 @@ int main(int argc, char** argv) {
         startTreeRes = GPTree::RandomTreeRES(rng, maxDepthSeed);
         startTree = startTreeTask;
 
-        std::cout << "[EA] Startowa regula (tasks): " << startRule;
+        std::cout << "[EA] Baseline start rule (tasks): " << startRule;
         if (printTreeExpr) {
             std::cout << "\n[EA] StartTreeTask: " << startTreeTask.toString()
                 << "\n[EA] StartTreeRes : " << startTreeRes.toString();
@@ -396,7 +396,7 @@ int main(int argc, char** argv) {
             auto resStart = Scheduler::withResources(Istart, GPTreeRule(startTreeTask), &startResRule);
 
             if (printStartSched)
-                printSchedule(Istart, resStart, "Harmonogram STARTOWY (z drzew startowych)");
+                printSchedule(..., "START schedule (seed trees)");
 
             makespan_start_json = resStart.makespan;
             cost_start_json = resStart.totalCost;
@@ -450,7 +450,7 @@ int main(int argc, char** argv) {
         );
 
         if (printFinalSched)
-            printSchedule(Ifinal, resFinal, "Harmonogram KONCOWY (po ewolucji)");
+            printSchedule(..., "FINAL schedule (after evolution)");
 
         tree = taskTreeFinal;
 
@@ -473,18 +473,18 @@ int main(int argc, char** argv) {
     if (!taPath.empty()) {
         forcedOk = loadIntVector(taPath, forced);
         if (!forcedOk)
-            std::cerr << "[warn] Nie udalo sie wczytac --ta=" << taPath << "\n";
+            std::cerr << "[warn] Failed to load --ta=" << taPath << "\n";
         else if ((int)forced.size() != (int)I.tasks.size())
-            std::cerr << "[warn] Rozmiar --ta (" << forced.size()
-            << ") != liczbie zadan (" << I.tasks.size() << ")\n";
+            std::cerr << "[warn] --ta size (" << forced.size()
+            << ") != number of tasks (" << I.tasks.size() << ")\n";
     }
     if (!keysPath.empty()) {
         keysOk = loadFloatVector(keysPath, pkeys);
         if (!keysOk)
-            std::cerr << "[warn] Nie udalo sie wczytac --keys=" << keysPath << "\n";
+            std::cerr << "[warn] Failed to load --keys=" << taPath << "\n";
         else if ((int)pkeys.size() != (int)I.tasks.size())
-            std::cerr << "[warn] Rozmiar --keys (" << pkeys.size()
-            << ") != liczbie zadan (" << I.tasks.size() << ")\n";
+            std::cerr << "[warn] --keys size (" << forced.size()
+            << ") != number of tasks (" << I.tasks.size() << ")\n";
     }
     if (forcedOk) Scheduler::setForcedResources(&forced);
     if (keysOk)   Scheduler::setPriorityKeys(&pkeys);
@@ -676,7 +676,7 @@ int main(int argc, char** argv) {
     jf << "}\n";
     jf.close();
 
-    std::cout << "JSON zapisany: " << jsonPath.string() << "\n";
+    std::cout << "JSON saved: " << jsonPath.string() << "\n";
     return 0;
 }
 
