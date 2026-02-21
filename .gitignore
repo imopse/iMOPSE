@@ -26,26 +26,29 @@
 *.a
 *.lib
 
-# IDEs
-*/.idea
-
 # Executables
 *.exe
 *.out
 *.app
-*/cmake-build*
-/out/build/x64-Debug
-/CMakeSettings.json
-/.vs
 
-#build folder
-/build
-/out
-# Visual Studio CMake settings (local)
-optimizer/CMakeSettings.json
-CMakeSettings.json
-
-
-# Visual Studio workspace cache
+# IDEs
+**/.idea/
 .vs/
+**/.vs/
 
+# Visual Studio CMake settings (local)
+CMakeSettings.json
+optimizer/CMakeSettings.json
+
+# CMake / build output (repo-wide)
+**/out/
+**/build/
+**/cmake-build*/
+**/CMakeFiles/
+**/CMakeCache.txt
+**/cmake_install.cmake
+**/Makefile
+**/*.ninja
+**/*.ninja_deps
+**/*.ninja_log
+**/compile_commands.json

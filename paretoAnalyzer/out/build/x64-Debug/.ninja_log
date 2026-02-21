@@ -1,8 +1,0 @@
-# ninja log v6
-9	432	7931086753269842	CMakeFiles/paretoAnalyzer.dir/src/ParetoFront.cpp.obj	dbf3b6463dff54a4
-4	455	7931086753214737	CMakeFiles/paretoAnalyzer.dir/src/ConfigResults.cpp.obj	622a89644755f74d
-14	522	7931086753307873	CMakeFiles/paretoAnalyzer.dir/src/ParetoMetrics.cpp.obj	aef087b7627154de
-24	933	7931086753410671	CMakeFiles/paretoAnalyzer.dir/src/ParetoWriter.cpp.obj	e92b22d31760c15d
-29	980	7931086753457012	CMakeFiles/paretoAnalyzer.dir/src/main.cpp.obj	51fd9b4f1fcd2af2
-18	1011	7931086753351355	CMakeFiles/paretoAnalyzer.dir/src/ParetoReader.cpp.obj	701a718929b2ea7a
-1012	1376	7931086763286562	paretoAnalyzer.exe	171aadaf2063896c

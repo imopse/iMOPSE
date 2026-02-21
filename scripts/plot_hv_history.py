@@ -15,7 +15,7 @@ files = [root / f"run_{i}" / "hv_history.csv" for i in range(args.runs)]
 
 missing = [str(f) for f in files if not f.is_file()]
 if missing:
-    print("Brakuje plików hv_history.csv:")
+    print("Missing hv_history.csv files:")
     for m in missing[:50]:
         print("  ", m)
     raise SystemExit(1)
