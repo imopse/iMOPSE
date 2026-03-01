@@ -18,6 +18,21 @@ CANTGA* CANTGAFactory::CreateANTGA(SConfigMap* configMap, AProblem& problem, AIn
     );
 }
 
+CFANGA* CANTGAFactory::CreateFANGA(SConfigMap* configMap, AProblem& problem, AInitialization* initialization,
+                                    ACrossover* crossover, AMutation* mutation)
+{
+    gapSelectionByRandomDim = CSelectionFactory::CreateGapSelection(configMap, true);
+
+    return new CFANGA(
+        problem,
+        *initialization,
+        *crossover,
+        *mutation,
+        *gapSelectionByRandomDim,
+        configMap
+    );
+}
+
 void CANTGAFactory::DeleteObjects()
 {
     delete gapSelectionByRandomDim;
