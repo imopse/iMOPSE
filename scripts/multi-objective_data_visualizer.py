@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Set the paths to the directories containing the results of each method
-paths = ['../paretoAnalyzer/NSGAII_merged.csv',
+paths = ['../paretoAnalyzer/GPHH_merged.csv',
          '../paretoAnalyzer/NTGA2_merged.csv']  # Replace with the correct paths
 
 # Prepare a dictionary to hold the data from each method

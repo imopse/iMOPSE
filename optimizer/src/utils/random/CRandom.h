@@ -12,7 +12,9 @@ public:
     static int GetWeightedInt(const std::vector<float>& weights);
     static float GetFloat(float min, float max);
     static void Shuffle(int start, int end, std::vector<int> &vector);
+    static unsigned int GetSeed();
 
 private:
     static std::mt19937 rng;
+    static unsigned int currentSeed;
 };
