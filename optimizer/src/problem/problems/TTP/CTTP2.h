@@ -10,10 +10,10 @@ public:
     explicit CTTP2(CTTPTemplate &ttpBase);
     ~CTTP2() override = default;
 
-    SProblemEncoding &GetProblemEncoding() override;
     SProblemEncoding& GetProblemEncoding() override;
     void Evaluate(AIndividual& individual) override;
     void LogSolution(AIndividual& individual) override;
+    void LogAdditionalData() {}
 
     const std::vector<std::vector<float>>& GetDistMtx() const { return m_TTPTemplate.GetDistMtx(); }
     void PickMostValItemsFromTheEnd(AIndividual& individual) const;
