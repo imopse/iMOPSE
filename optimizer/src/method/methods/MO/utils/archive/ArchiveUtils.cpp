@@ -73,6 +73,7 @@ void ArchiveUtils::CopyToArchiveWithFiltering(const std::vector<SMOIndividual*>&
         {
             if (ind->IsDominatedBy(filteredInd))
             {
+                delete ind;
                 return true;
             }
         }
@@ -114,7 +115,15 @@ void ArchiveUtils::CopyToArchiveWithFiltering(const SMOIndividual* individual, s
         // Now check if already archived individuals are not dominated by new, remove otherwise
         archive.erase(std::remove_if(archive.begin(), archive.end(), [individual](const SMOIndividual* ind)
         {
-            return ind->IsDominatedBy(individual);
+            if (ind->IsDominatedBy(individual))
+            {
+                delete ind;
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }), archive.end());
 
         archive.push_back(new SMOIndividual(*individual));
