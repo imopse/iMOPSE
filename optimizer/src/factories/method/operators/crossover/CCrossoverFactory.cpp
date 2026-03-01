@@ -5,6 +5,8 @@
 #include "method/operators/crossover/crossovers/CUniformCX.h"
 #include "method/operators/crossover/crossovers/CTTP_OS_SX.h"
 #include "method/operators/crossover/crossovers/CCVRP_OX.h"
+#include "method/operators/crossover/crossovers/CMSRA_RX.h"
+#include "problem/problems/MSRA/MSRAProblem.h"
 #include "utils/fileReader/CReadUtils.h"
 
 ACrossover *CCrossoverFactory::Create(SConfigMap *configMap, const std::string& configKey, AProblem& problem)
@@ -34,6 +36,11 @@ ACrossover *CCrossoverFactory::Create(SConfigMap *configMap, const std::string& 
     {
         float oxProb = std::stof(vec[1]);
         return new CCVRP_OX(oxProb);
+    }
+    else if (strcmp(opName, "MSRA_RX") == 0 && encodingTypes.find(EEncodingType::ASSOCIATION) != encodingTypes.end())
+    {
+        float rxProb = std::stof(vec[1]);
+        return new CMSRA_RX(rxProb, dynamic_cast<CMSRAProblem&>(problem));
     }
 
     return nullptr;
