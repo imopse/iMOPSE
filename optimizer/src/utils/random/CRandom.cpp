@@ -21,7 +21,7 @@ int CRandom::GetInt(int min, int max)
 
 float CRandom::GetFloat(float min, float max)
 {
-    std::uniform_real_distribution<float> dist(min, max);
+    std::uniform_real_distribution<float> dist(min, std::nextafter(max, min));
     return dist(rng);
 }
 
