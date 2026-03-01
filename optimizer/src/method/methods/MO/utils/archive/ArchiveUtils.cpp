@@ -138,3 +138,12 @@ void ArchiveUtils::LogParetoFront(const std::vector<SMOIndividual*>& archive)
     CCSV<float>::ToCSV(oss, ArchiveUtils::ToEvaluation(archive));
     CExperimentLogger::LogResult(oss.str().c_str());
 }
+void ArchiveUtils::LogParetoFront(const std::vector<SMOIndividual*>& archive, int fet)
+{
+    std::ostringstream oss;
+    CCSV<float>::ToCSV(oss, ArchiveUtils::ToEvaluation(archive));
+    std::string fileName = "results_";
+    fileName += std::to_string(fet);
+    fileName += std::string(".csv");
+    CExperimentLogger::LogResult(oss.str().c_str(), fileName.c_str());
+}
