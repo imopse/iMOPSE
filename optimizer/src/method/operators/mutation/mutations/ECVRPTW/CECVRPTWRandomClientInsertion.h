@@ -12,6 +12,10 @@ public:
 	explicit CECVRPTWRandomClientInsertion(CECVRPTW& problemDefinition);
 	void Mutate(SProblemEncoding& problemEncoding, AIndividual& child) override;
 
+    size_t GetParamCount() const override { return 0; }
+    float* GetParamValue(int paramIdx) override { return nullptr; }
+
+
 private:
     CECVRPTW& m_ProblemDefinition; // TODO - should be const
 };
