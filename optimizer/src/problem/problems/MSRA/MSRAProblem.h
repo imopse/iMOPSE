@@ -14,6 +14,7 @@ public:
     SProblemEncoding& GetProblemEncoding() override;
     void Evaluate(AIndividual& individual) override;
     void LogSolution(AIndividual& individual) override;
+    void LogAdditionalData() override {};
 
     float GetUnassignGeneValue() const;
     float FindBestGeneValueByClosestTask(const std::vector<float>& solution, const size_t geneIdx) const;
