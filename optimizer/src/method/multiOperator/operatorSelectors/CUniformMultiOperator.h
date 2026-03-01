@@ -7,15 +7,15 @@ template <typename O>
 class CUniformMultiOperator: public AMultiOperator<O>
 {
 public:
-    CAtomicOperator<O>* SelectOperator()
+    virtual CAtomicOperator<O>* SelectOperator()
     {
-        if (this->m_AtomicOperators.empty())
+        if (m_AtomicOperators.empty())
         {
             return nullptr;
         }
         else
         {
-            return &this->m_AtomicOperators[CRandom::GetInt(0, (int)this->m_AtomicOperators.size())];
+            return &m_AtomicOperators[CRandom::GetInt(0, (int)m_AtomicOperators.size())];
         }
     }
 };

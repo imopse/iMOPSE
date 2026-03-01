@@ -4,7 +4,7 @@
 #include "utils/random/CRandom.h"
 
 template <typename O>
-class CInvCreditRouletteMultiOperator: public AMultiOperator<O>
+class CBalancedCreditRouletteMultiOperator: public AMultiOperator<O>
 {
 public:
     virtual CAtomicOperator<O>* SelectOperator()
@@ -15,16 +15,18 @@ public:
         }
         else
         {
-            float invCreditSum = 0.f;
+            float scoreSum = 0.f;
             for (CAtomicOperator<O>& atomicOperator : m_AtomicOperators)
             {
-                invCreditSum += (1.f / ((float)atomicOperator.GetData().m_Credits + 1));
+                //scoreSum += ((float)atomicOperator.GetData().m_Credits + 1) / ((float)atomicOperator.GetData().m_Calls + 1);
+                //scoreSum += ((float)atomicOperator.GetData().m_Credits + 1) / sqrtf((float)atomicOperator.GetData().m_Calls + 1);
+                scoreSum += ((float)atomicOperator.GetData().m_Credits + 1) / (logf((float)atomicOperator.GetData().m_Calls + 1) + 1);
             }
             float randVal = CRandom::GetFloat(0.f, 1.f);
             float rouletteWheel = 0.f;
             for (CAtomicOperator<O>& atomicOperator : m_AtomicOperators)
             {
-                rouletteWheel += ((1.f / ((float)atomicOperator.GetData().m_Credits + 1)) / invCreditSum);
+                rouletteWheel += (((float)atomicOperator.GetData().m_Credits + 1) / scoreSum);
                 if (randVal < rouletteWheel)
                 {
                     return &atomicOperator;
