@@ -1,13 +1,13 @@
 #pragma once
 
-#include "../AMutation.h"
+#include "method/operators/mutation/AMutation.h"
 
-class CMSRCPSP_TA;
+class CMSRAProblem;
 
-class CCheapestResourceMutation : public AMutation
+class CMSRAClosestTask : public AMutation
 {
 public:
-    CCheapestResourceMutation(float geneMutProb, const CMSRCPSP_TA& problemDefinition);
+    CMSRAClosestTask(float geneMutProb, const CMSRAProblem& problemDefinition);
     void Mutate(SProblemEncoding& problemEncoding, AIndividual& child) override;
 
     size_t GetParamCount() const override { return 1; }
@@ -15,5 +15,6 @@ public:
 
 private:
     float m_GeneMutProb;
-    const CMSRCPSP_TA& m_ProblemDefinition;
+    const CMSRAProblem& m_ProblemDefinition;
 };
+
