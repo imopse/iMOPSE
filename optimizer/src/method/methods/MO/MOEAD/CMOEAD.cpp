@@ -5,6 +5,8 @@
 #include "../utils/DasDennis/CDasDennis.h"
 #include "../../../../utils/random/CRandom.h"
 #include "../../../../utils/logger/ErrorUtils.h"
+#include "utils/dataStructures/CCSV.h"
+#include "utils/logger/CExperimentLogger.h"
 
 CMOEAD::CMOEAD(AProblem &problem, AInitialization &initialization, ACrossover &crossover, AMutation &mutation, SConfigMap *configMap)
         : AMOGeneticMethod(problem, initialization, crossover, mutation)
@@ -23,6 +25,10 @@ CMOEAD::CMOEAD(AProblem &problem, AInitialization &initialization, ACrossover &c
 void CMOEAD::RunOptimization()
 {
     int generation = 0;
+
+    m_StartTime = std::chrono::high_resolution_clock::now();
+    CCSV<float> m_OperatorStats(1);
+    CCSV<float> m_HVStats(4);
     
     ConstructSubproblems(m_PartitionsNumber, m_NeighbourhoodSize);
     m_PopulationSize = m_Subproblems.size();
@@ -43,10 +49,31 @@ void CMOEAD::RunOptimization()
     while ( generation < m_GenerationLimit)
     {
         EvolveToNextGeneration();
+
+        int fet = (generation + 1) * int(m_PopulationSize);
+
+        // TODO - use functions
+        {
+            // It will sort the archive
+            float paretoHV = CalcHV(m_Archive, std::vector<float>{ 1.f, 1.f });
+            auto currentTime = std::chrono::high_resolution_clock::now();
+            auto durationMS = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - m_StartTime);
+            std::vector<float> newRow = { (float)generation, paretoHV, (float)durationMS.count(), float(fet) };
+            m_HVStats.AddRow(std::move(newRow));
+        }
+
         generation++;
+
+        if (fet % 5000 == 0)
+        {
+            ArchiveUtils::LogParetoFront(m_Archive, fet);
+        }
     }
 
     ArchiveUtils::LogParetoFront(m_Archive);
+
+    CExperimentLogger::LogResult(m_OperatorStats.ToStringStream().str().c_str(), "OperatorStats.csv");
+    CExperimentLogger::LogResult(m_HVStats.ToStringStream().str().c_str(), "HVStats.csv");
 }
 
 void CMOEAD::ConstructSubproblems(size_t partitionsNumber, size_t neighborhoodSize)
@@ -211,7 +238,7 @@ void CMOEAD::EvolveToNextGeneration()
     }
 }
 
-bool CMOEAD::IsBetterInSubproblem(SMOIndividual *newIndividual, SMOIndividual *&oldIndividual, CMOEAD::SSubproblem &subproblem)
+bool CMOEAD::IsBetterInSubproblem(SMOIndividual* newIndividual, SMOIndividual* oldIndividual, CMOEAD::SSubproblem& subproblem)
 {
     // Simple weighted sum
     float newValue = 0.f;
@@ -226,3 +253,25 @@ bool CMOEAD::IsBetterInSubproblem(SMOIndividual *newIndividual, SMOIndividual *&
     return newValue < oldValue;
 }
 
+
+// TODO - copied from ParetoAnalyzer - remove it or move somewhere else
+// Calculate Hyper-volume using values as they are (either absolute or normalized), using the reference point
+float CMOEAD::CalcHV(std::vector<SMOIndividual*>& individuals, const std::vector<float>& refPoint)
+{
+    auto sortLambda = [](const SMOIndividual* lhv, const SMOIndividual* rhv) -> bool
+    {
+        return lhv->m_NormalizedEvaluation[0] < rhv->m_NormalizedEvaluation[0];
+    };
+
+    std::sort(individuals.begin(), individuals.end(), sortLambda);
+
+    float hyperVolume = 0.f;
+    float prevCost = refPoint[1];
+    for (const SMOIndividual* sol : individuals)
+    {
+        hyperVolume += ((refPoint[0] - sol->m_NormalizedEvaluation[0]) * (prevCost - sol->m_NormalizedEvaluation[1]));
+        prevCost = sol->m_NormalizedEvaluation[1];
+    }
+
+    return hyperVolume;
+}
