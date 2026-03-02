@@ -13,4 +13,5 @@ public:
     virtual void Evaluate(AIndividual& individual) = 0;
     virtual void LogSolution(AIndividual& individual) = 0;
     virtual void LogAdditionalData() = 0;
+    virtual float GetOptimalValue() { return 0.0f; }
 };

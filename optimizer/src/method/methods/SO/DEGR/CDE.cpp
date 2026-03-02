@@ -1,6 +1,7 @@
 #include "CDE.h"
 #include <numeric>
 
+#include <numeric>
 #include "../../../../utils/random/CRandom.h"
 #include "../utils/experiment/CSOExperimentUtils.h"
 #include "../utils/aggregatedFitness/CAggregatedFitness.h"

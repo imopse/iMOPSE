@@ -16,6 +16,8 @@ void CCVRPTemplate::Clear()
 
 	m_DistanceMatrix.clear();
 	m_MinDistanceVec.clear();
+	m_NearestDepotCache.clear();
+	m_NearestNeighborsCache.clear();
 }
 
 void CCVRPTemplate::SetData(const std::vector<SCityCVRP>& cities, int capacity,int trucks,const std::vector<size_t>& depotIndexes)
@@ -28,6 +30,8 @@ void CCVRPTemplate::SetData(const std::vector<SCityCVRP>& cities, int capacity,i
 	m_DepotIndexes=depotIndexes;
 
 	CalculateContextData();
+	CalculateNearestDepotCache();
+	CalculateNearestNeighborsCache();
 }
 
 float CCVRPTemplate::GetMinDistance() const {
@@ -81,6 +85,64 @@ void CCVRPTemplate::CalculateContextData()
 		}
 		m_MinDistanceVec[i] = minDist;
 	}
+}
 
+void CCVRPTemplate::CalculateNearestDepotCache()
+{
+	size_t dim = m_Cities.size();
+	m_NearestDepotCache.resize(dim);
+	
+	// Pre-compute nearest depot for each city
+	for (size_t cityIdx = 0; cityIdx < dim; ++cityIdx)
+	{
+		float minDist = FLT_MAX;
+		size_t chosenIdx = 0;
+		
+		for (const auto depotId : m_DepotIndexes)
+		{
+			for (size_t i = 0; i < m_Cities.size(); ++i)
+			{
+				if (m_Cities[i].m_ID == depotId)
+				{
+					if (m_DistanceMatrix[cityIdx][i] < minDist)
+					{
+						chosenIdx = i;
+						minDist = m_DistanceMatrix[cityIdx][i];
+					}
+					break;
+				}
+			}
+		}
+		m_NearestDepotCache[cityIdx] = chosenIdx;
+	}
+}
 
+void CCVRPTemplate::CalculateNearestNeighborsCache()
+{
+	size_t dim = m_Cities.size();
+	m_NearestNeighborsCache.resize(dim);
+	
+	// For each city, store sorted list of all other cities by distance
+	for (size_t i = 0; i < dim; ++i)
+	{
+		std::vector<std::pair<float, size_t>> distances;
+		distances.reserve(dim - 1);
+		
+		for (size_t j = 0; j < dim; ++j)
+		{
+			if (i != j)
+			{
+				distances.emplace_back(m_DistanceMatrix[i][j], j);
+			}
+		}
+		
+		// Sort by distance (ascending)
+		std::sort(distances.begin(), distances.end());
+		
+		m_NearestNeighborsCache[i].reserve(distances.size());
+		for (const auto& [dist, idx] : distances)
+		{
+			m_NearestNeighborsCache[i].push_back(idx);
+		}
+	}
 }

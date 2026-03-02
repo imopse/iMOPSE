@@ -30,6 +30,17 @@
 *.exe
 *.out
 *.app
+<<<<<<< GPHH
+*/cmake-build*
+/out/build/x64-Debug
+/CMakeSettings.json
+/.vs
+
+#build folder
+/build
+/out
+optimizer/CMakeSettings.json
+=======
 
 # IDEs
 **/.idea/
@@ -52,3 +63,4 @@ optimizer/CMakeSettings.json
 **/*.ninja_deps
 **/*.ninja_log
 **/compile_commands.json
+>>>>>>> main

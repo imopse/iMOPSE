@@ -15,10 +15,13 @@ public:
     void Evaluate(AIndividual& individual) override;
     void LogSolution(AIndividual& individual) override;
     void LogAdditionalData() override {};
+    
+    float GetOptimalValue() override;
 
-protected:
+    CCVRPTemplate& GetCVRPTemplate() { return m_CVRPTemplate; }
     size_t GetNearestDepotIdx(size_t cityIdx);
 
+protected:
     std::vector<size_t> m_UpperBounds;
     SProblemEncoding m_ProblemEncoding;
     CCVRPTemplate& m_CVRPTemplate;
