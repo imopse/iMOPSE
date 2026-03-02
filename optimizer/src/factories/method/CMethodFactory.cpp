@@ -18,7 +18,11 @@
 #include "methods/MO/ANTGA/CANTGAFactory.h"
 #include "methods/MO/BNTGA/CBNTGAFactory.h"
 #include "methods/MO/SPEA2/CSPEA2Factory.h"
+<<<<<<< GPHH
 #include "methods/SO/GPHH/CGPHHFactory.h"
+=======
+#include "methods/MO/GPHH/CGPHHFactory.h"
+>>>>>>> main
 #include "../../utils/fileReader/CReadUtils.h"
 #include <iostream> 
 using namespace std;
@@ -51,6 +55,7 @@ AMethod* CMethodFactory::CreateMethod(
 	initialization = CInitializationFactory::Create(configMap, problem);
 
     // Create and return a specific optimization method based on the method name.
+<<<<<<< GPHH
 	if (strcmp(methodName.c_str(), "ACO") == 0)
 		return CACOFactory::CreateACO(configMap, problem, initialization, optimizerConfigPath);
 	if (strcmp(methodName.c_str(), "SA") == 0)
@@ -61,6 +66,20 @@ AMethod* CMethodFactory::CreateMethod(
 		return CDEFactory::CreateDE(configMap, problem, initialization);
 	if (strcmp(methodName.c_str(), "PSO") == 0)
 		return CPSOFactory::CreatePSO(configMap, problem, initialization);
+=======
+    if (strcmp(methodName.c_str(), "ACO") == 0)
+        return CACOFactory::CreateACO(configMap, problem, initialization, optimizerConfigPath);
+    if (strcmp(methodName.c_str(), "SA") == 0)
+        return CSAFactory::CreateSA(configMap, problem, initialization);
+    if (strcmp(methodName.c_str(), "TS") == 0)
+        return CTSFactory::CreateTS(configMap, problem, initialization);
+    if (strcmp(methodName.c_str(), "DE") == 0)
+        return CDEFactory::CreateDE(configMap, problem, initialization);
+    if (strcmp(methodName.c_str(), "PSO") == 0)
+        return CPSOFactory::CreatePSO(configMap, problem, initialization);
+    if (strcmp(methodName.c_str(), "GPHH") == 0)
+        return CGPHHFactory::CreateGPHH(configMap, problem, initialization);
+>>>>>>> main
 
 	// GPHH creates its own operators internally, so handle it before standard operator creation
 	if (strcmp(methodName.c_str(), "GPHH") == 0) {

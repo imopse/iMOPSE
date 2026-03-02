@@ -26,13 +26,11 @@
 *.a
 *.lib
 
-# IDEs
-*/.idea
-
 # Executables
 *.exe
 *.out
 *.app
+<<<<<<< GPHH
 */cmake-build*
 /out/build/x64-Debug
 /CMakeSettings.json
@@ -42,3 +40,27 @@
 /build
 /out
 optimizer/CMakeSettings.json
+=======
+
+# IDEs
+**/.idea/
+.vs/
+**/.vs/
+
+# Visual Studio CMake settings (local)
+CMakeSettings.json
+optimizer/CMakeSettings.json
+
+# CMake / build output (repo-wide)
+**/out/
+**/build/
+**/cmake-build*/
+**/CMakeFiles/
+**/CMakeCache.txt
+**/cmake_install.cmake
+**/Makefile
+**/*.ninja
+**/*.ninja_deps
+**/*.ninja_log
+**/compile_commands.json
+>>>>>>> main

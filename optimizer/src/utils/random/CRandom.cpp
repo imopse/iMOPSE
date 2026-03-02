@@ -1,11 +1,18 @@
 #include <algorithm>
 #include "CRandom.h"
 
-std::mt19937 CRandom::rng{std::random_device{}()};
+unsigned int CRandom::currentSeed = (unsigned int)std::random_device{}();
+std::mt19937 CRandom::rng{ CRandom::currentSeed };
 
 void CRandom::SetSeed(unsigned int seed)
 {
+    currentSeed = seed;
     rng.seed(seed);
+}
+
+unsigned int CRandom::GetSeed()
+{
+    return currentSeed;
 }
 
 int CRandom::GetBool()
