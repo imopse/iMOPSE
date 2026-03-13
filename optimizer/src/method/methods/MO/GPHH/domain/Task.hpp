@@ -9,6 +9,10 @@ struct Task {
     int reqLevel = 0;
     std::vector<int> predecessors;
 
+    int imopseIndex = -1;
+
+    std::vector<int> capableResources;
+
     int start = -1;
     int finish = -1;
     std::vector<int> assignedResources;

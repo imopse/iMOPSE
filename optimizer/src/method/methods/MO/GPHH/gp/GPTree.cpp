@@ -74,6 +74,12 @@ double GPTree::featureValue(FeatureId id, const Features& f) const {
     case FeatureId::UNSCHED_TASKS:
         return f.unschedTasks;
 
+    case FeatureId::MIN_FEASIBLE_COST_NOW:
+        return f.minFeasibleCostNow;
+
+    case FeatureId::COST_REGRET_NOW:
+        return f.costRegretNow;
+
     case FeatureId::RES_WAGE:
         return f.resWage;
 
@@ -89,6 +95,17 @@ double GPTree::featureValue(FeatureId id, const Features& f) const {
     case FeatureId::RES_UTILIZATION:
         return f.resUtilization;
 
+    case FeatureId::RES_WAGE_PER_LEVEL:
+        return f.resWagePerLevel;
+
+    case FeatureId::RES_SURPLUS_LEVEL: 
+        return f.resSurplusLevel;
+
+    case FeatureId::RES_RELATIVE_WAGE: 
+        return f.resRelativeWage;
+
+    case FeatureId::RES_FUTURE_DEMAND: 
+        return f.resFutureDemand;
     default:
         return 0.0;
     }
@@ -166,6 +183,12 @@ std::string GPTree::nodeLabel(int idx) const {
         case FeatureId::TASK_RES_COUNT:   nm = "TASK_RES";   break;
         case FeatureId::AVG_RES_COST:     nm = "RES_COST";   break;
         case FeatureId::UNSCHED_TASKS:    nm = "UNSCHED";    break;
+        case FeatureId::MIN_FEASIBLE_COST_NOW: nm = "MIN_COST_NOW"; break;
+        case FeatureId::COST_REGRET_NOW:       nm = "REGRET_NOW";   break;
+        case FeatureId::RES_WAGE_PER_LEVEL:  nm = "RES_W_PER_L";  break;
+        case FeatureId::RES_SURPLUS_LEVEL:  nm = "RES_SURPLUS";   break;
+        case FeatureId::RES_RELATIVE_WAGE:  nm = "RES_REL_WAGE";  break;
+        case FeatureId::RES_FUTURE_DEMAND:  nm = "RES_FUT_DEM";   break;
         }
         oss << "FEAT:" << nm;
         break;
@@ -221,11 +244,17 @@ namespace {
         case FeatureId::TASK_RES_COUNT: return "TASK_RES";
         case FeatureId::AVG_RES_COST:   return "RES_COST";
         case FeatureId::UNSCHED_TASKS:  return "UNSCHED";
+        case FeatureId::MIN_FEASIBLE_COST_NOW: return "MIN_COST_NOW";
+        case FeatureId::COST_REGRET_NOW:       return "REGRET_NOW";
         case FeatureId::RES_WAGE:            return "RES_WAGE";
         case FeatureId::RES_SKILL_LEVEL:     return "RES_SKILL";
         case FeatureId::RES_FREE_TIME:       return "RES_FREE";
         case FeatureId::RES_MULTI_SKILL:     return "RES_MULTI";
         case FeatureId::RES_UTILIZATION:     return "RES_UTIL";
+        case FeatureId::RES_WAGE_PER_LEVEL:  return "RES_W_PER_L";
+        case FeatureId::RES_SURPLUS_LEVEL: return "RES_SURPLUS";
+        case FeatureId::RES_RELATIVE_WAGE: return "RES_REL_WAGE";
+        case FeatureId::RES_FUTURE_DEMAND: return "RES_FUT_DEM";
         }
         return "?";
     }
@@ -324,12 +353,18 @@ std::string GPTree::toStringAt(int idx) const {
         case FeatureId::TASK_RES_COUNT: nm = "TASK_RES";  break;
         case FeatureId::AVG_RES_COST:   nm = "RES_COST";  break;
         case FeatureId::UNSCHED_TASKS:  nm = "UNSCHED";   break;
+        case FeatureId::MIN_FEASIBLE_COST_NOW: nm = "MIN_COST_NOW"; break;
+        case FeatureId::COST_REGRET_NOW:       nm = "REGRET_NOW";   break;
 
         case FeatureId::RES_WAGE:         nm = "RES_WAGE";  break;
         case FeatureId::RES_SKILL_LEVEL:  nm = "RES_SKILL"; break;
         case FeatureId::RES_FREE_TIME:    nm = "RES_FREE";  break;
         case FeatureId::RES_MULTI_SKILL:  nm = "RES_MULTI"; break;
         case FeatureId::RES_UTILIZATION:  nm = "RES_UTIL";  break;
+        case FeatureId::RES_WAGE_PER_LEVEL:  nm = "RES_W_PER_L";  break;
+        case FeatureId::RES_SURPLUS_LEVEL: nm = "RES_SURPLUS";  break;
+        case FeatureId::RES_RELATIVE_WAGE: nm = "RES_REL_WAGE"; break;
+        case FeatureId::RES_FUTURE_DEMAND: nm = "RES_FUT_DEM";  break;
 
         }
         oss << nm;
@@ -377,40 +412,63 @@ static BinaryOp sampleB(std::mt19937& rng) {
 }
 
 static FeatureId sampleFeatMS(std::mt19937& rng) {
-    std::uniform_int_distribution<int> U(0, 9);
+    std::uniform_int_distribution<int> U(0, 11);
     switch (U(rng)) {
-    case 0: return FeatureId::DURATION;
-    case 1: return FeatureId::REQ_LEVEL;
-    case 2: return FeatureId::AVAIL_SKILL;
-    case 3: return FeatureId::EST_PREC;
-    case 4: return FeatureId::SUCC_COUNT;
-    case 5: return FeatureId::CRITLEN;
-    case 6: return FeatureId::SLACK;
-    case 7: return FeatureId::AVAIL_GAP;
-    case 8: return FeatureId::WAIT_RES;
-    default:return FeatureId::TOT_PRED;
+    case 0:  return FeatureId::DURATION;
+    case 1:  return FeatureId::REQ_LEVEL;
+    case 2:  return FeatureId::AVAIL_SKILL;
+    case 3:  return FeatureId::EST_PREC;
+    case 4:  return FeatureId::SUCC_COUNT;
+    case 5:  return FeatureId::CRITLEN;
+    case 6:  return FeatureId::SLACK;
+    case 7:  return FeatureId::AVAIL_GAP;
+    case 8:  return FeatureId::WAIT_RES;
+    case 9:  return FeatureId::TOT_PRED;
+    case 10: return FeatureId::MIN_FEASIBLE_COST_NOW;
+    default: return FeatureId::COST_REGRET_NOW;
     }
 }
 
 
 static FeatureId sampleFeatRES(std::mt19937& rng) {
-    std::uniform_int_distribution<int> U(0, 4);
+    std::uniform_int_distribution<int> U(0, 8);
     switch (U(rng)) {
     case 0: return FeatureId::RES_WAGE;
     case 1: return FeatureId::RES_SKILL_LEVEL;
     case 2: return FeatureId::RES_FREE_TIME;
     case 3: return FeatureId::RES_MULTI_SKILL;
-    default: return FeatureId::RES_UTILIZATION;
+    case 4: return FeatureId::RES_UTILIZATION;
+    case 5: return FeatureId::RES_WAGE_PER_LEVEL;
+    case 6: return FeatureId::RES_SURPLUS_LEVEL;
+    case 7: return FeatureId::RES_RELATIVE_WAGE;
+    default: return FeatureId::RES_FUTURE_DEMAND;
     }
 }
 
 static int growMS(std::mt19937& rng, std::vector<GPNode>& v, int depth, int maxDepth) {
     std::uniform_real_distribution<double> U01(0.0, 1.0);
+
     if (depth == maxDepth || U01(rng) < 0.25) {
-        if (U01(rng) < 0.7) { GPNode f; f.kind = NodeKind::FEATURE; f.feat = sampleFeatMS(rng); return GPTree::add(v, f); }
-        GPNode c; c.kind = NodeKind::CONST; c.constant = (U01(rng) * 2.0 - 1.0); return GPTree::add(v, c);
+        if (U01(rng) < 0.7) {
+            GPNode f; f.kind = NodeKind::FEATURE; f.feat = sampleFeatMS(rng);
+            return GPTree::add(v, f);
+        }
+        GPNode c; c.kind = NodeKind::CONST;
+        c.constant = (U01(rng) * 2.0 - 1.0);
+        return GPTree::add(v, c);
     }
-    GPNode b; b.kind = NodeKind::BINARY; b.bop = sampleB(rng);
+
+    double r = U01(rng);
+    if (r < 0.20) {
+        GPNode u; u.kind = NodeKind::UNARY;
+        u.uop = sampleU(rng);
+        u.left = growMS(rng, v, depth + 1, maxDepth);
+        u.right = -1;
+        return GPTree::add(v, u);
+    }
+
+    GPNode b; b.kind = NodeKind::BINARY;
+    b.bop = sampleB(rng);
     b.left = growMS(rng, v, depth + 1, maxDepth);
     b.right = growMS(rng, v, depth + 1, maxDepth);
     return GPTree::add(v, b);
@@ -418,20 +476,27 @@ static int growMS(std::mt19937& rng, std::vector<GPNode>& v, int depth, int maxD
 
 static int growRES(std::mt19937& rng, std::vector<GPNode>& v, int depth, int maxDepth) {
     std::uniform_real_distribution<double> U01(0.0, 1.0);
+
     if (depth == maxDepth || U01(rng) < 0.25) {
         if (U01(rng) < 0.7) {
-            GPNode f;
-            f.kind = NodeKind::FEATURE;
-            f.feat = sampleFeatRES(rng);
+            GPNode f; f.kind = NodeKind::FEATURE; f.feat = sampleFeatRES(rng);
             return GPTree::add(v, f);
         }
-        GPNode c;
-        c.kind = NodeKind::CONST;
+        GPNode c; c.kind = NodeKind::CONST;
         c.constant = (U01(rng) * 2.0 - 1.0) * 10.0;
         return GPTree::add(v, c);
     }
-    GPNode b;
-    b.kind = NodeKind::BINARY;
+
+    double r = U01(rng);
+    if (r < 0.20) {
+        GPNode u; u.kind = NodeKind::UNARY;
+        u.uop = sampleU(rng);
+        u.left = growRES(rng, v, depth + 1, maxDepth);
+        u.right = -1;
+        return GPTree::add(v, u);
+    }
+
+    GPNode b; b.kind = NodeKind::BINARY;
     b.bop = sampleB(rng);
     b.left = growRES(rng, v, depth + 1, maxDepth);
     b.right = growRES(rng, v, depth + 1, maxDepth);
@@ -553,13 +618,25 @@ int GPTree::subtreeHeight(int index) const {
 
 std::vector<FeatureId> GPTree::allFeatures() {
     return {
-        FeatureId::DURATION, FeatureId::REQ_LEVEL, FeatureId::AVAIL_SKILL,
-        FeatureId::EST_PREC, FeatureId::SUCC_COUNT, FeatureId::CRITLEN,
-        FeatureId::SLACK, FeatureId::AVAIL_GAP, FeatureId::WAIT_RES,
-        FeatureId::TOT_PRED, FeatureId::CHEAPEST_COST_NOW, FeatureId::COST_PER_SKILL_NOW,
-        FeatureId::MIN_WAGE_AVAIL, FeatureId::AVG_WAGE_AVAIL, FeatureId::TEAM_SIZE_MIN_NOW,
-        FeatureId::NUM_TASKS, FeatureId::NUM_RESOURCES, FeatureId::NUM_SKILLS,
-        FeatureId::TASK_RES_COUNT, FeatureId::AVG_RES_COST, FeatureId::UNSCHED_TASKS
+        FeatureId::DURATION,
+        FeatureId::REQ_LEVEL,
+        FeatureId::AVAIL_SKILL,
+        FeatureId::EST_PREC,
+        FeatureId::SUCC_COUNT,
+        FeatureId::CRITLEN,
+        FeatureId::SLACK,
+        FeatureId::AVAIL_GAP,
+        FeatureId::WAIT_RES,
+        FeatureId::TOT_PRED,
+        FeatureId::CHEAPEST_COST_NOW,
+        FeatureId::COST_PER_SKILL_NOW,
+        FeatureId::MIN_WAGE_AVAIL,
+        FeatureId::AVG_WAGE_AVAIL,
+        FeatureId::TEAM_SIZE_MIN_NOW,
+        FeatureId::TASK_RES_COUNT,
+        FeatureId::AVG_RES_COST,
+        FeatureId::MIN_FEASIBLE_COST_NOW,
+        FeatureId::COST_REGRET_NOW
     };
 }
 

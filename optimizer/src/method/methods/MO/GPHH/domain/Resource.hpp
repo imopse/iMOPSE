@@ -9,4 +9,7 @@ struct Resource {
 
     bool busy = false;
     int  busyUntil = 0;
+
+    int  busyStart = 0;
+    int  totalBusy = 0;
 };

@@ -17,4 +17,18 @@ public:
         Features f = computeResourceFeatures(I, t, r, now);
         return tree->eval(f);
     }
+
+    double scoreFast(
+        const Instance& I,
+        int taskIx,
+        const Task& t,
+        const Resource& r,
+        int now,
+        double cheapestNow,
+        double futureDemandExcludingTask
+    ) const {
+        if (!tree) return 0.0;
+        Features f = computeResourceFeaturesFast(I, taskIx, t, r, now, cheapestNow, futureDemandExcludingTask);
+        return tree->eval(f);
+    }
 };

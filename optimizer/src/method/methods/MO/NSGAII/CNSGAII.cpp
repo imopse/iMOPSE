@@ -5,6 +5,8 @@
 #include "../utils/archive/ArchiveUtils.h"
 #include "../utils/clustering/CNonDominatedSorting.h"
 #include "../../../../utils/logger/ErrorUtils.h"
+#include "../../../../utils/logger/CExperimentLogger.h"
+#include "../utils/metrics/Hypervolume2D.h"
 
 CNSGAII::CNSGAII(AProblem &evaluator,
                  AInitialization &initialization,
@@ -41,6 +43,10 @@ void CNSGAII::RunOptimization()
     }
 
     ArchiveUtils::CopyToArchiveWithFiltering(m_Population, m_Archive);
+
+    std::ostringstream hv;
+    hv << "gen;hv\n";
+    hv << 0 << ";" << Metrics::HV2D_Ref11_FromArchive(m_Archive) << "\n";
 
     while (generation < m_GenerationLimit)
     {
@@ -97,9 +103,10 @@ void CNSGAII::RunOptimization()
         m_NextPopulation.reserve(m_Population.size());
 
         generation++;
+        hv << generation << ";" << Metrics::HV2D_Ref11_FromArchive(m_Archive) << "\n";
     }
 
-    ArchiveUtils::CopyToArchiveWithFiltering(m_NextPopulation, m_Archive);
+    CExperimentLogger::LogResult(hv.str().c_str(), "hv_history.csv");
     ArchiveUtils::LogParetoFront(m_Archive);
 }
 

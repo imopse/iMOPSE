@@ -1,4 +1,5 @@
 #include "CGPHH.h"
+#include "scheduler/Scheduler.hpp"
 #include "utils/logger/CExperimentLogger.h"
 #include "problem/problems/MSRCPSP/CMSRCPSP_TA.h"
 #include "problem/problems/MSRCPSP/CMSRCPSP_TO.h"
@@ -60,13 +61,19 @@ static std::string ToLower(std::string s)
 
 void CGPHH::RunOptimization()
 {
-    const CScheduler* sch = nullptr;
-    if (auto* p = dynamic_cast<CMSRCPSP_TA*>(&m_Problem)) sch = &p->GetScheduler();
-    if (auto* p = dynamic_cast<CMSRCPSP_TO*>(&m_Problem)) sch = &p->GetScheduler();
+    CScheduler* sch = nullptr;
+    bool isTAProblem = false;
+
+    if (auto* p = dynamic_cast<CMSRCPSP_TA*>(&m_Problem)) { sch = &p->GetScheduler(); isTAProblem = true; }
+    if (auto* p = dynamic_cast<CMSRCPSP_TO*>(&m_Problem)) { sch = &p->GetScheduler(); isTAProblem = false; }
 
     if (!sch) {
         throw std::runtime_error("GPHH works only with MSRCPSP_TA/MSRCPSP_TO problems.");
     }
+
+    SConfigMap cfgCopy;
+    SConfigMap* cfg = nullptr;
+    if (m_Cfg) { cfgCopy = *m_Cfg; cfg = &cfgCopy; }
 
     GPEA_Params P;
     P.popSize = 50;
@@ -77,31 +84,35 @@ void CGPHH::RunOptimization()
     P.maxDepth = 8;
     P.tournamentK = 2;
     P.eliteCount = 0;
-    P.useNSGA2 = (GetInt(m_Cfg, "UseNSGA2", 0) != 0);
+    P.useNSGA2 = (GetInt(cfg, "UseNSGA2", 0) != 0);
+    P.useBNTGA = (GetInt(cfg, "UseBNTGA", 0) != 0);
+    P.useImopseEvaluate = (GetInt(cfg, "UseImopseEvaluate", 1) != 0);
+    const bool enableFinalDiagnostics = (GetInt(cfg, "EnableFinalDiagnostics", 0) != 0);
 
 
-    P.popSize = (size_t)GetInt(m_Cfg, "PopulationSize", (int)P.popSize);
-    P.generations = (size_t)GetInt(m_Cfg, "Generations", (int)P.generations);
-    P.pCrossover = GetDouble(m_Cfg, "CrossoverProb", P.pCrossover);
+    P.popSize = (size_t)GetInt(cfg, "PopulationSize", (int)P.popSize);
+    P.generations = (size_t)GetInt(cfg, "Generations", (int)P.generations);
+    P.pCrossover = GetDouble(cfg, "CrossoverProb", P.pCrossover);
 
-    P.pMutParam = GetDouble(m_Cfg, "MutationProbParam", P.pMutParam);
-    P.pMutStruct = GetDouble(m_Cfg, "MutationProbStruct", P.pMutStruct);
+    P.pMutParam = GetDouble(cfg, "MutationProbParam", P.pMutParam);
+    P.pMutStruct = GetDouble(cfg, "MutationProbStruct", P.pMutStruct);
+    P.pMutMacroSubtree = GetDouble(cfg, "MacroSubtreeProb", P.pMutMacroSubtree);
 
     {
-        const double mutFallback = GetDouble(m_Cfg, "MutationProb", P.pMutParam);
-        P.pMutParam = GetDouble(m_Cfg, "ParamMutationProb", mutFallback);
-        P.pMutStruct = GetDouble(m_Cfg, "StructMutationProb", P.pMutStruct);
+        const double mutFallback = GetDouble(cfg, "MutationProb", P.pMutParam);
+        P.pMutParam = GetDouble(cfg, "ParamMutationProb", mutFallback);
+        P.pMutStruct = GetDouble(cfg, "StructMutationProb", P.pMutStruct);
     }
 
-    P.maxDepth = GetInt(m_Cfg, "MaxDepth", P.maxDepth);
-    P.weight = GetDouble(m_Cfg, "Weight", P.weight);
+    P.maxDepth = GetInt(cfg, "MaxDepth", P.maxDepth);
+    P.weight = GetDouble(cfg, "Weight", P.weight);
 
-    P.tournamentK = GetInt(m_Cfg, "TournamentSize", P.tournamentK);
-    P.eliteCount = (size_t)GetInt(m_Cfg, "EliteCount", (int)P.eliteCount);
+    P.tournamentK = GetInt(cfg, "TournamentSize", P.tournamentK);
+    P.eliteCount = (size_t)GetInt(cfg, "EliteCount", (int)P.eliteCount);
 
-    P.useNormalization = (GetInt(m_Cfg, "UseNormalization", (int)P.useNormalization) != 0);
+    P.useNormalization = (GetInt(cfg, "UseNormalization", (int)P.useNormalization) != 0);
 
-    g_trace = (GetInt(m_Cfg, "Trace", 0) != 0);
+    g_trace = (GetInt(cfg, "Trace", 0) != 0);
 
     if (m_HasSeedOverride) {
         P.seed = m_SeedOverride;
@@ -130,10 +141,177 @@ void CGPHH::RunOptimization()
 
     GPTree startTreeRes = GPTree::RandomTreeRES(rng, seedDepth);
 
-    TreeEA ea(inst, P);
+    TreeEA ea(inst, P, sch, isTAProblem);
     if (useBaseline) ea.setSeedTrees(startTreeTask, startTreeRes);
 
     auto best = ea.run();
+
+    {
+        const GP_Individual* gen0Best = nullptr;
+        if (ea.hasBestGen0()) gen0Best = &ea.getBestGen0();
+
+        std::ostringstream tlog;
+        tlog << "Seed=" << (unsigned long long)P.seed << "\n";
+        tlog << "StartRule=" << startRule
+            << " SeedDepth=" << seedDepth
+            << " UseBaseline=" << (useBaseline ? 1 : 0)
+            << " UseNSGA2=" << (P.useNSGA2 ? 1 : 0)
+            << " UseBNTGA=" << (P.useBNTGA ? 1 : 0)
+            << "\n";
+        tlog << "FinalBest: makespan=" << best.makespan << " cost=" << best.cost << "\n\n";
+
+        tlog << "Clamp(Task): calls=" << ea.getClampCallsTask()
+            << " applied=" << ea.getClampAppliedTask();
+
+        if (ea.getClampAppliedTask() > 0) {
+            tlog << " avgDepthBefore=" << (double)ea.getClampPrevDepthSumTask() / (double)ea.getClampAppliedTask()
+                << " avgNodesBefore=" << (double)ea.getClampPrevNodesSumTask() / (double)ea.getClampAppliedTask();
+        }
+        tlog << "\n";
+
+        tlog << "Clamp(Res ): calls=" << ea.getClampCallsRes()
+            << " applied=" << ea.getClampAppliedRes();
+
+        tlog << "MacroSubtree(Task): applied=" << ea.getMacroSubtreeAppliedTask() << "\n";
+        tlog << "MacroSubtree(Res ): applied=" << ea.getMacroSubtreeAppliedRes() << "\n\n";
+
+        if (ea.getClampAppliedRes() > 0) {
+            tlog << " avgDepthBefore=" << (double)ea.getClampPrevDepthSumRes() / (double)ea.getClampAppliedRes()
+                << " avgNodesBefore=" << (double)ea.getClampPrevNodesSumRes() / (double)ea.getClampAppliedRes();
+        }
+        tlog << "\n\n";
+
+        auto dumpTree = [&](const char* tag, const GPTree& tr) {
+            tlog << tag << "\n";
+            tlog << "nodes=" << tr.nodeCount() << " depth=" << tr.depth() << "\n";
+            tlog << "expr=" << tr.toString() << "\n\n";
+            };
+
+        dumpTree("START_TASK_TREE", startTreeTask);
+        dumpTree("START_RES_TREE", startTreeRes);
+
+        if (gen0Best) {
+            dumpTree("GEN0_BEST_TASK_TREE", gen0Best->taskTree);
+            dumpTree("GEN0_BEST_RES_TREE", gen0Best->resTree);
+        }
+
+        dumpTree("FINAL_BEST_TASK_TREE", best.taskTree);
+        dumpTree("FINAL_BEST_RES_TREE", best.resTree);
+
+        CExperimentLogger::LogResult(tlog.str().c_str(), "res_tree_report.txt");
+
+        std::ostringstream j;
+        j << "{\n";
+        j << "  \"seed\": " << (unsigned long long)P.seed << ",\n";
+        j << "  \"startRule\": \"" << startRule << "\",\n";
+        j << "  \"seedDepth\": " << seedDepth << ",\n";
+        j << "  \"useBaseline\": " << (useBaseline ? "true" : "false") << ",\n";
+        j << "  \"useNSGA2\": " << (P.useNSGA2 ? "true" : "false") << ",\n";
+        j << "  \"useBNTGA\": " << (P.useBNTGA ? "true" : "false") << ",\n";
+        j << "  \"finalBest\": {\"makespan\": " << best.makespan << ", \"cost\": " << best.cost << "},\n";
+
+        j << "  \"startTask\": " << startTreeTask.toJson() << ",\n";
+        if (gen0Best) {
+            j << "  \"gen0BestTask\": " << gen0Best->taskTree.toJson() << ",\n";
+        }
+        else {
+            j << "  \"gen0BestTask\": null,\n";
+        }
+        j << "  \"finalBestTask\": " << best.taskTree.toJson() << ",\n";
+
+        j << "  \"startRes\": " << startTreeRes.toJson() << ",\n";
+        if (gen0Best) {
+            j << "  \"gen0BestRes\": " << gen0Best->resTree.toJson() << ",\n";
+        }
+        else {
+            j << "  \"gen0BestRes\": null,\n";
+        }
+        j << "  \"finalBestRes\": " << best.resTree.toJson() << "\n";
+
+        j << "}\n";
+
+        CExperimentLogger::LogResult(j.str().c_str(), "res_tree_report.json");
+
+        if (enableFinalDiagnostics) {
+            ResChoiceDiag diag;
+            Scheduler::setResChoiceDiag(&diag);
+
+            Instance Idbg = inst;
+            GPTreeRule    dbgT(best.taskTree);
+            GPTreeResRule dbgR(best.resTree);
+            (void)Scheduler::withResources(Idbg, dbgT, &dbgR);
+
+            Scheduler::setResChoiceDiag(nullptr);
+
+            std::ostringstream d;
+            d << "calls=" << diag.calls << "\n";
+            d << "emptyCalls=" << diag.emptyCalls << "\n";
+            if (diag.calls > 0) {
+                d << "avgCandidates=" << (double)diag.sumCandidates / (double)diag.calls << "\n";
+                d << "avgUniqueScores=" << (double)diag.sumUniqueScores / (double)diag.calls << "\n";
+                d << "avgTiesMin=" << (double)diag.sumTiesMin / (double)diag.calls << "\n";
+                if (diag.sumCandidates > 0) {
+                    d << "minTieRate=" << (double)diag.sumTiesMin / (double)diag.sumCandidates << "\n";
+                }
+            }
+
+            CExperimentLogger::LogResult(d.str().c_str(), "res_rule_diag.txt");
+
+            {
+                ResFeatureDiag rfd;
+                TaskFeatureDiag tfd;
+
+                Scheduler::setResFeatureDiag(&rfd);
+                Scheduler::setTaskFeatureDiag(&tfd);
+
+                Instance Idbg = inst;
+                GPTreeRule    dbgT(best.taskTree);
+                GPTreeResRule dbgR(best.resTree);
+                (void)Scheduler::withResources(Idbg, dbgT, &dbgR);
+
+                Scheduler::setResFeatureDiag(nullptr);
+                Scheduler::setTaskFeatureDiag(nullptr);
+
+                auto dumpTable = [](std::ostringstream& out,
+                    const auto& names,
+                    const auto& stats) {
+                        out << "name;groups;avgCandidates;avgUnique;pctAllEqual;pctAllZero;avgRange;pctGroupsNonFinite;pctValuesNonFinite\n";
+                        for (size_t i = 0; i < names.size(); ++i) {
+                            const auto& st = stats[i];
+                            double g = (double)st.groups;
+                            double avgCand = (g > 0) ? (double)st.sumCandidates / g : 0.0;
+                            double avgUniq = (g > 0) ? (double)st.sumUnique / g : 0.0;
+                            double pctEq = (g > 0) ? 100.0 * (double)st.groupsAllEqual / g : 0.0;
+                            double pct0 = (g > 0) ? 100.0 * (double)st.groupsAllZero / g : 0.0;
+                            double avgR = (g > 0) ? st.sumRange / g : 0.0;
+                            double pctGNF = (g > 0) ? 100.0 * (double)st.groupsWithNonFinite / g : 0.0;
+                            double pctVNF = (st.sumCandidates > 0) ? 100.0 * (double)st.nonFiniteValues / (double)st.sumCandidates : 0.0;
+
+                            out << names[i] << ";"
+                                << st.groups << ";"
+                                << avgCand << ";"
+                                << avgUniq << ";"
+                                << pctEq << ";"
+                                << pct0 << ";"
+                                << avgR << ";"
+                                << pctGNF << ";"
+                                << pctVNF << "\n";
+                        }
+                    };
+
+                {
+                    std::ostringstream out;
+                    dumpTable(out, RES_FEAT_NAMES, rfd.st);
+                    CExperimentLogger::LogResult(out.str().c_str(), "feature_diag_res.txt");
+                }
+                {
+                    std::ostringstream out;
+                    dumpTable(out, TASK_FEAT_NAMES, tfd.st);
+                    CExperimentLogger::LogResult(out.str().c_str(), "feature_diag_task.txt");
+                }
+            }
+        }
+    }
 
     {
         const auto& hv = ea.getHistHV();

@@ -1,6 +1,7 @@
 ﻿#include "TreeEA.hpp"
 #include "../rules/GPTreeRule.hpp"
 #include "../rules/GPTreeResRule.hpp"
+#include "problem/problems/MSRCPSP/CScheduler.h"
 #include <cmath>
 #include <cassert>
 #include <algorithm>
@@ -20,19 +21,24 @@ static const std::vector<FeatureId>& taskFeatPool() {
     static const std::vector<FeatureId> v = GPTree::allFeatures();
     return v;
 }
+
 static const std::vector<FeatureId>& resFeatPool() {
     static const std::vector<FeatureId> v = {
         FeatureId::RES_WAGE,
         FeatureId::RES_SKILL_LEVEL,
         FeatureId::RES_FREE_TIME,
         FeatureId::RES_MULTI_SKILL,
-        FeatureId::RES_UTILIZATION
+        FeatureId::RES_UTILIZATION,
+        FeatureId::RES_WAGE_PER_LEVEL,
+        FeatureId::RES_SURPLUS_LEVEL,
+        FeatureId::RES_RELATIVE_WAGE,
+        FeatureId::RES_FUTURE_DEMAND
     };
     return v;
 }
 
-TreeEA::TreeEA(Instance& I, const GPEA_Params& params)
-    : inst(I), P(params), rng(static_cast<unsigned>(P.seed)) {
+TreeEA::TreeEA(Instance& I, const GPEA_Params& params, CScheduler* imopseScheduler, bool isTAProblem)
+    : inst(I), P(params), rng(static_cast<unsigned>(P.seed)), imopseSch_(imopseScheduler), imopseIsTA_(isTAProblem) {
     gp::buildCPM(inst, cpm);
     gp::setCPMPrecalc(&cpm);
     bounds = compute_imopse_bounds(inst);
@@ -65,18 +71,60 @@ GP_Individual TreeEA::evaluate(const GP_Individual& src) const {
     GPTreeRule    ruleT(ind.taskTree);
     GPTreeResRule ruleR(ind.resTree);
 
-    auto res = Scheduler::withResources(Ic, ruleT, &ruleR);
+    auto sim = Scheduler::withResources(Ic, ruleT, &ruleR);
 
-    ind.makespan = res.makespan;
-    ind.cost = res.totalCost;
+    int ms = sim.makespan;
+    double cost = sim.totalCost;
 
-    auto normVals = imopse_minmax_normalize(ind.makespan, ind.cost, bounds);
-    ind.msNorm = normVals.first;
-    ind.costNorm = normVals.second;
+    if (P.useImopseEvaluate && imopseSch_ && imopseIsTA_) {
+        CScheduler& sch = *imopseSch_;
+        const auto& tasks = sch.GetTasks();
+        const size_t n = tasks.size();
+
+        auto pickCheapestCapable = [&](size_t taskIdx) -> TResourceID {
+            std::vector<TResourceID> cap;
+            sch.GetCapableResources(tasks[taskIdx], cap);
+            if (cap.empty()) return (TResourceID)1;
+
+            TResourceID best = cap[0];
+            float bestSal = sch.GetResourceById(best)->GetSalary();
+            for (size_t k = 1; k < cap.size(); ++k) {
+                float s = sch.GetResourceById(cap[k])->GetSalary();
+                if (s < bestSal) { bestSal = s; best = cap[k]; }
+            }
+            return best;
+            };
+
+        sch.Reset();
+        for (size_t i = 0; i < n; ++i) {
+            int rid = (i < sim.assignedResByImopseTaskIndex.size()) ? sim.assignedResByImopseTaskIndex[i] : -1;
+            TResourceID resId = (rid > 0) ? (TResourceID)rid : pickCheapestCapable(i);
+            sch.Assign(i, resId);
+        }
+        sch.BuildTimestamps_TA();
+
+        ms = (int)sch.EvaluateDuration();
+        cost = (double)sch.EvaluateCost();
+
+        const double msMin = (double)sch.GetMinDuration();
+        const double msMax = (double)sch.GetMaxDuration();
+        const double cMin = (double)sch.GetMinCost();
+        const double cMax = (double)sch.GetMaxCost();
+
+        ind.msNorm = (ms - msMin) / (msMax - msMin);
+        ind.costNorm = (cost - cMin) / (cMax - cMin);
+    }
+    else {
+        auto normVals = imopse_minmax_normalize(ms, cost, bounds);
+        ind.msNorm = normVals.first;
+        ind.costNorm = normVals.second;
+    }
+
+    ind.makespan = ms;
+    ind.cost = cost;
 
     const double fitnessNorm = P.weight * ind.msNorm + (1.0 - P.weight) * ind.costNorm;
     const double fitnessRaw = P.weight * (double)ind.makespan + (1.0 - P.weight) * ind.cost;
-
     ind.fitness = P.useNormalization ? fitnessNorm : fitnessRaw;
 
     return ind;
@@ -128,21 +176,98 @@ static int depthOf(const GPTree& tr, int idx) {
     if (n.kind == NodeKind::BINARY) return 1 + std::max(depthOf(tr, n.left), depthOf(tr, n.right));
     return 1;
 }
+
 void TreeEA::clampDepth(GPTree& t, int maxDepth, bool isResTree) {
-    if (t.root < 0 || t.root >= (int)t.nodes.size()) return;
+    if (t.isEmpty()) return;
+
+    if (isResTree) ++clampCallsRes_;
+    else           ++clampCallsTask_;
+
+    const int allowedDepth = maxDepth + 1;
+
+    const int beforeDepth = t.depth();
+    if (beforeDepth <= allowedDepth) return;
+
+    const size_t beforeNodes = t.nodes.size();
+
+    if (isResTree) {
+        ++clampAppliedRes_;
+        clampPrevDepthSumRes_ += (size_t)beforeDepth;
+        clampPrevNodesSumRes_ += beforeNodes;
+    }
+    else {
+        ++clampAppliedTask_;
+        clampPrevDepthSumTask_ += (size_t)beforeDepth;
+        clampPrevNodesSumTask_ += beforeNodes;
+    }
 
     const auto& pool = isResTree ? resFeatPool() : taskFeatPool();
 
-    while (depthOf(t, t.root) > maxDepth) {
+    auto makeLeaf = [&]() -> GPNode {
         GPNode leaf{};
-        if (rand01() < 0.7) {
+        if (rand01() < 0.90) {
             leaf.kind = NodeKind::FEATURE;
             leaf.feat = pool[randInt(0, (int)pool.size() - 1)];
         }
         else {
             leaf.kind = NodeKind::CONST;
-            leaf.constant = 0.0;
+            std::uniform_real_distribution<double> U(-1.0, 1.0);
+            leaf.constant = U(rng);
         }
+        leaf.left = -1;
+        leaf.right = -1;
+        return leaf;
+        };
+
+    std::vector<int> q;
+    q.reserve(t.nodes.size());
+
+    std::vector<int> d(t.nodes.size(), -1);
+    q.push_back(t.root);
+    d[t.root] = 0;
+
+    for (size_t i = 0; i < q.size(); ++i) {
+        const int u = q[i];
+        const int du = d[u];
+        GPNode& n = t.nodes[u];
+
+        if (du >= allowedDepth - 1) {
+            if (n.kind == NodeKind::UNARY || n.kind == NodeKind::BINARY) {
+                n = makeLeaf();
+            }
+            continue;
+        }
+
+        auto push = [&](int v) {
+            if (v >= 0 && v < (int)t.nodes.size() && d[v] == -1) {
+                d[v] = du + 1;
+                q.push_back(v);
+            }
+            };
+
+        if (n.kind == NodeKind::UNARY) {
+            push(n.left);
+        }
+        else if (n.kind == NodeKind::BINARY) {
+            push(n.left);
+            push(n.right);
+        }
+    }
+
+    t = t.extractSubtree(t.root);
+
+    if (!t.hasAnyFeature()) {
+        GPNode leaf{};
+        leaf.kind = NodeKind::FEATURE;
+        leaf.feat = pool[randInt(0, (int)pool.size() - 1)];
+        leaf.left = leaf.right = -1;
+        t.nodes.clear();
+        t.nodes.push_back(leaf);
+        t.root = 0;
+    }
+
+    if (t.depth() > allowedDepth) {
+        GPNode leaf = makeLeaf();
         t.nodes.clear();
         t.nodes.push_back(leaf);
         t.root = 0;
@@ -250,18 +375,33 @@ void TreeEA::mutateStruct(GPTree& t, bool isResTree) {
     const auto& pool = isResTree ? resFeatPool() : taskFeatPool();
 
     double r = rand01();
-    if (r < 0.34) {
+    if (r < 0.25) {
         auto& n = t.nodes[i];
         n.kind = NodeKind::FEATURE;
         n.left = n.right = -1;
         n.feat = pool[randInt(0, (int)pool.size() - 1)];
     }
-    else if (r < 0.67) {
+    else if (r < 0.50) {
         auto& n = t.nodes[i];
         n.kind = NodeKind::CONST;
         n.left = n.right = -1;
         std::uniform_real_distribution<double> U(-5.0, 5.0);
         n.constant = U(rng);
+    }
+    else if (r < 0.75) {
+        t.nodes[i].kind = NodeKind::UNARY;
+        t.nodes[i].uop = (rand01() < 0.5 ? UnaryOp::NEG : UnaryOp::ABS);
+
+        GPNode C{};
+        if (rand01() < 0.5) { C.kind = NodeKind::FEATURE; C.feat = pool[randInt(0, (int)pool.size() - 1)]; }
+        else { C.kind = NodeKind::CONST; C.constant = 0.0; }
+        C.left = C.right = -1;
+
+        int childIdx = (int)t.nodes.size();
+        t.nodes.push_back(C);
+
+        t.nodes[i].left = childIdx;
+        t.nodes[i].right = -1;
     }
     else {
         t.nodes.reserve(t.nodes.size() + 2);
@@ -276,16 +416,49 @@ void TreeEA::mutateStruct(GPTree& t, bool isResTree) {
         if (rand01() < 0.5) { R.kind = NodeKind::FEATURE; R.feat = pool[randInt(0, (int)pool.size() - 1)]; }
         else { R.kind = NodeKind::CONST;   R.constant = 0.0; }
 
-        int leftIdx = (int)t.nodes.size();
-        t.nodes.push_back(L);
-        int rightIdx = (int)t.nodes.size();
-        t.nodes.push_back(R);
+        int leftIdx = (int)t.nodes.size();  t.nodes.push_back(L);
+        int rightIdx = (int)t.nodes.size(); t.nodes.push_back(R);
 
         t.nodes[i].left = leftIdx;
         t.nodes[i].right = rightIdx;
     }
 
     clampDepth(t, P.maxDepth, isResTree);
+}
+
+void TreeEA::mutateMacroSubtreeReplace(GPTree& t, bool isResTree) {
+    if (t.isEmpty()) return;
+
+    if (isResTree) ++macroSubtreeAppliedRes_;
+    else           ++macroSubtreeAppliedTask_;
+
+    const int replaceIdx = pickRandomNode(t);
+    if (replaceIdx < 0) return;
+
+    const int minD = std::max(2, P.maxDepth / 2);
+    const int maxD = std::max(2, P.maxDepth);
+    const int regrowDepth = randInt(minD, maxD);
+
+    GPTree donor = isResTree
+        ? GPTree::RandomTreeRES(rng, regrowDepth)
+        : GPTree::RandomTreeMS(rng, regrowDepth);
+
+    clampDepth(donor, P.maxDepth, isResTree);
+
+    GPTree base = t;
+    GPTree child = base.graftedWith(replaceIdx, donor);
+    clampDepth(child, P.maxDepth, isResTree);
+
+    auto ok = [&](const GPTree& tr) {
+        return !tr.isEmpty() && tr.nodeCount() <= 100000 && tr.isStructurallySound();
+        };
+
+    if (ok(child)) {
+        t = std::move(child);
+    }
+    else {
+        t = std::move(base);
+    }
 }
 
 void TreeEA::updatePareto(const GP_Individual& ind) {
@@ -314,10 +487,192 @@ bool TreeEA::dominatesMO(const GP_Individual& a, const GP_Individual& b) const {
     return noWorse && strictlyBetter;
 }
 
+static bool sameObj(const GP_Individual& a, const GP_Individual& b) {
+    return (a.makespan == b.makespan) && (std::abs(a.cost - b.cost) < 1e-9);
+}
+
+
+static bool isDominatedByNorm(const GP_Individual& self, const GP_Individual& other)
+{
+    if (self.msNorm < other.msNorm) return false;
+    if (self.costNorm < other.costNorm) return false;
+
+    if (other.msNorm < self.msNorm) return true;
+    if (other.costNorm < self.costNorm) return true;
+
+    return false;
+}
+
+static bool isDuplicateEvalValueNorm(const GP_Individual& a, const GP_Individual& b)
+{
+    return (a.msNorm == b.msNorm) && (a.costNorm == b.costNorm);
+}
+
+void TreeEA::copyToArchiveWithFiltering(const std::vector<GP_Individual>& individuals)
+{
+    std::vector<const GP_Individual*> filteredIndividuals;
+    filteredIndividuals.reserve(individuals.size());
+
+    for (size_t p = 0; p < individuals.size(); ++p)
+    {
+        const GP_Individual* newInd = &individuals[p];
+        bool isDominated = false;
+
+        size_t i = 0;
+        while (!isDominated && i < individuals.size())
+        {
+            if (p != i)
+            {
+                isDominated = isDominatedByNorm(*newInd, individuals[i]);
+                if (!isDominated && p < i)
+                {
+                    isDominated = isDuplicateEvalValueNorm(*newInd, individuals[i]);
+                }
+            }
+            ++i;
+        }
+
+        i = 0;
+        while (!isDominated && i < archive_.size())
+        {
+            isDominated = isDominatedByNorm(*newInd, archive_[i]);
+            if (!isDominated)
+            {
+                isDominated = isDuplicateEvalValueNorm(*newInd, archive_[i]);
+            }
+            ++i;
+        }
+
+        if (!isDominated)
+        {
+            filteredIndividuals.push_back(newInd);
+        }
+    }
+
+    archive_.erase(std::remove_if(archive_.begin(), archive_.end(),
+        [&](const GP_Individual& ind)
+        {
+            for (const GP_Individual* filteredInd : filteredIndividuals)
+            {
+                if (isDominatedByNorm(ind, *filteredInd))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }),
+        archive_.end());
+
+    archive_.reserve(archive_.size() + filteredIndividuals.size());
+    for (const GP_Individual* filteredInd : filteredIndividuals)
+    {
+        GP_Individual copy = *filteredInd;
+        copy.selectedCount = 0;
+        archive_.push_back(std::move(copy));
+    }
+}
+
+double TreeEA::objNorm(const GP_Individual& x, int objId) const {
+    return (objId == 0) ? x.msNorm : x.costNorm;
+}
+
+
+std::vector<std::pair<int, int>> TreeEA::selectParentsBNTGA(int objectiveNumber, int populationSize)
+{
+    std::vector<std::pair<int, int>> selectedParents;
+
+    if (archive_.size() < 2)
+    {
+        if (!archive_.empty()) selectedParents.emplace_back(0, 0);
+        return selectedParents;
+    }
+
+    const int objectiveId = randInt(0, objectiveNumber - 1);
+
+    std::sort(archive_.begin(), archive_.end(),
+        [&](const GP_Individual& a, const GP_Individual& b)
+        {
+            return objNorm(a, objectiveId) < objNorm(b, objectiveId);
+        });
+
+    const size_t n = archive_.size();
+    std::vector<double> gapValues(n, 0.0);
+
+    gapValues[0] = std::numeric_limits<double>::max();
+    gapValues[n - 1] = std::numeric_limits<double>::max();
+
+    for (size_t i = 1; i < n - 1; ++i)
+    {
+        const double iValue = objNorm(archive_[i], objectiveId);
+        gapValues[i] = std::max(iValue - objNorm(archive_[i - 1], objectiveId),
+            objNorm(archive_[i + 1], objectiveId) - iValue);
+    }
+
+    for (size_t i = 0; i < n; ++i)
+    {
+        gapValues[i] = gapValues[i] / (double)(archive_[i].selectedCount + 1);
+    }
+
+    auto selectParentIdxByTournament = [&]() -> int
+        {
+            int parentIdx = randInt(0, (int)n - 1);
+            double bestGap = gapValues[(size_t)parentIdx];
+            for (int i = 1; i < P.tournamentK; ++i)
+            {
+                int randomIdx = randInt(0, (int)n - 1);
+                if (gapValues[(size_t)randomIdx] > bestGap)
+                {
+                    bestGap = gapValues[(size_t)randomIdx];
+                    parentIdx = randomIdx;
+                }
+            }
+            return parentIdx;
+        };
+
+    selectedParents.reserve((size_t)populationSize / 2);
+    for (int i = 0; i < populationSize; i += 2)
+    {
+        const int firstParentIdx = selectParentIdxByTournament();
+
+        int secondParentIdx = 0;
+        if (firstParentIdx == 0)
+        {
+            secondParentIdx = 1;
+        }
+        else if (firstParentIdx == (int)n - 1)
+        {
+            secondParentIdx = (int)n - 2;
+        }
+        else
+        {
+            secondParentIdx = firstParentIdx + (randInt(0, 1) == 0 ? 1 : -1);
+        }
+
+        archive_[(size_t)firstParentIdx].selectedCount += 1;
+        archive_[(size_t)secondParentIdx].selectedCount += 1;
+
+        selectedParents.emplace_back(firstParentIdx, secondParentIdx);
+    }
+
+    return selectedParents;
+}
+
 std::vector<std::vector<int>> TreeEA::nonDominatedSort(std::vector<GP_Individual>& pop) const
 {
+
+    auto dominatesNorm = [](const GP_Individual& a, const GP_Individual& b) -> bool
+        {
+            if (b.msNorm < a.msNorm)   return false;
+            if (b.costNorm < a.costNorm) return false;
+
+            if (a.msNorm < b.msNorm)   return true;
+            if (a.costNorm < b.costNorm) return true;
+
+            return false;
+        };
+
     const int N = (int)pop.size();
-    std::vector<std::vector<int>> S(N);   
+    std::vector<std::vector<int>> S(N);
     std::vector<int> n(N, 0);
     std::vector<std::vector<int>> fronts;
 
@@ -330,10 +685,10 @@ std::vector<std::vector<int>> TreeEA::nonDominatedSort(std::vector<GP_Individual
         for (int q = 0; q < N; ++q) {
             if (p == q) continue;
 
-            if (dominatesMO(pop[p], pop[q])) {
+            if (dominatesNorm(pop[p], pop[q])) {
                 S[p].push_back(q);
             }
-            else if (dominatesMO(pop[q], pop[p])) {
+            else if (dominatesNorm(pop[q], pop[p])) {
                 n[p]++;
             }
         }
@@ -374,8 +729,8 @@ void TreeEA::calcCrowdingDistance(std::vector<GP_Individual>& pop, const std::ve
         std::vector<int> idx = front;
         std::sort(idx.begin(), idx.end(), [&](int a, int b) { return getter(pop[a]) < getter(pop[b]); });
 
-        pop[idx.front()].crowding = std::numeric_limits<double>::infinity();
-        pop[idx.back()].crowding = std::numeric_limits<double>::infinity();
+        pop[idx.front()].crowding = std::numeric_limits<double>::max();
+        pop[idx.back()].crowding = std::numeric_limits<double>::max();
 
         for (int i = 1; i < (int)idx.size() - 1; ++i) {
             if (!std::isfinite(pop[idx[i]].crowding)) continue;
@@ -391,17 +746,16 @@ void TreeEA::calcCrowdingDistance(std::vector<GP_Individual>& pop, const std::ve
 
 const GP_Individual& TreeEA::tournamentMO(const std::vector<GP_Individual>& pop, int k)
 {
-    int best = -1;
+    int best = randInt(0, (int)pop.size() - 1);
+    int bestRank = pop[best].rank;
 
-    auto better = [&](int a, int b) {
-        if (pop[a].rank != pop[b].rank) return pop[a].rank < pop[b].rank;
-        if (pop[a].crowding != pop[b].crowding) return pop[a].crowding > pop[b].crowding;
-        return pop[a].fitness < pop[b].fitness;
-        };
-
-    for (int i = 0; i < k; ++i) {
+    for (int i = 1; i < k; ++i) {
         int j = randInt(0, (int)pop.size() - 1);
-        if (best == -1 || better(j, best)) best = j;
+        int r = pop[j].rank;
+        if (r < bestRank) {
+            bestRank = r;
+            best = j;
+        }
     }
     return pop[best];
 }
@@ -410,39 +764,36 @@ std::vector<GP_Individual> TreeEA::selectNextPopulationNSGA2(std::vector<GP_Indi
 {
     auto fronts = nonDominatedSort(combined);
 
-    for (const auto& f : fronts) calcCrowdingDistance(combined, f);
-
     std::vector<GP_Individual> next;
     next.reserve(P.popSize);
 
     for (const auto& f : fronts) {
         if (f.empty()) break;
 
-        if (next.size() + f.size() <= P.popSize) {
-            for (int idx : f) next.push_back(combined[idx]);
-        }
-        else {
+        if (next.size() + f.size() > P.popSize) {
+            calcCrowdingDistance(combined, f);
+
             std::vector<int> tmp = f;
             std::sort(tmp.begin(), tmp.end(), [&](int a, int b) {
-                if (combined[a].crowding != combined[b].crowding) return combined[a].crowding > combined[b].crowding;
-                return combined[a].fitness < combined[b].fitness;
+                return combined[a].crowding < combined[b].crowding; 
                 });
 
-            while (next.size() < P.popSize && !tmp.empty()) {
-                next.push_back(combined[tmp.front()]);
-                tmp.erase(tmp.begin());
+            for (int idx : tmp) {
+                next.push_back(combined[idx]);
+                if (next.size() >= P.popSize) break;
             }
             break;
         }
+        else {
+            for (int idx : f) next.push_back(combined[idx]);
+        }
     }
-
-    auto f2 = nonDominatedSort(next);
-    for (const auto& f : f2) calcCrowdingDistance(next, f);
 
     return next;
 }
 
 static double clamp01(double v) {
+    if (!std::isfinite(v)) return 1.0;
     if (v < 0.0) return 0.0;
     if (v > 1.0) return 1.0;
     return v;
@@ -484,22 +835,159 @@ static double hv2d_ref11_from_pareto(const std::vector<GP_ParetoPoint>& pf)
     return hv;
 }
 
+static double hv2d_ref11_from_archive(const std::vector<GP_Individual>& arch) {
+    if (arch.empty()) return 0.0;
+
+    std::vector<GP_ParetoPoint> pf;
+    pf.reserve(arch.size());
+    for (const auto& x : arch) {
+        GP_ParetoPoint p;
+        p.makespan = x.makespan;
+        p.cost = x.cost;
+        p.msNorm = x.msNorm;
+        p.costNorm = x.costNorm;
+        pf.push_back(p);
+    }
+    return hv2d_ref11_from_pareto(pf);
+}
+
 GP_Individual TreeEA::run() {
     std::vector<GP_Individual> pop;
     initPopulation(pop);
 
-    pareto_.clear();
-    pareto_.reserve(P.popSize * 2);
-    for (const auto& ind : pop) updatePareto(ind);
-    histHV_.clear();
-    histHV_.reserve(P.generations + 1);
-    histHV_.push_back(hv2d_ref11_from_pareto(pareto_));
+    if (P.useBNTGA) {
+        archive_.clear();
+        archive_.reserve(P.popSize * 2);
 
+        copyToArchiveWithFiltering(pop);
 
-    if (P.useNSGA2) {
-        auto fronts0 = nonDominatedSort(pop);
-        for (const auto& f : fronts0) calcCrowdingDistance(pop, f);
+        histHV_.clear();
+        histHV_.reserve(P.generations + 1);
+        histHV_.push_back(hv2d_ref11_from_archive(archive_));
+
+        histBest_.clear();
+        histAvg_.clear();
+        histWorst_.clear();
+
+        auto bestIt0 = std::min_element(pop.begin(), pop.end(),
+            [](const GP_Individual& a, const GP_Individual& b) { return a.fitness < b.fitness; });
+
+        GP_Individual bestSoFar = *bestIt0;
+
+        auto worstIt0 = std::max_element(pop.begin(), pop.end(),
+            [](const GP_Individual& a, const GP_Individual& b) { return a.fitness < b.fitness; });
+
+        double sum0 = std::accumulate(pop.begin(), pop.end(), 0.0,
+            [](double acc, const GP_Individual& x) { return acc + x.fitness; });
+
+        double avg0 = sum0 / std::max<size_t>(1, pop.size());
+
+        histBest_.push_back(bestIt0->fitness);
+        histAvg_.push_back(avg0);
+        histWorst_.push_back(worstIt0->fitness);
+
+        bestGen0_ = *bestIt0;
+        hasBestGen0_ = true;
+
+        for (size_t gen = 0; gen < P.generations; ++gen) {
+
+            std::vector<GP_Individual> offspring;
+            offspring.reserve(P.popSize);
+
+            auto pairs = selectParentsBNTGA(/*objectiveNumber=*/2, (int)P.popSize);
+
+            const std::vector<GP_Individual> archiveSnap = archive_;
+
+            for (auto [ia, ib] : pairs) {
+
+                if (ia < 0 || ib < 0 || ia >= (int)archiveSnap.size() || ib >= (int)archiveSnap.size()) {
+                    continue;
+                }
+
+                GP_Individual c1 = archiveSnap[ia];
+                GP_Individual c2 = archiveSnap[ib];
+
+                if (rand01() < P.pCrossover) crossover(c1.taskTree, c2.taskTree, false);
+                if (rand01() < P.pCrossover) crossover(c1.resTree, c2.resTree, true);
+
+                if (rand01() < P.pMutParam)  mutateParam(c1.taskTree, false);
+                if (rand01() < P.pMutParam)  mutateParam(c2.taskTree, false);
+                if (rand01() < P.pMutParam)  mutateParam(c1.resTree, true);
+                if (rand01() < P.pMutParam)  mutateParam(c2.resTree, true);
+
+                auto structOrMacro = [&](GPTree& tr, bool isRes) {
+                    if (rand01() < P.pMutMacroSubtree) mutateMacroSubtreeReplace(tr, isRes);
+                    else if (rand01() < P.pMutStruct)  mutateStruct(tr, isRes);
+                    };
+
+                structOrMacro(c1.taskTree, false);
+                structOrMacro(c2.taskTree, false);
+                structOrMacro(c1.resTree, true);
+                structOrMacro(c2.resTree, true);
+
+                auto e1 = evaluate(c1);
+                offspring.push_back(e1);
+
+                if (offspring.size() < P.popSize) {
+                    auto e2 = evaluate(c2);
+                    offspring.push_back(e2);
+                }
+            }
+
+            copyToArchiveWithFiltering(offspring);
+
+            pop.swap(offspring);
+
+            auto itBest = std::min_element(pop.begin(), pop.end(),
+                [](const GP_Individual& a, const GP_Individual& b) { return a.fitness < b.fitness; });
+
+            auto itWorst = std::max_element(pop.begin(), pop.end(),
+                [](const GP_Individual& a, const GP_Individual& b) { return a.fitness < b.fitness; });
+
+            double sum = std::accumulate(pop.begin(), pop.end(), 0.0,
+                [](double acc, const GP_Individual& x) { return acc + x.fitness; });
+
+            double avg = sum / std::max<size_t>(1, pop.size());
+
+            histBest_.push_back(itBest->fitness);
+            histAvg_.push_back(avg);
+            histWorst_.push_back(itWorst->fitness);
+
+            if (itBest->fitness < bestSoFar.fitness) bestSoFar = *itBest;
+
+            histHV_.push_back(hv2d_ref11_from_archive(archive_));
+        }
+
+        pareto_.clear();
+        pareto_.reserve(archive_.size());
+        for (const auto& x : archive_) {
+            GP_ParetoPoint p;
+            p.makespan = x.makespan;
+            p.cost = x.cost;
+            p.msNorm = x.msNorm;
+            p.costNorm = x.costNorm;
+            pareto_.push_back(p);
+        }
+
+        return bestSoFar;
     }
+        histHV_.clear();
+        histHV_.reserve(P.generations + 1);
+
+        if (P.useNSGA2) {
+            archive_.clear();
+            archive_.reserve(P.popSize * 2);
+            copyToArchiveWithFiltering(pop);
+
+            histHV_.push_back(hv2d_ref11_from_archive(archive_));
+        }
+        else {
+            pareto_.clear();
+            pareto_.reserve(P.popSize * 2);
+            for (const auto& ind : pop) updatePareto(ind);
+
+            histHV_.push_back(hv2d_ref11_from_pareto(pareto_));
+        }
 
     histBest_.clear();
     histAvg_.clear();
@@ -546,23 +1034,29 @@ GP_Individual TreeEA::run() {
             if (rand01() < P.pMutParam)  mutateParam(c1.resTree, true);
             if (rand01() < P.pMutParam)  mutateParam(c2.resTree, true);
 
-            if (rand01() < P.pMutStruct) mutateStruct(c1.taskTree, false);
-            if (rand01() < P.pMutStruct) mutateStruct(c2.taskTree, false);
-            if (rand01() < P.pMutStruct) mutateStruct(c1.resTree, true);
-            if (rand01() < P.pMutStruct) mutateStruct(c2.resTree, true);
+            auto structOrMacro = [&](GPTree& tr, bool isRes) {
+                if (rand01() < P.pMutMacroSubtree) mutateMacroSubtreeReplace(tr, isRes);
+                else if (rand01() < P.pMutStruct)  mutateStruct(tr, isRes);
+                };
+
+            structOrMacro(c1.taskTree, false);
+            structOrMacro(c2.taskTree, false);
+            structOrMacro(c1.resTree, true);
+            structOrMacro(c2.resTree, true);
 
             auto e1 = evaluate(c1);
-            updatePareto(e1);
+            if (!P.useNSGA2) updatePareto(e1);
             offspring.push_back(e1);
 
             if (offspring.size() < P.popSize) {
                 auto e2 = evaluate(c2);
-                updatePareto(e2);
+                if (!P.useNSGA2) updatePareto(e2);
                 offspring.push_back(e2);
             }
         }
 
         if (P.useNSGA2) {
+            copyToArchiveWithFiltering(offspring);
             std::vector<GP_Individual> combined;
             combined.reserve(pop.size() + offspring.size());
             combined.insert(combined.end(), pop.begin(), pop.end());
@@ -603,9 +1097,22 @@ GP_Individual TreeEA::run() {
 
         if (itBest->fitness < bestSoFar.fitness) bestSoFar = *itBest;
 
-        histHV_.push_back(hv2d_ref11_from_pareto(pareto_));
+        if (P.useNSGA2) histHV_.push_back(hv2d_ref11_from_archive(archive_));
+        else            histHV_.push_back(hv2d_ref11_from_pareto(pareto_));
     }
 
+    if (P.useNSGA2) {
+        pareto_.clear();
+        pareto_.reserve(archive_.size());
+        for (const auto& x : archive_) {
+            GP_ParetoPoint p;
+            p.makespan = x.makespan;
+            p.cost = x.cost;
+            p.msNorm = x.msNorm;
+            p.costNorm = x.costNorm;
+            pareto_.push_back(p);
+        }
+    }
 
     return bestSoFar;
 }

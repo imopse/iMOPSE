@@ -3,6 +3,7 @@
 #include <vector>
 #include <optional>
 #include <limits>
+#include <unordered_map>
 #include "../domain/Instance.hpp"
 
 struct PriorityContext {
@@ -31,6 +32,9 @@ struct Features {
     double avgWageAvail = std::numeric_limits<double>::infinity();
     double teamSizeMinNow = std::numeric_limits<double>::infinity();
 
+    double minFeasibleCostNow = std::numeric_limits<double>::infinity();
+    double costRegretNow = 0.0;
+
     double resWage = 0.0;
     double resSkill = 0.0;
     double resFree = 0.0;
@@ -41,6 +45,11 @@ struct Features {
     double resFreeTime = 0.0;
     double resMultiSkill = 0.0;
     double resUtilization = 0.0;
+    double resWagePerLevel = 0.0;
+
+    double resSurplusLevel = 0.0;
+    double resRelativeWage = 0.0;
+    double resFutureDemand = 0.0;
 
     double numTasks = 0.0;
     double numResources = 0.0;
@@ -53,7 +62,24 @@ struct Features {
     double unschedTasks = 0.0;
 };
 
+void setFeaturePrecomputed(
+    const std::vector<double>* taskResCountByTask,
+    const std::vector<double>* avgResCostByTask,
+    const std::unordered_map<int, int>* resIndexById,
+    const int* unschedCountPtr
+);
+void clearFeaturePrecomputed();
+
 Features computeFeatures(const PriorityContext& ctx, int taskIx);
 Features computeResourceFeatures(const Instance& I, const Task& t, const Resource& r, int now);
+Features computeResourceFeaturesFast(
+    const Instance& I,
+    int taskIx,
+    const Task& t,
+    const Resource& r,
+    int now,
+    double cheapestNow,
+    double futureDemandExcludingTask
+);
 
 

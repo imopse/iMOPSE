@@ -26,6 +26,14 @@ namespace gp {
         double maxTeamSizeMinNow = 1.0;
         double maxMinWageAvail = 1.0;
         double maxAvgWageAvail = 1.0;
+
+        double maxMinFeasibleCostNow = 1.0;
+        double maxCostRegretNow = 1.0;
+        double maxResWagePerLevel = 1.0;
+
+        double maxResSurplusLevel = 1.0;
+        double maxResRelativeWage = 1.0;
+        double maxResFutureDemand = 1.0;
     };
 
     void initFeatureScaling(const Instance& I);

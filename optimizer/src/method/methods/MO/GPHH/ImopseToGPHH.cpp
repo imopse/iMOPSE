@@ -2,6 +2,7 @@
 #include "problem/problems/MSRCPSP/CScheduler.h"
 #include <string>
 #include <algorithm>
+#include <vector>
 
 static std::string skillName(unsigned typeId) {
     return "Q" + std::to_string(typeId);
@@ -23,7 +24,10 @@ Instance GPHHAdapter::FromScheduler(const CScheduler& sch) {
         I.resources.push_back(std::move(rr));
     }
 
-    for (const auto& t : sch.GetTasks()) {
+    const auto& tasks = sch.GetTasks();
+    for (size_t ti = 0; ti < tasks.size(); ++ti) {
+        const auto& t = tasks[ti];
+
         Task tt;
         tt.id = (int)t.GetTaskID();
         tt.duration = (int)t.GetDuration();
@@ -39,6 +43,13 @@ Instance GPHHAdapter::FromScheduler(const CScheduler& sch) {
             tt.reqSkill = "";
             tt.reqLevel = 0;
         }
+
+        tt.imopseIndex = (int)ti;
+
+        std::vector<TResourceID> cap;
+        sch.GetCapableResources(t, cap);
+        tt.capableResources.assign(cap.begin(), cap.end());
+        std::sort(tt.capableResources.begin(), tt.capableResources.end());
 
         tt.start = -1;
         tt.finish = -1;
