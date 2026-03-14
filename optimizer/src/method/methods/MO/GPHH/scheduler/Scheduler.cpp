@@ -4,13 +4,11 @@
 #include <algorithm>
 #include <optional>
 #include <cmath>
-#include <array>
 #include <string>
 #include "../alloc/ResourceAllocator.hpp"
 #include "../rules/GPTreeRule.hpp"
 #include "../rules/GPTreeResRule.hpp"
 #include <iostream>
-#include <iomanip>
 #include <unordered_map>
 
 extern bool g_trace;
@@ -33,25 +31,25 @@ namespace {
 
     thread_local ResourceLookupCache g_lookupCache;
 
-    inline std::size_t hashCombine(std::size_t seed, std::size_t value) {
-        return seed ^ (value + 0x9e3779b97f4a7c15ull + (seed << 6) + (seed >> 2));
-    }
+    static std::size_t getResourceStructureSignature(const Instance& I) {
+        if (I.resourceStructureSignatureReady) {
+            return I.resourceStructureSignature;
+        }
 
-    std::size_t computeResourceStructureSignature(const Instance& I) {
-        std::size_t sig = hashCombine(1469598103934665603ull, I.resources.size());
+        std::size_t sig = Instance::hashCombine(1469598103934665603ull, I.resources.size());
 
         for (const auto& r : I.resources) {
-            std::size_t resHash = hashCombine(std::hash<int>{}(r.id), r.skills.size());
+            std::size_t resHash = Instance::hashCombine(std::hash<int>{}(r.id), r.skills.size());
 
             std::size_t skillsHash = 0;
             for (const auto& kv : r.skills) {
                 std::size_t pairHash = std::hash<std::string>{}(kv.first);
-                pairHash = hashCombine(pairHash, std::hash<int>{}(kv.second));
-                skillsHash ^= hashCombine(pairHash, 0x517cc1b727220a95ull);
+                pairHash = Instance::hashCombine(pairHash, std::hash<int>{}(kv.second));
+                skillsHash ^= Instance::hashCombine(pairHash, 0x517cc1b727220a95ull);
             }
 
-            resHash = hashCombine(resHash, skillsHash);
-            sig = hashCombine(sig, resHash);
+            resHash = Instance::hashCombine(resHash, skillsHash);
+            sig = Instance::hashCombine(sig, resHash);
         }
 
         return sig;
@@ -84,12 +82,12 @@ namespace {
             }
         }
 
-        g_lookupCache.signature = computeResourceStructureSignature(I);
+        g_lookupCache.signature = getResourceStructureSignature(I);
         g_lookupCache.ready = true;
     }
 
     void ensureResourceLookupCache(const Instance& I) {
-        const std::size_t sig = computeResourceStructureSignature(I);
+        const std::size_t sig = getResourceStructureSignature(I);
 
         if (g_lookupCache.ready &&
             g_lookupCache.signature == sig &&
@@ -140,15 +138,6 @@ static inline const Resource* findRes(const Instance& I, int resId) {
     auto it = std::find_if(I.resources.begin(), I.resources.end(),
         [&](const Resource& r) { return r.id == resId; });
     return (it == I.resources.end() ? nullptr : &*it);
-}
-
-static inline bool isFreeNow(const Instance& I, int resId, int now) {
-    if (g_resIndex) {
-        auto it = g_resIndex->find(resId);
-        if (it != g_resIndex->end()) return (I.resources[it->second].busyUntil <= now);
-    }
-    if (auto* r = findRes(I, resId)) return (r->busyUntil <= now);
-    return false;
 }
 
 static inline bool isImopseCapable(const Task& t, int resId) {

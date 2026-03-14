@@ -31,21 +31,6 @@ std::vector<int> ResourceAllocator::availableResourceIds(const Instance& I, int 
     return ids;
 }
 
-
-static inline int skillLevelOfInst(const Instance& I, int resId, const std::string& skill) {
-    auto it = std::find_if(I.resources.begin(), I.resources.end(),
-        [&](const Resource& x) { return x.id == resId; });
-    if (it == I.resources.end()) return 0;
-    auto jt = it->skills.find(skill);
-    return (jt == it->skills.end() ? 0 : jt->second);
-}
-
-static inline const Resource* findResById(const Instance& I, int id) {
-    auto it = std::find_if(I.resources.begin(), I.resources.end(),
-        [&](const Resource& x) { return x.id == id; });
-    return (it == I.resources.end() ? nullptr : &*it);
-}
-
 double ResourceAllocator::subsetCost(const Instance& I, const std::vector<int>& subsetIds) {
     double s = 0.0;
     for (int id : subsetIds) {

@@ -10,7 +10,6 @@
 #include <random>
 #include <algorithm>
 #include <cctype>
-#include <limits>
 #include <cstdint>
 #include <string>
 #include <stdexcept>
@@ -142,7 +141,7 @@ void CGPHH::RunOptimization()
     TreeEA ea(inst, P, sch, isTAProblem);
     if (useBaseline) ea.setSeedTrees(startTreeTask, startTreeRes);
 
-    auto best = ea.run();
+    ea.run();
 
     const auto& pf = ea.getPareto();
 

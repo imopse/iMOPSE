@@ -165,9 +165,20 @@ namespace {
         }
 
         if (!feasibleWages.empty()) {
-            std::sort(feasibleWages.begin(), feasibleWages.end());
-            double first = feasibleWages[0];
-            double second = (feasibleWages.size() >= 2) ? feasibleWages[1] : feasibleWages[0];
+            double first = std::numeric_limits<double>::infinity();
+            double second = std::numeric_limits<double>::infinity();
+
+            for (double w : feasibleWages) {
+                if (w < first) {
+                    second = first;
+                    first = w;
+                }
+                else if (w < second) {
+                    second = w;
+                }
+            }
+
+            if (!std::isfinite(second)) second = first;
             f.costRegretNow = (second - first) * (double)t.duration;
         }
         else {

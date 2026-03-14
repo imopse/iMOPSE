@@ -107,10 +107,20 @@ namespace gp {
             }
 
             if (!wages.empty()) {
-                std::sort(wages.begin(), wages.end());
+                double cheapest = std::numeric_limits<double>::infinity();
+                double second = std::numeric_limits<double>::infinity();
 
-                double cheapest = wages[0];
-                double second = (wages.size() >= 2) ? wages[1] : wages[0];
+                for (double w : wages) {
+                    if (w < cheapest) {
+                        second = cheapest;
+                        cheapest = w;
+                    }
+                    else if (w < second) {
+                        second = w;
+                    }
+                }
+
+                if (!std::isfinite(second)) second = cheapest;
 
                 maxMinFeasibleCostNow = std::max(maxMinFeasibleCostNow, cheapest * (double)t.duration);
                 maxCostRegretNow = std::max(maxCostRegretNow, (second - cheapest) * (double)t.duration);
