@@ -1,6 +1,5 @@
 #include "CGPHH.h"
 #include "scheduler/Scheduler.hpp"
-#include "utils/logger/CExperimentLogger.h"
 #include "problem/problems/MSRCPSP/CMSRCPSP_TA.h"
 #include "problem/problems/MSRCPSP/CMSRCPSP_TO.h"
 #include "../utils/archive/ArchiveUtils.h"
@@ -87,7 +86,6 @@ void CGPHH::RunOptimization()
     P.useNSGA2 = (GetInt(cfg, "UseNSGA2", 0) != 0);
     P.useBNTGA = (GetInt(cfg, "UseBNTGA", 0) != 0);
     P.useImopseEvaluate = (GetInt(cfg, "UseImopseEvaluate", 1) != 0);
-    const bool enableFinalDiagnostics = (GetInt(cfg, "EnableFinalDiagnostics", 0) != 0);
 
 
     P.popSize = (size_t)GetInt(cfg, "PopulationSize", (int)P.popSize);
@@ -146,88 +144,6 @@ void CGPHH::RunOptimization()
 
     auto best = ea.run();
 
-    {
-        if (enableFinalDiagnostics) {
-            ResChoiceDiag diag;
-            Scheduler::setResChoiceDiag(&diag);
-
-            Instance Idbg = inst;
-            GPTreeRule    dbgT(best.taskTree);
-            GPTreeResRule dbgR(best.resTree);
-            (void)Scheduler::withResources(Idbg, dbgT, &dbgR);
-
-            Scheduler::setResChoiceDiag(nullptr);
-
-            std::ostringstream d;
-            d << "calls=" << diag.calls << "\n";
-            d << "emptyCalls=" << diag.emptyCalls << "\n";
-            if (diag.calls > 0) {
-                d << "avgCandidates=" << (double)diag.sumCandidates / (double)diag.calls << "\n";
-                d << "avgUniqueScores=" << (double)diag.sumUniqueScores / (double)diag.calls << "\n";
-                d << "avgTiesMin=" << (double)diag.sumTiesMin / (double)diag.calls << "\n";
-                if (diag.sumCandidates > 0) {
-                    d << "minTieRate=" << (double)diag.sumTiesMin / (double)diag.sumCandidates << "\n";
-                }
-            }
-
-            CExperimentLogger::LogResult(d.str().c_str(), "res_rule_diag.txt");
-
-            {
-                ResFeatureDiag rfd;
-                TaskFeatureDiag tfd;
-
-                Scheduler::setResFeatureDiag(&rfd);
-                Scheduler::setTaskFeatureDiag(&tfd);
-
-                Instance Idbg = inst;
-                GPTreeRule    dbgT(best.taskTree);
-                GPTreeResRule dbgR(best.resTree);
-                (void)Scheduler::withResources(Idbg, dbgT, &dbgR);
-
-                Scheduler::setResFeatureDiag(nullptr);
-                Scheduler::setTaskFeatureDiag(nullptr);
-
-                auto dumpTable = [](std::ostringstream& out,
-                    const auto& names,
-                    const auto& stats) {
-                        out << "name;groups;avgCandidates;avgUnique;pctAllEqual;pctAllZero;avgRange;pctGroupsNonFinite;pctValuesNonFinite\n";
-                        for (size_t i = 0; i < names.size(); ++i) {
-                            const auto& st = stats[i];
-                            double g = (double)st.groups;
-                            double avgCand = (g > 0) ? (double)st.sumCandidates / g : 0.0;
-                            double avgUniq = (g > 0) ? (double)st.sumUnique / g : 0.0;
-                            double pctEq = (g > 0) ? 100.0 * (double)st.groupsAllEqual / g : 0.0;
-                            double pct0 = (g > 0) ? 100.0 * (double)st.groupsAllZero / g : 0.0;
-                            double avgR = (g > 0) ? st.sumRange / g : 0.0;
-                            double pctGNF = (g > 0) ? 100.0 * (double)st.groupsWithNonFinite / g : 0.0;
-                            double pctVNF = (st.sumCandidates > 0) ? 100.0 * (double)st.nonFiniteValues / (double)st.sumCandidates : 0.0;
-
-                            out << names[i] << ";"
-                                << st.groups << ";"
-                                << avgCand << ";"
-                                << avgUniq << ";"
-                                << pctEq << ";"
-                                << pct0 << ";"
-                                << avgR << ";"
-                                << pctGNF << ";"
-                                << pctVNF << "\n";
-                        }
-                    };
-
-                {
-                    std::ostringstream out;
-                    dumpTable(out, RES_FEAT_NAMES, rfd.st);
-                    CExperimentLogger::LogResult(out.str().c_str(), "feature_diag_res.txt");
-                }
-                {
-                    std::ostringstream out;
-                    dumpTable(out, TASK_FEAT_NAMES, tfd.st);
-                    CExperimentLogger::LogResult(out.str().c_str(), "feature_diag_task.txt");
-                }
-            }
-        }
-    }
-
     const auto& pf = ea.getPareto();
 
     std::vector<GP_ParetoPoint> pfSorted = pf;
@@ -260,21 +176,4 @@ void CGPHH::RunOptimization()
 
     for (auto* ind : archive) delete ind;
     archive.clear();
-
-
-
-    {
-        std::vector<GP_ParetoPoint> pf = ea.getPareto();
-        std::sort(pf.begin(), pf.end(), [](const GP_ParetoPoint& a, const GP_ParetoPoint& b) {
-            if (a.msNorm != b.msNorm) return a.msNorm < b.msNorm;
-            return a.costNorm < b.costNorm;
-            });
-
-        std::ostringstream oss;
-        for (const auto& p : pf) {
-            oss << p.msNorm << ";" << p.costNorm << "\n";
-        }
-        CExperimentLogger::LogResult(oss.str().c_str(), "results_norm.csv");
-    }
-
 }

@@ -19,9 +19,6 @@ static const std::vector<float>* g_priorityKeys = nullptr;
 static const std::vector<int>* g_forcedResource = nullptr;
 static const std::unordered_map<int, int>* g_resIndex = nullptr;
 static const std::unordered_map<std::string, std::vector<int>>* g_skillLevels = nullptr;
-static ResChoiceDiag* g_resDiag = nullptr;
-static ResFeatureDiag* g_resFeatDiag = nullptr;
-static TaskFeatureDiag* g_taskFeatDiag = nullptr;
 
 namespace {
 
@@ -107,9 +104,6 @@ namespace {
 
 void Scheduler::setPriorityKeys(const std::vector<float>* keys) { g_priorityKeys = keys; }
 void Scheduler::setForcedResources(const std::vector<int>* forced) { g_forcedResource = forced; }
-void Scheduler::setResChoiceDiag(ResChoiceDiag* diag) { g_resDiag = diag; }
-void Scheduler::setResFeatureDiag(ResFeatureDiag* diag) { g_resFeatDiag = diag; }
-void Scheduler::setTaskFeatureDiag(TaskFeatureDiag* diag) { g_taskFeatDiag = diag; }
 
 static inline int skillLevelOf(const Instance& I, int resId, const std::string& skill) {
     int idx = -1;
@@ -188,64 +182,6 @@ static int waitUntilAnyCapableFree(const Instance& I, const Task& t, int now) {
         best = std::min(best, w);
     }
     return best;
-}
-
-static inline void updateFeatureStat(FeatureStat& st, const std::vector<double>& vals) {
-    st.groups++;
-    st.sumCandidates += (long long)vals.size();
-    if (vals.empty()) {
-        st.groupsAllEqual++;
-        st.groupsAllZero++;
-        st.sumUnique += 0;
-        st.sumRange += 0.0;
-        return;
-    }
-
-    const double EPS = 1e-12;
-
-    std::vector<double> finite;
-    finite.reserve(vals.size());
-
-    bool allZero = true;
-    long long nonFinite = 0;
-
-    for (double v : vals) {
-        if (!std::isfinite(v)) {
-            nonFinite++;
-            allZero = false;
-            continue;
-        }
-        finite.push_back(v);
-        if (std::abs(v) > EPS) allZero = false;
-    }
-
-    if (nonFinite > 0) {
-        st.groupsWithNonFinite++;
-        st.nonFiniteValues += nonFinite;
-    }
-
-    if (finite.empty()) {
-        st.groupsAllEqual++;
-        st.sumUnique += 1;
-        st.sumRange += 0.0;
-        return;
-    }
-
-    std::sort(finite.begin(), finite.end());
-
-    long long uniq = 1;
-    double last = finite[0];
-    for (size_t i = 1; i < finite.size(); ++i) {
-        if (std::abs(finite[i] - last) > EPS) { uniq++; last = finite[i]; }
-    }
-
-    st.sumUnique += uniq;
-    if (uniq == 1 && nonFinite == 0) st.groupsAllEqual++;
-
-    if (allZero) st.groupsAllZero++;
-
-    double range = finite.back() - finite.front();
-    st.sumRange += range;
 }
 
 static std::optional<std::vector<int>> tryAllocWithForced(
@@ -532,46 +468,6 @@ ScheduleResult Scheduler::withResources(Instance& I,
         while (!cand.empty()) {
             const_cast<IDispatchingRule&>(ruleT).setContext(&I, now);
 
-            if (g_taskFeatDiag && cand.size() >= 2) {
-                PriorityContext ctx;
-                ctx.inst = &I;
-                ctx.now = now;
-
-                std::array<std::vector<double>, TASK_FEAT_COUNT> taskVals;
-                for (auto& v : taskVals) v.reserve(cand.size());
-
-                for (int ix : cand) {
-                    Features tf = computeFeatures(ctx, ix);
-                    taskVals[0].push_back(tf.duration);
-                    taskVals[1].push_back(tf.reqLevel);
-                    taskVals[2].push_back(tf.availSkill);
-                    taskVals[3].push_back(tf.estPrec);
-                    taskVals[4].push_back(tf.succCount);
-                    taskVals[5].push_back(tf.critLen);
-                    taskVals[6].push_back(tf.slack);
-                    taskVals[7].push_back(tf.availGap);
-                    taskVals[8].push_back(tf.waitRes);
-                    taskVals[9].push_back(tf.totPred);
-                    taskVals[10].push_back(tf.cheapestCostNow);
-                    taskVals[11].push_back(tf.costPerSkillNow);
-                    taskVals[12].push_back(tf.minWageAvail);
-                    taskVals[13].push_back(tf.avgWageAvail);
-                    taskVals[14].push_back(tf.teamSizeMinNow);
-                    taskVals[15].push_back(tf.numTasks);
-                    taskVals[16].push_back(tf.numResources);
-                    taskVals[17].push_back(tf.numSkills);
-                    taskVals[18].push_back(tf.taskResCount);
-                    taskVals[19].push_back(tf.avgResCostForSkill);
-                    taskVals[20].push_back(tf.unschedTasks);
-                    taskVals[21].push_back(tf.minFeasibleCostNow);
-                    taskVals[22].push_back(tf.costRegretNow);
-                }
-
-                for (size_t k = 0; k < TASK_FEAT_COUNT; ++k) {
-                    updateFeatureStat(g_taskFeatDiag->st[k], taskVals[k]);
-                }
-            }
-
             const GPTreeRule* gp = nullptr;
             if (g_trace) {
                 gp = dynamic_cast<const GPTreeRule*>(&ruleT);
@@ -644,11 +540,6 @@ ScheduleResult Scheduler::withResources(Instance& I,
                         std::vector<std::pair<int, double>> scored;
                         scored.reserve(I.resources.size());
 
-                        std::array<std::vector<double>, RES_FEAT_COUNT> resVals;
-                        if (g_resFeatDiag) {
-                            for (auto& v : resVals) v.reserve(16);
-                        }
-
                         double cheapestNow = std::numeric_limits<double>::infinity();
                         {
                             const int req0 = std::max(0, t.reqLevel);
@@ -668,9 +559,6 @@ ScheduleResult Scheduler::withResources(Instance& I,
 
                         if (!t.capableResources.empty()) {
                             scored.reserve(t.capableResources.size());
-                            if (g_resFeatDiag) {
-                                for (auto& v : resVals) v.reserve(t.capableResources.size());
-                            }
 
                             for (int rid : t.capableResources) {
                                 auto it = __resIndex.find(rid);
@@ -680,28 +568,12 @@ ScheduleResult Scheduler::withResources(Instance& I,
                                 double futureDemandExcludingTask = futureDemandByRes[it->second] - demandWeightPerTask[ix];
                                 if (futureDemandExcludingTask < 0.0) futureDemandExcludingTask = 0.0;
 
-                                if (g_resFeatDiag) {
-                                    Features rf = computeResourceFeaturesFast(I, ix, t, r, now, cheapestNow, futureDemandExcludingTask);
-                                    resVals[0].push_back(rf.resWage);
-                                    resVals[1].push_back(rf.resSkillLevel);
-                                    resVals[2].push_back(rf.resFreeTime);
-                                    resVals[3].push_back(rf.resMultiSkill);
-                                    resVals[4].push_back(rf.resUtilization);
-                                    resVals[5].push_back(rf.resWagePerLevel);
-                                    resVals[6].push_back(rf.resSurplusLevel);
-                                    resVals[7].push_back(rf.resRelativeWage);
-                                    resVals[8].push_back(rf.resFutureDemand);
-                                }
-
                                 double s = ruleR->scoreFast(I, ix, t, r, now, cheapestNow, futureDemandExcludingTask);
                                 scored.emplace_back(r.id, s);
                             }
                         }
                         else {
                             scored.reserve(I.resources.size());
-                            if (g_resFeatDiag) {
-                                for (auto& v : resVals) v.reserve(16);
-                            }
 
                             for (const auto& r : I.resources) {
                                 if (req > 0) {
@@ -713,58 +585,11 @@ ScheduleResult Scheduler::withResources(Instance& I,
                                 double futureDemandExcludingTask = futureDemandByRes[ri] - demandWeightPerTask[ix];
                                 if (futureDemandExcludingTask < 0.0) futureDemandExcludingTask = 0.0;
 
-                                if (g_resFeatDiag) {
-                                    Features rf = computeResourceFeaturesFast(I, ix, t, r, now, cheapestNow, futureDemandExcludingTask);
-                                    resVals[0].push_back(rf.resWage);
-                                    resVals[1].push_back(rf.resSkillLevel);
-                                    resVals[2].push_back(rf.resFreeTime);
-                                    resVals[3].push_back(rf.resMultiSkill);
-                                    resVals[4].push_back(rf.resUtilization);
-                                    resVals[5].push_back(rf.resWagePerLevel);
-                                    resVals[6].push_back(rf.resSurplusLevel);
-                                    resVals[7].push_back(rf.resRelativeWage);
-                                    resVals[8].push_back(rf.resFutureDemand);
-                                }
-
                                 double s = ruleR->scoreFast(I, ix, t, r, now, cheapestNow, futureDemandExcludingTask);
                                 scored.emplace_back(r.id, s);
                             }
                         }
 
-                        if (g_resDiag) {
-                            if (scored.empty()) {
-                                g_resDiag->emptyCalls++;
-                            }
-                            else {
-                                const double EPS = 1e-12;
-
-                                g_resDiag->calls++;
-                                g_resDiag->sumCandidates += (long long)scored.size();
-
-
-                                std::vector<double> vals;
-                                vals.reserve(scored.size());
-                                for (const auto& p : scored) vals.push_back(p.second);
-                                std::sort(vals.begin(), vals.end());
-
-                                long long uniq = 1;
-                                double last = vals[0];
-                                for (size_t i = 1; i < vals.size(); ++i) {
-                                    if (std::abs(vals[i] - last) > EPS) { uniq++; last = vals[i]; }
-                                }
-                                g_resDiag->sumUniqueScores += uniq;
-
-                                const double minS = vals[0];
-                                long long ties = 0;
-                                for (double v : vals) if (std::abs(v - minS) <= EPS) ties++;
-                                g_resDiag->sumTiesMin += ties;
-                            }
-                        }
-                        if (g_resFeatDiag && !scored.empty()) {
-                            for (size_t k = 0; k < RES_FEAT_COUNT; ++k) {
-                                updateFeatureStat(g_resFeatDiag->st[k], resVals[k]);
-                            }
-                        }
                         if (scored.empty()) {
                             allocSet = std::nullopt;
                             int wait = (!t.capableResources.empty())
