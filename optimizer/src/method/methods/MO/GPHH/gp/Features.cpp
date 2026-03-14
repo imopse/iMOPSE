@@ -12,6 +12,8 @@ namespace {
     const std::vector<double>* g_avgResCostByTask = nullptr;
     const std::unordered_map<int, int>* g_resIndexById = nullptr;
     const int* g_unschedCountPtr = nullptr;
+    const std::vector<int>* g_remainingPredCountByTask = nullptr;
+    const std::vector<int>* g_latestPredFinishByTask = nullptr;
 
     inline double inf() { return std::numeric_limits<double>::infinity(); }
 
@@ -113,41 +115,35 @@ namespace {
             f.teamSizeMinNow = inf();
             f.minWageAvail = inf();
             f.avgWageAvail = inf();
-
             f.minFeasibleCostNow = inf();
             f.costRegretNow = 0.0;
             return;
         }
 
-        auto pick = ResourceAllocator::cheapestSubset(I, t.reqSkill, req, now);
-        if (!pick) {
-            f.cheapestCostNow = inf();
-            f.costPerSkillNow = inf();
-            f.teamSizeMinNow = inf();
-            f.minWageAvail = inf();
-            f.avgWageAvail = inf();
+        double first = std::numeric_limits<double>::infinity();
+        double second = std::numeric_limits<double>::infinity();
+        bool found = false;
 
-            f.minFeasibleCostNow = inf();
-            f.costRegretNow = 0.0;
-            return;
-        }
-
-        f.teamSizeMinNow = (double)pick->size();
-        f.cheapestCostNow = ResourceAllocator::subsetCost(I, *pick);
-        f.costPerSkillNow = (req > 0) ? (f.cheapestCostNow / (double)req) : f.cheapestCostNow;
-
-        f.minFeasibleCostNow = f.cheapestCostNow * (double)t.duration;
-
-        std::vector<double> feasibleWages;
-        feasibleWages.reserve(t.capableResources.empty() ? I.resources.size() : t.capableResources.size());
+        auto considerSalary = [&](double sal) {
+            found = true;
+            if (sal < first) {
+                second = first;
+                first = sal;
+            }
+            else if (sal < second) {
+                second = sal;
+            }
+            };
 
         if (!t.capableResources.empty() && g_resIndexById) {
             for (int rid : t.capableResources) {
                 auto itIdx = g_resIndexById->find(rid);
                 if (itIdx == g_resIndexById->end()) continue;
+
                 const auto& r = I.resources[itIdx->second];
                 if (r.busyUntil > now) continue;
-                feasibleWages.push_back(r.salary);
+
+                considerSalary(r.salary);
             }
         }
         else {
@@ -159,62 +155,31 @@ namespace {
                 if (it != r.skills.end()) lvl = it->second;
 
                 if (req <= 0 || lvl >= req) {
-                    feasibleWages.push_back(r.salary);
+                    considerSalary(r.salary);
                 }
             }
         }
 
-        if (!feasibleWages.empty()) {
-            double first = std::numeric_limits<double>::infinity();
-            double second = std::numeric_limits<double>::infinity();
-
-            for (double w : feasibleWages) {
-                if (w < first) {
-                    second = first;
-                    first = w;
-                }
-                else if (w < second) {
-                    second = w;
-                }
-            }
-
-            if (!std::isfinite(second)) second = first;
-            f.costRegretNow = (second - first) * (double)t.duration;
-        }
-        else {
-            f.costRegretNow = 0.0;
-        }
-
-        double sum = 0.0;
-        double mn = inf();
-
-        for (int rid : *pick) {
-            if (g_resIndexById) {
-                auto itIdx = g_resIndexById->find(rid);
-                if (itIdx != g_resIndexById->end()) {
-                    const auto& rr = I.resources[itIdx->second];
-                    mn = std::min(mn, rr.salary);
-                    sum += rr.salary;
-                    continue;
-                }
-            }
-
-            auto it = std::find_if(I.resources.begin(), I.resources.end(),
-                [&](const Resource& x) { return x.id == rid; });
-            if (it != I.resources.end()) {
-                mn = std::min(mn, it->salary);
-                sum += it->salary;
-            }
-        }
-
-        if (!pick->empty() && std::isfinite(mn)) {
-            f.minWageAvail = mn;
-            f.avgWageAvail = sum / (double)pick->size();
-        }
-        else {
+        if (!found || !std::isfinite(first)) {
+            f.cheapestCostNow = inf();
+            f.costPerSkillNow = inf();
+            f.teamSizeMinNow = inf();
             f.minWageAvail = inf();
             f.avgWageAvail = inf();
+            f.minFeasibleCostNow = inf();
+            f.costRegretNow = 0.0;
+            return;
         }
+
+        if (!std::isfinite(second)) second = first;
+
+        f.teamSizeMinNow = 1.0;
+        f.cheapestCostNow = first;
+        f.costPerSkillNow = (req > 0) ? (first / (double)req) : first;
+        f.minFeasibleCostNow = first * (double)t.duration;
+        f.costRegretNow = (second - first) * (double)t.duration;
+        f.minWageAvail = first;
+        f.avgWageAvail = first;
     }
 
     inline void normalizeTaskFeatures(Features& f, const gp::FeatureScaling& S) {
@@ -263,12 +228,16 @@ void setFeaturePrecomputed(
     const std::vector<double>* taskResCountByTask,
     const std::vector<double>* avgResCostByTask,
     const std::unordered_map<int, int>* resIndexById,
-    const int* unschedCountPtr)
+    const int* unschedCountPtr,
+    const std::vector<int>* remainingPredCountByTask,
+    const std::vector<int>* latestPredFinishByTask)
 {
     g_taskResCountByTask = taskResCountByTask;
     g_avgResCostByTask = avgResCostByTask;
     g_resIndexById = resIndexById;
     g_unschedCountPtr = unschedCountPtr;
+    g_remainingPredCountByTask = remainingPredCountByTask;
+    g_latestPredFinishByTask = latestPredFinishByTask;
 }
 
 void clearFeaturePrecomputed() {
@@ -276,6 +245,8 @@ void clearFeaturePrecomputed() {
     g_avgResCostByTask = nullptr;
     g_resIndexById = nullptr;
     g_unschedCountPtr = nullptr;
+    g_remainingPredCountByTask = nullptr;
+    g_latestPredFinishByTask = nullptr;
 }
 
 Features computeFeatures(const PriorityContext& ctx, int taskIx) {
@@ -297,14 +268,29 @@ Features computeFeatures(const PriorityContext& ctx, int taskIx) {
     f.avgResCostForSkill = avgSalaryForSkill(I, taskIx, t, req);
     f.unschedTasks = (double)countUnschedTasks(I);
 
-    const bool predsDone = predecessorsDoneNow(I, t, ctx.now);
+    bool predsDone = false;
+    if (g_remainingPredCountByTask &&
+        taskIx >= 0 &&
+        taskIx < (int)g_remainingPredCountByTask->size()) {
+        predsDone = ((*g_remainingPredCountByTask)[taskIx] == 0);
+    }
+    else {
+        predsDone = predecessorsDoneNow(I, t, ctx.now);
+    }
 
     f.availSkill = ResourceAllocator::availableSkillSum(I, ctx.now, t.reqSkill);
     f.availGap = f.availSkill - (double)req;
     f.waitRes = ResourceAllocator::waitUntilFeasible(I, ctx.now, t.reqSkill, req);
     f.feasibleNow = predsDone && (f.waitRes <= 0.0);
 
-    f.estPrec = latestPredFinish(I, t);
+    if (g_latestPredFinishByTask &&
+        taskIx >= 0 &&
+        taskIx < (int)g_latestPredFinishByTask->size()) {
+        f.estPrec = (double)(*g_latestPredFinishByTask)[taskIx];
+    }
+    else {
+        f.estPrec = latestPredFinish(I, t);
+    }
 
     if (auto cpm = gp::getCPMPrecalc()) {
         f.critLen = cpm->critLen[taskIx];

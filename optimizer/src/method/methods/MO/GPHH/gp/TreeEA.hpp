@@ -78,12 +78,14 @@ public:
     size_t getClampPrevNodesSumRes()  const { return clampPrevNodesSumRes_; }
 private:
     Instance& inst;
+    mutable Instance workInst_;
     GPEA_Params   P;
     mutable std::mt19937 rng;
     gp::CPMPrecalc cpm{};
     ImopseBounds   bounds{};
     CScheduler* imopseSch_ = nullptr;
     bool imopseIsTA_ = false;
+    Instance& resetWorkingInstance() const;
     double rand01();
     int    randInt(int lo, int hi);
     GP_Individual evaluate(const GP_Individual& ind) const;

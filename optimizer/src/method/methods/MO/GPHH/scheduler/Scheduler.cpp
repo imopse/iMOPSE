@@ -2,7 +2,6 @@
 #include <vector>
 #include <limits>
 #include <algorithm>
-#include <optional>
 #include <cmath>
 #include <string>
 #include "../alloc/ResourceAllocator.hpp"
@@ -29,7 +28,24 @@ namespace {
         std::unordered_map<std::string, std::vector<int>> resBySkill;
     };
 
+    struct SchedulerStaticCache {
+        std::size_t signature = 0;
+        bool ready = false;
+
+        std::vector<int> baseIndeg;
+        std::vector<std::vector<int>> succ;
+
+        std::vector<int> feasibleCountPerTask;
+        std::vector<double> staticTaskResCount;
+        std::vector<double> staticAvgResCost;
+
+        std::vector<std::vector<int>> demandCapableResIdxPerTask;
+        std::vector<double> demandWeightPerTask;
+        std::vector<double> futureDemandByResInit;
+    };
+
     thread_local ResourceLookupCache g_lookupCache;
+    thread_local SchedulerStaticCache g_staticCache;
 
     static std::size_t getResourceStructureSignature(const Instance& I) {
         if (I.resourceStructureSignatureReady) {
@@ -53,6 +69,170 @@ namespace {
         }
 
         return sig;
+    }
+
+    static std::size_t getTaskStructureSignature(const Instance& I) {
+        if (I.taskStructureSignatureReady) {
+            return I.taskStructureSignature;
+        }
+
+        std::size_t sig = Instance::hashCombine(1099511628211ull, I.tasks.size());
+
+        for (const auto& t : I.tasks) {
+            std::size_t taskHash = Instance::hashCombine(std::hash<int>{}(t.id), std::hash<int>{}(t.duration));
+            taskHash = Instance::hashCombine(taskHash, std::hash<std::string>{}(t.reqSkill));
+            taskHash = Instance::hashCombine(taskHash, std::hash<int>{}(t.reqLevel));
+            taskHash = Instance::hashCombine(taskHash, std::hash<int>{}(t.imopseIndex));
+
+            std::size_t predHash = 0;
+            for (int pid : t.predecessors) {
+                predHash = Instance::hashCombine(predHash, std::hash<int>{}(pid));
+            }
+
+            std::size_t capHash = 0;
+            for (int rid : t.capableResources) {
+                capHash = Instance::hashCombine(capHash, std::hash<int>{}(rid));
+            }
+
+            taskHash = Instance::hashCombine(taskHash, predHash);
+            taskHash = Instance::hashCombine(taskHash, capHash);
+
+            sig = Instance::hashCombine(sig, taskHash);
+        }
+
+        return sig;
+    }
+
+    static std::size_t getSchedulerStaticSignature(const Instance& I) {
+        std::size_t sig = getResourceStructureSignature(I);
+        sig = Instance::hashCombine(sig, getTaskStructureSignature(I));
+        sig = Instance::hashCombine(sig, I.tasks.size());
+        sig = Instance::hashCombine(sig, I.resources.size());
+        return sig;
+    }
+
+    static void rebuildSchedulerStaticCache(const Instance& I) {
+        const int n = (int)I.tasks.size();
+        const auto& __resIndex = g_lookupCache.resIndex;
+
+        g_staticCache.baseIndeg.assign(n, 0);
+        g_staticCache.succ.assign(n, {});
+        g_staticCache.feasibleCountPerTask.assign(n, 0);
+        g_staticCache.staticTaskResCount.assign(n, 0.0);
+        g_staticCache.staticAvgResCost.assign(n, std::numeric_limits<double>::infinity());
+        g_staticCache.demandCapableResIdxPerTask.assign(n, {});
+        g_staticCache.demandWeightPerTask.assign(n, 0.0);
+        g_staticCache.futureDemandByResInit.assign(I.resources.size(), 0.0);
+
+        for (int i = 0; i < n; ++i) {
+            for (int pid : I.tasks[i].predecessors) {
+                if (I.idToIndex.count(pid)) {
+                    g_staticCache.baseIndeg[i]++;
+                }
+            }
+        }
+
+        for (int j = 0; j < n; ++j) {
+            for (int pid : I.tasks[j].predecessors) {
+                auto it = I.idToIndex.find(pid);
+                if (it != I.idToIndex.end()) {
+                    g_staticCache.succ[it->second].push_back(j);
+                }
+            }
+        }
+
+        for (int ui = 0; ui < n; ++ui) {
+            const Task& u = I.tasks[ui];
+            const int reqU = std::max(0, u.reqLevel);
+
+            if (reqU <= 0) {
+                g_staticCache.feasibleCountPerTask[ui] = (int)I.resources.size();
+            }
+            else {
+                int cnt = 0;
+                for (const auto& rr : I.resources) {
+                    auto jt = rr.skills.find(u.reqSkill);
+                    int ll = (jt != rr.skills.end()) ? jt->second : 0;
+                    if (ll >= reqU) ++cnt;
+                }
+                g_staticCache.feasibleCountPerTask[ui] = cnt;
+            }
+        }
+
+        for (int ui = 0; ui < n; ++ui) {
+            const Task& u = I.tasks[ui];
+            const int reqU = std::max(0, u.reqLevel);
+
+            if (reqU <= 0) {
+                g_staticCache.staticTaskResCount[ui] = (double)I.resources.size();
+                g_staticCache.staticAvgResCost[ui] = std::numeric_limits<double>::infinity();
+                continue;
+            }
+
+            if (!u.capableResources.empty()) {
+                g_staticCache.staticTaskResCount[ui] = (double)u.capableResources.size();
+
+                double sumSal = 0.0;
+                int cnt = 0;
+                for (int rid : u.capableResources) {
+                    auto itIdx = __resIndex.find(rid);
+                    if (itIdx == __resIndex.end()) continue;
+                    sumSal += I.resources[itIdx->second].salary;
+                    ++cnt;
+                }
+                g_staticCache.staticAvgResCost[ui] =
+                    (cnt > 0) ? (sumSal / (double)cnt) : std::numeric_limits<double>::infinity();
+                continue;
+            }
+
+            g_staticCache.staticTaskResCount[ui] = (double)g_staticCache.feasibleCountPerTask[ui];
+
+            double sumSal = 0.0;
+            int cnt = 0;
+            for (const auto& rr : I.resources) {
+                auto jt = rr.skills.find(u.reqSkill);
+                const int ll = (jt != rr.skills.end()) ? jt->second : 0;
+                if (ll >= reqU) {
+                    sumSal += rr.salary;
+                    ++cnt;
+                }
+            }
+            g_staticCache.staticAvgResCost[ui] =
+                (cnt > 0) ? (sumSal / (double)cnt) : std::numeric_limits<double>::infinity();
+        }
+
+        for (int ui = 0; ui < n; ++ui) {
+            const Task& u = I.tasks[ui];
+            const int reqU = std::max(0, u.reqLevel);
+            const double w = 1.0 / (double)std::max(1, g_staticCache.feasibleCountPerTask[ui]);
+
+            g_staticCache.demandWeightPerTask[ui] = w;
+
+            auto& caps = g_staticCache.demandCapableResIdxPerTask[ui];
+
+            if (reqU <= 0) {
+                caps.reserve(I.resources.size());
+                for (int ri = 0; ri < (int)I.resources.size(); ++ri) {
+                    caps.push_back(ri);
+                    g_staticCache.futureDemandByResInit[ri] += w;
+                }
+                continue;
+            }
+
+            caps.reserve(std::max(1, g_staticCache.feasibleCountPerTask[ui]));
+            for (int ri = 0; ri < (int)I.resources.size(); ++ri) {
+                const auto& rr = I.resources[ri];
+                auto jt = rr.skills.find(u.reqSkill);
+                const int ll = (jt != rr.skills.end()) ? jt->second : 0;
+                if (ll >= reqU) {
+                    caps.push_back(ri);
+                    g_staticCache.futureDemandByResInit[ri] += w;
+                }
+            }
+        }
+
+        g_staticCache.signature = getSchedulerStaticSignature(I);
+        g_staticCache.ready = true;
     }
 
     void rebuildResourceLookupCache(const Instance& I) {
@@ -140,13 +320,18 @@ static inline const Resource* findRes(const Instance& I, int resId) {
     return (it == I.resources.end() ? nullptr : &*it);
 }
 
+static inline double singleResourceCost(const Instance& I, int resId) {
+    const Resource* r = findRes(I, resId);
+    return r ? r->salary : 0.0;
+}
+
 static inline bool isImopseCapable(const Task& t, int resId) {
     if (t.capableResources.empty()) return true;
     return std::binary_search(t.capableResources.begin(), t.capableResources.end(), resId);
 }
 
-static std::optional<std::vector<int>> cheapestSingleCapableNow(const Instance& I, const Task& t, int now) {
-    if (t.capableResources.empty()) return std::nullopt;
+static int cheapestSingleCapableNowId(const Instance& I, const Task& t) {
+    if (t.capableResources.empty()) return -1;
 
     int bestId = -1;
     double bestSalary = std::numeric_limits<double>::infinity();
@@ -154,10 +339,12 @@ static std::optional<std::vector<int>> cheapestSingleCapableNow(const Instance& 
     for (int rid : t.capableResources) {
         const Resource* r = findRes(I, rid);
         if (!r) continue;
-        if (r->salary < bestSalary) { bestSalary = r->salary; bestId = rid; }
+        if (r->salary < bestSalary) {
+            bestSalary = r->salary;
+            bestId = rid;
+        }
     }
-    if (bestId < 0) return std::nullopt;
-    return std::vector<int>{ bestId };
+    return bestId;
 }
 
 static int waitUntilAnyCapableFree(const Instance& I, const Task& t, int now) {
@@ -173,28 +360,27 @@ static int waitUntilAnyCapableFree(const Instance& I, const Task& t, int now) {
     return best;
 }
 
-static std::optional<std::vector<int>> tryAllocWithForced(
-    const Instance& I, const Task& t, int now, int forcedResId)
+static int tryAllocWithForcedId(
+    const Instance& I, const Task& t, int forcedResId)
 {
-    if (forcedResId < 0) return std::nullopt;
+    if (forcedResId < 0) return -1;
 
-    if (!isImopseCapable(t, forcedResId)) return std::nullopt;
+    if (!isImopseCapable(t, forcedResId)) return -1;
     if (!t.capableResources.empty()) {
-        return std::vector<int>{ forcedResId };
+        return forcedResId;
     }
 
     if (t.reqLevel > 0) {
         int lvl = skillLevelOf(I, forcedResId, t.reqSkill);
-        if (lvl < t.reqLevel) return std::nullopt;
+        if (lvl < t.reqLevel) return -1;
     }
-    return std::vector<int>{ forcedResId };
+    return forcedResId;
 }
 
-
-static std::optional<std::vector<int>> tryAllocZeroReqWithForced(
-    const Instance& I, const Task& t, int now, int forcedResId)
+static int tryAllocZeroReqWithForcedId(
+    const Instance& I, const Task& t, int forcedResId)
 {
-    return tryAllocWithForced(I, t, now, forcedResId);
+    return tryAllocWithForcedId(I, t, forcedResId);
 }
 
 ScheduleResult Scheduler::precedenceOnly(Instance& I, const IDispatchingRule& rule)
@@ -244,7 +430,8 @@ ScheduleResult Scheduler::precedenceOnly(Instance& I, const IDispatchingRule& ru
 
 ScheduleResult Scheduler::withResources(Instance& I,
     const IDispatchingRule& ruleT,
-    const GPTreeResRule* ruleR)
+    const GPTreeResRule* ruleR,
+    const ScheduleOptions& options)
 {
     const int n = (int)I.tasks.size();
 
@@ -260,118 +447,34 @@ ScheduleResult Scheduler::withResources(Instance& I,
         &g_lookupCache.skillLevels
     );
 
-    std::vector<int> indeg(n, 0);
-    for (int i = 0; i < n; ++i)
-        for (int pid : I.tasks[i].predecessors)
-            if (I.idToIndex.count(pid)) indeg[i]++;
-
-    std::vector<std::vector<int>> succ(n);
-    for (int j = 0; j < n; ++j) {
-        for (int pid : I.tasks[j].predecessors) {
-            auto it = I.idToIndex.find(pid);
-            if (it != I.idToIndex.end()) {
-                succ[it->second].push_back(j);
-            }
-        }
+    const std::size_t staticSig = getSchedulerStaticSignature(I);
+    if (!g_staticCache.ready ||
+        g_staticCache.signature != staticSig ||
+        g_staticCache.baseIndeg.size() != (size_t)n ||
+        g_staticCache.futureDemandByResInit.size() != I.resources.size()) {
+        rebuildSchedulerStaticCache(I);
     }
 
-    std::vector<int> feasibleCountPerTask(n, 0);
-    for (int ui = 0; ui < n; ++ui) {
-        const Task& u = I.tasks[ui];
-        int reqU = std::max(0, u.reqLevel);
+    std::vector<int> indeg = g_staticCache.baseIndeg;
+    const auto& succ = g_staticCache.succ;
+    const auto& feasibleCountPerTask = g_staticCache.feasibleCountPerTask;
+    const auto& staticTaskResCount = g_staticCache.staticTaskResCount;
+    const auto& staticAvgResCost = g_staticCache.staticAvgResCost;
+    const auto& demandCapableResIdxPerTask = g_staticCache.demandCapableResIdxPerTask;
+    const auto& demandWeightPerTask = g_staticCache.demandWeightPerTask;
+    std::vector<double> futureDemandByRes = g_staticCache.futureDemandByResInit;
 
-        if (reqU <= 0) {
-            feasibleCountPerTask[ui] = (int)I.resources.size();
-            continue;
-        }
-
-        int cnt = 0;
-        for (const auto& rr : I.resources) {
-            auto jt = rr.skills.find(u.reqSkill);
-            int ll = (jt != rr.skills.end()) ? jt->second : 0;
-            if (ll >= reqU) ++cnt;
-        }
-        feasibleCountPerTask[ui] = cnt;
-    }
-
-    std::vector<double> staticTaskResCount(n, 0.0);
-    std::vector<double> staticAvgResCost(n, std::numeric_limits<double>::infinity());
-    for (int ui = 0; ui < n; ++ui) {
-        const Task& u = I.tasks[ui];
-        const int reqU = std::max(0, u.reqLevel);
-
-        if (reqU <= 0) {
-            staticTaskResCount[ui] = (double)I.resources.size();
-            staticAvgResCost[ui] = std::numeric_limits<double>::infinity();
-            continue;
-        }
-
-        if (!u.capableResources.empty()) {
-            staticTaskResCount[ui] = (double)u.capableResources.size();
-
-            double sumSal = 0.0;
-            int cnt = 0;
-            for (int rid : u.capableResources) {
-                auto itIdx = __resIndex.find(rid);
-                if (itIdx == __resIndex.end()) continue;
-                sumSal += I.resources[itIdx->second].salary;
-                ++cnt;
-            }
-            staticAvgResCost[ui] = (cnt > 0) ? (sumSal / (double)cnt) : std::numeric_limits<double>::infinity();
-            continue;
-        }
-
-        staticTaskResCount[ui] = (double)feasibleCountPerTask[ui];
-
-        double sumSal = 0.0;
-        int cnt = 0;
-        for (const auto& rr : I.resources) {
-            auto jt = rr.skills.find(u.reqSkill);
-            const int ll = (jt != rr.skills.end()) ? jt->second : 0;
-            if (ll >= reqU) {
-                sumSal += rr.salary;
-                ++cnt;
-            }
-        }
-        staticAvgResCost[ui] = (cnt > 0) ? (sumSal / (double)cnt) : std::numeric_limits<double>::infinity();
-    }
+    std::vector<int> latestPredFinishByTask(n, 0);
 
     int unschedCount = n;
-    setFeaturePrecomputed(&staticTaskResCount, &staticAvgResCost, &__resIndex, &unschedCount);
-
-    for (auto& t : I.tasks) { t.start = -1; t.finish = -1; t.assignedResources.clear(); }
-
-    std::vector<std::vector<int>> demandCapableResIdxPerTask(n);
-    std::vector<double> demandWeightPerTask(n, 0.0);
-    std::vector<double> futureDemandByRes(I.resources.size(), 0.0);
-
-    for (int ui = 0; ui < n; ++ui) {
-        const Task& u = I.tasks[ui];
-        const int reqU = std::max(0, u.reqLevel);
-        const double w = 1.0 / (double)std::max(1, feasibleCountPerTask[ui]);
-        demandWeightPerTask[ui] = w;
-
-        auto& caps = demandCapableResIdxPerTask[ui];
-        if (reqU <= 0) {
-            caps.reserve(I.resources.size());
-            for (int ri = 0; ri < (int)I.resources.size(); ++ri) {
-                caps.push_back(ri);
-                futureDemandByRes[ri] += w;
-            }
-            continue;
-        }
-
-        caps.reserve(std::max(1, feasibleCountPerTask[ui]));
-        for (int ri = 0; ri < (int)I.resources.size(); ++ri) {
-            const auto& rr = I.resources[ri];
-            auto jt = rr.skills.find(u.reqSkill);
-            const int ll = (jt != rr.skills.end()) ? jt->second : 0;
-            if (ll >= reqU) {
-                caps.push_back(ri);
-                futureDemandByRes[ri] += w;
-            }
-        }
-    }
+    setFeaturePrecomputed(
+        &staticTaskResCount,
+        &staticAvgResCost,
+        &__resIndex,
+        &unschedCount,
+        &indeg,
+        &latestPredFinishByTask
+    );
 
 
     for (auto& r : I.resources) {
@@ -394,9 +497,11 @@ ScheduleResult Scheduler::withResources(Instance& I,
     int now = 0, scheduled = 0, makespan = 0;
     double totalCost = 0.0;
     std::vector<int> assignedByImopse;
-    assignedByImopse.assign(n, -1);
+    if (options.captureAssignedResByImopse) {
+        assignedByImopse.assign(n, -1);
+    }
 
-    struct Running { int ix; int finish; std::vector<int> res; };
+    struct Running { int ix; int finish; };
     std::vector<Running> running; running.reserve(n);
 
     auto processFinishedAtNow = [&]() {
@@ -406,7 +511,12 @@ ScheduleResult Scheduler::withResources(Instance& I,
         for (auto& rt : running) {
             if (rt.finish == now) {
                 for (int j : succ[rt.ix]) {
-                    if (I.tasks[j].start == -1) indeg[j]--;
+                    if (I.tasks[j].start == -1) {
+                        indeg[j]--;
+                        if (now > latestPredFinishByTask[j]) {
+                            latestPredFinishByTask[j] = now;
+                        }
+                    }
                 }
             }
             else {
@@ -470,8 +580,8 @@ ScheduleResult Scheduler::withResources(Instance& I,
             }
 
             int best = -1;
+            int bestResId = -1;
             double bestScore = std::numeric_limits<double>::infinity();
-            std::vector<int> bestSet;
             int minWaitFeasible = std::numeric_limits<int>::max() / 4;
 
             for (int ix : cand) {
@@ -482,12 +592,12 @@ ScheduleResult Scheduler::withResources(Instance& I,
                 if (g_forcedResource && (size_t)ix < g_forcedResource->size())
                     forcedId = (*g_forcedResource)[ix];
 
-                std::optional<std::vector<int>> allocSet;
+                int allocResId = -1;
 
                 if (forcedId >= 0) {
                     if (req <= 0) {
-                        allocSet = tryAllocZeroReqWithForced(I, t, now, forcedId);
-                        if (!allocSet) {
+                        allocResId = tryAllocZeroReqWithForcedId(I, t, forcedId);
+                        if (allocResId < 0) {
                             if (auto* r = findRes(I, forcedId)) {
                                 int w = std::max(0, r->busyUntil - now);
                                 minWaitFeasible = std::min(minWaitFeasible, w);
@@ -495,15 +605,14 @@ ScheduleResult Scheduler::withResources(Instance& I,
                         }
                     }
                     else {
-                        allocSet = tryAllocWithForced(I, t, now, forcedId);
-                        if (!allocSet) {
+                        allocResId = tryAllocWithForcedId(I, t, forcedId);
+                        if (allocResId < 0) {
                             int waitAll = ResourceAllocator::waitUntilFeasible(I, now, t.reqSkill, req);
                             minWaitFeasible = std::min(minWaitFeasible, waitAll);
 
                             auto fallback = ResourceAllocator::cheapestSubset(I, t.reqSkill, req, now);
-                            if (fallback) {
-                                bool containsForced = std::find(fallback->begin(), fallback->end(), forcedId) != fallback->end();
-                                if (containsForced) allocSet = fallback;
+                            if (fallback && fallback->size() == 1 && (*fallback)[0] == forcedId) {
+                                allocResId = forcedId;
                             }
                         }
                     }
@@ -511,24 +620,24 @@ ScheduleResult Scheduler::withResources(Instance& I,
                 else {
                     if (ruleR == nullptr) {
                         if (!t.capableResources.empty()) {
-                            allocSet = cheapestSingleCapableNow(I, t, now);
-                            if (!allocSet) {
+                            allocResId = cheapestSingleCapableNowId(I, t);
+                            if (allocResId < 0) {
                                 int wait = waitUntilAnyCapableFree(I, t, now);
                                 minWaitFeasible = std::min(minWaitFeasible, wait);
                             }
                         }
                         else {
-                            allocSet = ResourceAllocator::cheapestSubset(I, t.reqSkill, req, now);
-                            if (!allocSet) {
+                            auto pick = ResourceAllocator::cheapestSubset(I, t.reqSkill, req, now);
+                            if (pick && pick->size() == 1) {
+                                allocResId = (*pick)[0];
+                            }
+                            else {
                                 int wait = ResourceAllocator::waitUntilFeasible(I, now, t.reqSkill, req);
                                 minWaitFeasible = std::min(minWaitFeasible, wait);
                             }
                         }
                     }
                     else {
-                        std::vector<std::pair<int, double>> scored;
-                        scored.reserve(I.resources.size());
-
                         double cheapestNow = std::numeric_limits<double>::infinity();
                         {
                             const int req0 = std::max(0, t.reqLevel);
@@ -546,24 +655,26 @@ ScheduleResult Scheduler::withResources(Instance& I,
                             }
                         }
 
-                        if (!t.capableResources.empty()) {
-                            scored.reserve(t.capableResources.size());
+                        int localBestResId = -1;
+                        double localBestResScore = std::numeric_limits<double>::infinity();
 
+                        if (!t.capableResources.empty()) {
                             for (int rid : t.capableResources) {
                                 auto it = __resIndex.find(rid);
                                 if (it == __resIndex.end()) continue;
-                                const Resource& r = I.resources[it->second];
 
+                                const Resource& r = I.resources[it->second];
                                 double futureDemandExcludingTask = futureDemandByRes[it->second] - demandWeightPerTask[ix];
                                 if (futureDemandExcludingTask < 0.0) futureDemandExcludingTask = 0.0;
 
                                 double s = ruleR->scoreFast(I, ix, t, r, now, cheapestNow, futureDemandExcludingTask);
-                                scored.emplace_back(r.id, s);
+                                if (s < localBestResScore) {
+                                    localBestResScore = s;
+                                    localBestResId = r.id;
+                                }
                             }
                         }
                         else {
-                            scored.reserve(I.resources.size());
-
                             for (const auto& r : I.resources) {
                                 if (req > 0) {
                                     int lvl = skillLevelOf(I, r.id, t.reqSkill);
@@ -575,12 +686,14 @@ ScheduleResult Scheduler::withResources(Instance& I,
                                 if (futureDemandExcludingTask < 0.0) futureDemandExcludingTask = 0.0;
 
                                 double s = ruleR->scoreFast(I, ix, t, r, now, cheapestNow, futureDemandExcludingTask);
-                                scored.emplace_back(r.id, s);
+                                if (s < localBestResScore) {
+                                    localBestResScore = s;
+                                    localBestResId = r.id;
+                                }
                             }
                         }
 
-                        if (scored.empty()) {
-                            allocSet = std::nullopt;
+                        if (localBestResId < 0) {
                             int wait = (!t.capableResources.empty())
                                 ? waitUntilAnyCapableFree(I, t, now)
                                 : ResourceAllocator::waitUntilFeasible(I, now, t.reqSkill, req);
@@ -588,15 +701,13 @@ ScheduleResult Scheduler::withResources(Instance& I,
                             minWaitFeasible = std::min(minWaitFeasible, wait);
                         }
                         else {
-                            auto best = *std::min_element(scored.begin(), scored.end(),
-                                [](const auto& a, const auto& b) { return a.second < b.second; });
-                            allocSet = std::vector<int>{ best.first };
+                            allocResId = localBestResId;
                         }
                     }
                 }
 
 
-                if (!allocSet) {
+                if (allocResId < 0) {
                     if (g_trace && gp) {
                         int avail = ResourceAllocator::availableSkillSum(I, now, t.reqSkill);
                         int wait = ResourceAllocator::waitUntilFeasible(I, now, t.reqSkill, req);
@@ -618,7 +729,7 @@ ScheduleResult Scheduler::withResources(Instance& I,
 
                 double sc;
                 if (gp) {
-                    ScoreTrace tr = gp->scoreWithTrace(t);
+                    ScoreTrace tr = gp->scoreWithTraceFast(ix, t);
                     sc = tr.score;
                     if (g_trace) {
                         std::cout << "T" << t.id
@@ -637,16 +748,26 @@ ScheduleResult Scheduler::withResources(Instance& I,
                     }
                 }
                 else {
-                    sc = ruleT.score(t);
+                    if (const auto* gpFast = dynamic_cast<const GPTreeRule*>(&ruleT)) {
+                        sc = gpFast->scoreFast(ix, t);
+                    }
+                    else {
+                        sc = ruleT.score(t);
+                    }
                 }
 
                 if (sc < bestScore) {
-                    bestScore = sc; best = ix; bestSet = *allocSet;
+                    bestScore = sc;
+                    best = ix;
+                    bestResId = allocResId;
                 }
                 else if (best != -1 && std::abs(sc - bestScore) < 1e-9 && g_priorityKeys) {
                     const auto& K = *g_priorityKeys;
                     if ((size_t)best < K.size() && (size_t)ix < K.size()) {
-                        if (K[ix] < K[best]) { best = ix; bestSet = *allocSet; }
+                        if (K[ix] < K[best]) {
+                            best = ix;
+                            bestResId = allocResId;
+                        }
                     }
                 }
             }
@@ -673,10 +794,11 @@ ScheduleResult Scheduler::withResources(Instance& I,
                 Task& t = I.tasks[best];
 
                 int desiredStart = now;
-                for (int id : bestSet) {
-                    auto it = __resIndex.find(id);
-                    if (it == __resIndex.end()) continue;
-                    desiredStart = std::max(desiredStart, I.resources[it->second].busyUntil);
+                {
+                    auto it = __resIndex.find(bestResId);
+                    if (it != __resIndex.end()) {
+                        desiredStart = std::max(desiredStart, I.resources[it->second].busyUntil);
+                    }
                 }
 
                 bool waited = false;
@@ -687,25 +809,39 @@ ScheduleResult Scheduler::withResources(Instance& I,
 
                 t.start = now;
                 t.finish = now + t.duration;
-                t.assignedResources = bestSet;
 
-                if (!bestSet.empty() && t.imopseIndex >= 0 && t.imopseIndex < (int)assignedByImopse.size()) {
-                    assignedByImopse[t.imopseIndex] = bestSet[0];
+                if (options.keepTaskAssignedResources) {
+                    t.assignedResources.clear();
+                    if (bestResId >= 0) {
+                        t.assignedResources.push_back(bestResId);
+                    }
                 }
 
-                for (int id : bestSet) {
-                    auto it = __resIndex.find(id);
-                    if (it == __resIndex.end()) continue;
-                    auto& rr = I.resources[it->second];
-                    rr.busy = true;
-                    rr.busyStart = t.start;
-                    rr.busyUntil = t.finish;
+                if (options.captureAssignedResByImopse &&
+                    bestResId >= 0 &&
+                    t.imopseIndex >= 0 &&
+                    t.imopseIndex < (int)assignedByImopse.size()) {
+                    assignedByImopse[t.imopseIndex] = bestResId;
                 }
 
-                totalCost += ResourceAllocator::subsetCost(I, bestSet) * double(t.duration);
+                if (bestResId >= 0) {
+                    auto it = __resIndex.find(bestResId);
+                    if (it != __resIndex.end()) {
+                        auto& rr = I.resources[it->second];
+                        rr.busy = true;
+                        rr.busyStart = t.start;
+                        rr.busyUntil = t.finish;
+                    }
+                }
 
-                running.push_back({ best, t.finish, bestSet });
-                makespan = std::max(makespan, t.finish);
+                if (options.computeObjectiveStats && bestResId >= 0) {
+                    totalCost += singleResourceCost(I, bestResId) * double(t.duration);
+                }
+
+                running.push_back({ best, t.finish });
+                if (options.computeObjectiveStats) {
+                    makespan = std::max(makespan, t.finish);
+                }
                 startedAny = true;
 
                 const double scheduledTaskWeight = demandWeightPerTask[best];
@@ -741,8 +877,10 @@ ScheduleResult Scheduler::withResources(Instance& I,
     g_skillLevels = nullptr;
     g_resIndex = nullptr;
     ScheduleResult out;
-    out.makespan = makespan;
-    out.totalCost = totalCost;
-    out.assignedResByImopseTaskIndex = std::move(assignedByImopse);
+    out.makespan = options.computeObjectiveStats ? makespan : 0;
+    out.totalCost = options.computeObjectiveStats ? totalCost : 0.0;
+    if (options.captureAssignedResByImopse) {
+        out.assignedResByImopseTaskIndex = std::move(assignedByImopse);
+    }
     return out;
 }

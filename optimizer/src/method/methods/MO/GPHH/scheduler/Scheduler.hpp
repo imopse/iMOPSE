@@ -11,12 +11,19 @@ struct ScheduleResult {
     std::vector<int> assignedResByImopseTaskIndex;
 };
 
+struct ScheduleOptions {
+    bool computeObjectiveStats = true;
+    bool keepTaskAssignedResources = true;
+    bool captureAssignedResByImopse = true;
+};
+
 class Scheduler {
 public:
     static ScheduleResult precedenceOnly(Instance& I, const IDispatchingRule& rule);
     static ScheduleResult withResources(Instance& I,
         const IDispatchingRule& ruleT,
-        const GPTreeResRule* ruleR = nullptr);
+        const GPTreeResRule* ruleR = nullptr,
+        const ScheduleOptions& options = {});
 
     static void setPriorityKeys(const std::vector<float>* keys);
     static void setForcedResources(const std::vector<int>* forcedByTaskIndex);

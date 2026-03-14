@@ -15,6 +15,9 @@ struct Instance {
     std::size_t resourceStructureSignature = 0;
     bool resourceStructureSignatureReady = false;
 
+    std::size_t taskStructureSignature = 0;
+    bool taskStructureSignatureReady = false;
+
     void buildIndex() {
         idToIndex.clear();
         for (size_t i = 0; i < tasks.size(); ++i) {
@@ -45,5 +48,39 @@ struct Instance {
 
         resourceStructureSignature = sig;
         resourceStructureSignatureReady = true;
+    }
+
+    void rebuildTaskStructureSignature() {
+        std::size_t sig = hashCombine(1099511628211ull, tasks.size());
+
+        for (const auto& t : tasks) {
+            std::size_t taskHash = hashCombine(std::hash<int>{}(t.id), std::hash<int>{}(t.duration));
+            taskHash = hashCombine(taskHash, std::hash<std::string>{}(t.reqSkill));
+            taskHash = hashCombine(taskHash, std::hash<int>{}(t.reqLevel));
+            taskHash = hashCombine(taskHash, std::hash<int>{}(t.imopseIndex));
+
+            std::size_t predHash = 0;
+            for (int pid : t.predecessors) {
+                predHash = hashCombine(predHash, std::hash<int>{}(pid));
+            }
+
+            std::size_t capHash = 0;
+            for (int rid : t.capableResources) {
+                capHash = hashCombine(capHash, std::hash<int>{}(rid));
+            }
+
+            taskHash = hashCombine(taskHash, predHash);
+            taskHash = hashCombine(taskHash, capHash);
+
+            sig = hashCombine(sig, taskHash);
+        }
+
+        taskStructureSignature = sig;
+        taskStructureSignatureReady = true;
+    }
+
+    void rebuildStructureSignatures() {
+        rebuildResourceStructureSignature();
+        rebuildTaskStructureSignature();
     }
 };

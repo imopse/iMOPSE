@@ -69,6 +69,6 @@ Instance GPHHAdapter::FromScheduler(const CScheduler& sch) {
     }
 
     I.buildIndex();
-    I.rebuildResourceStructureSignature();
+    I.rebuildStructureSignatures();
     return I;
 }

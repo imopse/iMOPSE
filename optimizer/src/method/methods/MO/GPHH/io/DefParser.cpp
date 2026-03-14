@@ -77,6 +77,6 @@ bool DefParser::parseFile(const std::string& path, Instance& out)
         t.predecessors.swap(ok);
     }
 
-    out.rebuildResourceStructureSignature();
+    out.rebuildStructureSignatures();
     return true;
 }

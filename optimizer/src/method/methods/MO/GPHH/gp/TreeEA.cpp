@@ -38,7 +38,12 @@ static const std::vector<FeatureId>& resFeatPool() {
 }
 
 TreeEA::TreeEA(Instance& I, const GPEA_Params& params, CScheduler* imopseScheduler, bool isTAProblem)
-    : inst(I), P(params), rng(static_cast<unsigned>(P.seed)), imopseSch_(imopseScheduler), imopseIsTA_(isTAProblem) {
+    : inst(I),
+    workInst_(I),
+    P(params),
+    rng(static_cast<unsigned>(P.seed)),
+    imopseSch_(imopseScheduler),
+    imopseIsTA_(isTAProblem) {
     gp::buildCPM(inst, cpm);
     gp::setCPMPrecalc(&cpm);
     bounds = compute_imopse_bounds(inst);
@@ -64,14 +69,37 @@ int TreeEA::randInt(int lo, int hi) {
     return U(rng);
 }
 
+Instance& TreeEA::resetWorkingInstance() const {
+    for (auto& t : workInst_.tasks) {
+        t.start = -1;
+        t.finish = -1;
+        t.assignedResources.clear();
+    }
+
+    for (auto& r : workInst_.resources) {
+        r.busy = false;
+        r.busyUntil = 0;
+        r.busyStart = 0;
+        r.totalBusy = 0;
+    }
+
+    return workInst_;
+}
 
 GP_Individual TreeEA::evaluate(const GP_Individual& src) const {
     GP_Individual ind = src;
-    Instance Ic = inst;
+    Instance& Ic = resetWorkingInstance();
     GPTreeRule    ruleT(ind.taskTree);
     GPTreeResRule ruleR(ind.resTree);
 
-    auto sim = Scheduler::withResources(Ic, ruleT, &ruleR);
+    const bool leanDecode = (P.useImopseEvaluate && imopseSch_ && imopseIsTA_);
+
+    ScheduleOptions schedOpt;
+    schedOpt.computeObjectiveStats = !leanDecode;
+    schedOpt.keepTaskAssignedResources = !leanDecode;
+    schedOpt.captureAssignedResByImopse = leanDecode;
+
+    auto sim = Scheduler::withResources(Ic, ruleT, &ruleR, schedOpt);
 
     int ms = sim.makespan;
     double cost = sim.totalCost;

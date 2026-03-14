@@ -66,7 +66,9 @@ void setFeaturePrecomputed(
     const std::vector<double>* taskResCountByTask,
     const std::vector<double>* avgResCostByTask,
     const std::unordered_map<int, int>* resIndexById,
-    const int* unschedCountPtr
+    const int* unschedCountPtr,
+    const std::vector<int>* remainingPredCountByTask,
+    const std::vector<int>* latestPredFinishByTask
 );
 void clearFeaturePrecomputed();
 
