@@ -14,6 +14,7 @@ namespace {
     const int* g_unschedCountPtr = nullptr;
     const std::vector<int>* g_remainingPredCountByTask = nullptr;
     const std::vector<int>* g_latestPredFinishByTask = nullptr;
+    const std::unordered_map<std::string, SkillStepInfo>* g_skillStepCache = nullptr;
 
     inline double inf() { return std::numeric_limits<double>::infinity(); }
 
@@ -108,6 +109,38 @@ namespace {
         return (cnt > 0) ? (sumSal / (double)cnt) : inf();
     }
 
+    inline const SkillStepInfo* skillStepInfoFor(const std::string& skill) {
+        if (!g_skillStepCache) return nullptr;
+        auto it = g_skillStepCache->find(skill);
+        if (it == g_skillStepCache->end()) return nullptr;
+        return &it->second;
+    }
+
+    inline double cachedAvailSkill(const std::string& skill) {
+        const SkillStepInfo* info = skillStepInfoFor(skill);
+        if (!info) return -1.0;
+        return (double)info->maxFreeLevel;
+    }
+
+    inline double cachedWaitRes(const std::string& skill, int req) {
+        const SkillStepInfo* info = skillStepInfoFor(skill);
+        if (!info || req <= 0) return -1.0;
+        if (req >= (int)info->minWaitAtLeast.size()) return (double)std::numeric_limits<int>::max();
+        return (double)info->minWaitAtLeast[req];
+    }
+
+    inline bool cachedCheapestPair(const std::string& skill, int req, double& first, double& second) {
+        const SkillStepInfo* info = skillStepInfoFor(skill);
+        if (!info || req <= 0) return false;
+        if (req >= (int)info->cheapestAtLeast.size()) return false;
+
+        first = info->cheapestAtLeast[req];
+        second = info->secondCheapestAtLeast[req];
+
+        return std::isfinite(first);
+    }
+
+
     inline void fillCostNowFeatures(Features& f, const Instance& I, const Task& t, int req, int now) {
         if (!f.feasibleNow) {
             f.cheapestCostNow = inf();
@@ -119,6 +152,25 @@ namespace {
             f.costRegretNow = 0.0;
             return;
         }
+
+        if (t.capableResources.empty() && req > 0 && !t.reqSkill.empty()) {
+            double first = std::numeric_limits<double>::infinity();
+            double second = std::numeric_limits<double>::infinity();
+
+            if (cachedCheapestPair(t.reqSkill, req, first, second)) {
+                if (!std::isfinite(second)) second = first;
+
+                f.teamSizeMinNow = 1.0;
+                f.cheapestCostNow = first;
+                f.costPerSkillNow = first / (double)req;
+                f.minFeasibleCostNow = first * (double)t.duration;
+                f.costRegretNow = (second - first) * (double)t.duration;
+                f.minWageAvail = first;
+                f.avgWageAvail = first;
+                return;
+            }
+        }
+
 
         double first = std::numeric_limits<double>::infinity();
         double second = std::numeric_limits<double>::infinity();
@@ -230,7 +282,8 @@ void setFeaturePrecomputed(
     const std::unordered_map<int, int>* resIndexById,
     const int* unschedCountPtr,
     const std::vector<int>* remainingPredCountByTask,
-    const std::vector<int>* latestPredFinishByTask)
+    const std::vector<int>* latestPredFinishByTask,
+    const std::unordered_map<std::string, SkillStepInfo>* skillStepCache)
 {
     g_taskResCountByTask = taskResCountByTask;
     g_avgResCostByTask = avgResCostByTask;
@@ -238,7 +291,9 @@ void setFeaturePrecomputed(
     g_unschedCountPtr = unschedCountPtr;
     g_remainingPredCountByTask = remainingPredCountByTask;
     g_latestPredFinishByTask = latestPredFinishByTask;
+    g_skillStepCache = skillStepCache;
 }
+
 
 void clearFeaturePrecomputed() {
     g_taskResCountByTask = nullptr;
@@ -247,7 +302,9 @@ void clearFeaturePrecomputed() {
     g_unschedCountPtr = nullptr;
     g_remainingPredCountByTask = nullptr;
     g_latestPredFinishByTask = nullptr;
+    g_skillStepCache = nullptr;
 }
+
 
 Features computeFeatures(const PriorityContext& ctx, int taskIx) {
     Features f{};
@@ -278,10 +335,26 @@ Features computeFeatures(const PriorityContext& ctx, int taskIx) {
         predsDone = predecessorsDoneNow(I, t, ctx.now);
     }
 
-    f.availSkill = ResourceAllocator::availableSkillSum(I, ctx.now, t.reqSkill);
+    double availCached = -1.0;
+    double waitCached = -1.0;
+
+    if (req > 0 && !t.reqSkill.empty()) {
+        availCached = cachedAvailSkill(t.reqSkill);
+        waitCached = cachedWaitRes(t.reqSkill, req);
+    }
+
+    f.availSkill = (availCached >= 0.0)
+        ? availCached
+        : (double)ResourceAllocator::availableSkillSum(I, ctx.now, t.reqSkill);
+
     f.availGap = f.availSkill - (double)req;
-    f.waitRes = ResourceAllocator::waitUntilFeasible(I, ctx.now, t.reqSkill, req);
+
+    f.waitRes = (waitCached >= 0.0)
+        ? waitCached
+        : (double)ResourceAllocator::waitUntilFeasible(I, ctx.now, t.reqSkill, req);
+
     f.feasibleNow = predsDone && (f.waitRes <= 0.0);
+
 
     if (g_latestPredFinishByTask &&
         taskIx >= 0 &&

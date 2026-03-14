@@ -235,6 +235,99 @@ namespace {
         g_staticCache.ready = true;
     }
 
+    static void buildSkillStepCache(
+        const Instance& I,
+        int now,
+        std::unordered_map<std::string, SkillStepInfo>& out)
+    {
+        out.clear();
+        out.reserve(g_lookupCache.skillLevels.size());
+
+        for (const auto& kv : g_lookupCache.skillLevels) {
+            const std::string& skill = kv.first;
+            const std::vector<int>& levels = kv.second;
+
+            int maxLevel = 0;
+            for (int lvl : levels) {
+                if (lvl > maxLevel) maxLevel = lvl;
+            }
+
+            SkillStepInfo info;
+            info.maxFreeLevel = 0;
+
+            if (maxLevel <= 0) {
+                out.emplace(skill, std::move(info));
+                continue;
+            }
+
+            const int INF_WAIT = std::numeric_limits<int>::max();
+            std::vector<int> exactMinWait(maxLevel + 1, INF_WAIT);
+            std::vector<double> exactFirst(maxLevel + 1, std::numeric_limits<double>::infinity());
+            std::vector<double> exactSecond(maxLevel + 1, std::numeric_limits<double>::infinity());
+
+            for (int ri = 0; ri < (int)I.resources.size(); ++ri) {
+                int lvl = levels[ri];
+                if (lvl <= 0) continue;
+
+                const auto& r = I.resources[ri];
+                int wait = (r.busyUntil <= now) ? 0 : (r.busyUntil - now);
+                if (wait < exactMinWait[lvl]) {
+                    exactMinWait[lvl] = wait;
+                }
+
+                if (wait == 0) {
+                    if (lvl > info.maxFreeLevel) {
+                        info.maxFreeLevel = lvl;
+                    }
+
+                    double sal = r.salary;
+                    if (sal < exactFirst[lvl]) {
+                        exactSecond[lvl] = exactFirst[lvl];
+                        exactFirst[lvl] = sal;
+                    }
+                    else if (sal < exactSecond[lvl]) {
+                        exactSecond[lvl] = sal;
+                    }
+                }
+            }
+
+            info.minWaitAtLeast.assign(maxLevel + 1, INF_WAIT);
+            info.cheapestAtLeast.assign(maxLevel + 1, std::numeric_limits<double>::infinity());
+            info.secondCheapestAtLeast.assign(maxLevel + 1, std::numeric_limits<double>::infinity());
+
+            int carryWait = INF_WAIT;
+            double carryFirst = std::numeric_limits<double>::infinity();
+            double carrySecond = std::numeric_limits<double>::infinity();
+
+            auto feed = [&](double x) {
+                if (!std::isfinite(x)) return;
+                if (x < carryFirst) {
+                    carrySecond = carryFirst;
+                    carryFirst = x;
+                }
+                else if (x < carrySecond) {
+                    carrySecond = x;
+                }
+                };
+
+            for (int lvl = maxLevel; lvl >= 1; --lvl) {
+                if (exactMinWait[lvl] < carryWait) {
+                    carryWait = exactMinWait[lvl];
+                }
+
+                feed(exactFirst[lvl]);
+                feed(exactSecond[lvl]);
+
+                info.minWaitAtLeast[lvl] = carryWait;
+                info.cheapestAtLeast[lvl] = carryFirst;
+                info.secondCheapestAtLeast[lvl] = carrySecond;
+            }
+
+            out.emplace(skill, std::move(info));
+        }
+    }
+
+
     void rebuildResourceLookupCache(const Instance& I) {
         g_lookupCache.resIndex.clear();
         g_lookupCache.skillLevels.clear();
@@ -360,6 +453,20 @@ static int waitUntilAnyCapableFree(const Instance& I, const Task& t, int now) {
     return best;
 }
 
+static inline void insertReadySorted(std::vector<int>& ready, int ix) {
+    auto it = std::lower_bound(ready.begin(), ready.end(), ix);
+    if (it == ready.end() || *it != ix) {
+        ready.insert(it, ix);
+    }
+}
+
+static inline void eraseReadyValue(std::vector<int>& ready, int ix) {
+    auto it = std::lower_bound(ready.begin(), ready.end(), ix);
+    if (it != ready.end() && *it == ix) {
+        ready.erase(it);
+    }
+}
+
 static int tryAllocWithForcedId(
     const Instance& I, const Task& t, int forcedResId)
 {
@@ -467,15 +574,6 @@ ScheduleResult Scheduler::withResources(Instance& I,
     std::vector<int> latestPredFinishByTask(n, 0);
 
     int unschedCount = n;
-    setFeaturePrecomputed(
-        &staticTaskResCount,
-        &staticAvgResCost,
-        &__resIndex,
-        &unschedCount,
-        &indeg,
-        &latestPredFinishByTask
-    );
-
 
     for (auto& r : I.resources) {
         r.busy = false;
@@ -501,6 +599,17 @@ ScheduleResult Scheduler::withResources(Instance& I,
         assignedByImopse.assign(n, -1);
     }
 
+    std::vector<int> ready;
+    ready.reserve(n);
+    std::vector<unsigned char> readyFlag(n, 0);
+
+    for (int i = 0; i < n; ++i) {
+        if (indeg[i] == 0 && I.tasks[i].start == -1) {
+            ready.push_back(i);
+            readyFlag[i] = 1;
+        }
+    }
+
     struct Running { int ix; int finish; };
     std::vector<Running> running; running.reserve(n);
 
@@ -515,6 +624,11 @@ ScheduleResult Scheduler::withResources(Instance& I,
                         indeg[j]--;
                         if (now > latestPredFinishByTask[j]) {
                             latestPredFinishByTask[j] = now;
+                        }
+
+                        if (indeg[j] == 0 && !readyFlag[j]) {
+                            insertReadySorted(ready, j);
+                            readyFlag[j] = 1;
                         }
                     }
                 }
@@ -559,12 +673,22 @@ ScheduleResult Scheduler::withResources(Instance& I,
     while (scheduled < n) {
         freeResources(now);
 
-        std::vector<int> cand;
-        for (int i = 0; i < n; ++i)
-            if (indeg[i] == 0 && I.tasks[i].start == -1) cand.push_back(i);
-
         bool startedAny = false;
-        while (!cand.empty()) {
+
+        std::unordered_map<std::string, SkillStepInfo> skillStepCache;
+        buildSkillStepCache(I, now, skillStepCache);
+
+        setFeaturePrecomputed(
+            &staticTaskResCount,
+            &staticAvgResCost,
+            &__resIndex,
+            &unschedCount,
+            &indeg,
+            &latestPredFinishByTask,
+            &skillStepCache
+        );
+
+        while (!ready.empty()) {
             const_cast<IDispatchingRule&>(ruleT).setContext(&I, now);
 
             const GPTreeRule* gp = nullptr;
@@ -584,7 +708,7 @@ ScheduleResult Scheduler::withResources(Instance& I,
             double bestScore = std::numeric_limits<double>::infinity();
             int minWaitFeasible = std::numeric_limits<int>::max() / 4;
 
-            for (int ix : cand) {
+            for (int ix : ready) {
                 Task& t = I.tasks[ix];
                 const int req = t.reqLevel;
 
@@ -642,15 +766,27 @@ ScheduleResult Scheduler::withResources(Instance& I,
                         {
                             const int req0 = std::max(0, t.reqLevel);
 
-                            for (const auto& rr : I.resources) {
-                                if (rr.busyUntil > now) continue;
+                            if (req0 > 0 && !t.reqSkill.empty()) {
+                                auto itSkill = skillStepCache.find(t.reqSkill);
+                                if (itSkill != skillStepCache.end()) {
+                                    const auto& info = itSkill->second;
+                                    if (req0 < (int)info.cheapestAtLeast.size()) {
+                                        cheapestNow = info.cheapestAtLeast[req0];
+                                    }
+                                }
+                            }
 
-                                int lvl = 0;
-                                auto it = rr.skills.find(t.reqSkill);
-                                if (it != rr.skills.end()) lvl = it->second;
+                            if (!std::isfinite(cheapestNow)) {
+                                for (const auto& rr : I.resources) {
+                                    if (rr.busyUntil > now) continue;
 
-                                if (req0 <= 0 || lvl >= req0) {
-                                    cheapestNow = std::min(cheapestNow, rr.salary);
+                                    int lvl = 0;
+                                    auto it = rr.skills.find(t.reqSkill);
+                                    if (it != rr.skills.end()) lvl = it->second;
+
+                                    if (req0 <= 0 || lvl >= req0) {
+                                        cheapestNow = std::min(cheapestNow, rr.salary);
+                                    }
                                 }
                             }
                         }
@@ -852,7 +988,8 @@ ScheduleResult Scheduler::withResources(Instance& I,
                     }
                 }
 
-                cand.erase(std::remove(cand.begin(), cand.end(), best), cand.end());
+                eraseReadyValue(ready, best);
+                readyFlag[best] = 0;
                 scheduled++;
                 --unschedCount;
 

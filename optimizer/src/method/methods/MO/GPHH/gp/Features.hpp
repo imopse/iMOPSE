@@ -62,14 +62,23 @@ struct Features {
     double unschedTasks = 0.0;
 };
 
+struct SkillStepInfo {
+    int maxFreeLevel = 0;
+    std::vector<int> minWaitAtLeast;
+    std::vector<double> cheapestAtLeast;
+    std::vector<double> secondCheapestAtLeast;
+};
+
 void setFeaturePrecomputed(
     const std::vector<double>* taskResCountByTask,
     const std::vector<double>* avgResCostByTask,
     const std::unordered_map<int, int>* resIndexById,
     const int* unschedCountPtr,
     const std::vector<int>* remainingPredCountByTask,
-    const std::vector<int>* latestPredFinishByTask
+    const std::vector<int>* latestPredFinishByTask,
+    const std::unordered_map<std::string, SkillStepInfo>* skillStepCache
 );
+
 void clearFeaturePrecomputed();
 
 Features computeFeatures(const PriorityContext& ctx, int taskIx);
