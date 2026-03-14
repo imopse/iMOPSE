@@ -792,65 +792,6 @@ std::vector<GP_Individual> TreeEA::selectNextPopulationNSGA2(std::vector<GP_Indi
     return next;
 }
 
-static double clamp01(double v) {
-    if (!std::isfinite(v)) return 1.0;
-    if (v < 0.0) return 0.0;
-    if (v > 1.0) return 1.0;
-    return v;
-}
-
-static double hv2d_ref11_from_pareto(const std::vector<GP_ParetoPoint>& pf)
-{
-    if (pf.empty()) return 0.0;
-
-    std::vector<std::pair<double, double>> pts;
-    pts.reserve(pf.size());
-    for (const auto& p : pf) {
-        pts.emplace_back(clamp01(p.msNorm), clamp01(p.costNorm));
-    }
-
-    std::sort(pts.begin(), pts.end(),
-        [](const auto& a, const auto& b) {
-            if (a.first != b.first) return a.first < b.first;
-            return a.second < b.second;
-        });
-
-    double hv = 0.0;
-    double prevX = 1.0;
-    double bestY = 1.0;
-
-    for (int i = (int)pts.size() - 1; i >= 0; --i) {
-        const double x = pts[i].first;
-        const double y = pts[i].second;
-
-        if (y < bestY) bestY = y;
-
-        const double width = prevX - x;
-        const double height = 1.0 - bestY;
-        if (width > 0.0 && height > 0.0) hv += width * height;
-
-        prevX = x;
-    }
-
-    return hv;
-}
-
-static double hv2d_ref11_from_archive(const std::vector<GP_Individual>& arch) {
-    if (arch.empty()) return 0.0;
-
-    std::vector<GP_ParetoPoint> pf;
-    pf.reserve(arch.size());
-    for (const auto& x : arch) {
-        GP_ParetoPoint p;
-        p.makespan = x.makespan;
-        p.cost = x.cost;
-        p.msNorm = x.msNorm;
-        p.costNorm = x.costNorm;
-        pf.push_back(p);
-    }
-    return hv2d_ref11_from_pareto(pf);
-}
-
 GP_Individual TreeEA::run() {
     std::vector<GP_Individual> pop;
     initPopulation(pop);
@@ -860,10 +801,6 @@ GP_Individual TreeEA::run() {
         archive_.reserve(P.popSize * 2);
 
         copyToArchiveWithFiltering(pop);
-
-        histHV_.clear();
-        histHV_.reserve(P.generations + 1);
-        histHV_.push_back(hv2d_ref11_from_archive(archive_));
 
         histBest_.clear();
         histAvg_.clear();
@@ -955,7 +892,6 @@ GP_Individual TreeEA::run() {
 
             if (itBest->fitness < bestSoFar.fitness) bestSoFar = *itBest;
 
-            histHV_.push_back(hv2d_ref11_from_archive(archive_));
         }
 
         pareto_.clear();
@@ -971,22 +907,18 @@ GP_Individual TreeEA::run() {
 
         return bestSoFar;
     }
-        histHV_.clear();
-        histHV_.reserve(P.generations + 1);
 
         if (P.useNSGA2) {
             archive_.clear();
             archive_.reserve(P.popSize * 2);
             copyToArchiveWithFiltering(pop);
 
-            histHV_.push_back(hv2d_ref11_from_archive(archive_));
         }
         else {
             pareto_.clear();
             pareto_.reserve(P.popSize * 2);
             for (const auto& ind : pop) updatePareto(ind);
 
-            histHV_.push_back(hv2d_ref11_from_pareto(pareto_));
         }
 
     histBest_.clear();
@@ -1097,8 +1029,6 @@ GP_Individual TreeEA::run() {
 
         if (itBest->fitness < bestSoFar.fitness) bestSoFar = *itBest;
 
-        if (P.useNSGA2) histHV_.push_back(hv2d_ref11_from_archive(archive_));
-        else            histHV_.push_back(hv2d_ref11_from_pareto(pareto_));
     }
 
     if (P.useNSGA2) {

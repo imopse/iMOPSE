@@ -59,7 +59,6 @@ public:
     ~TreeEA();
     void setSeedTrees(const GPTree& task, const GPTree& res);
     GP_Individual run();
-    const std::vector<double>& getHistHV() const { return histHV_; }
     const std::vector<double>& getHistBest()  const { return histBest_; }
     const std::vector<double>& getHistAvg()   const { return histAvg_; }
     const std::vector<double>& getHistWorst() const { return histWorst_; }
@@ -85,7 +84,6 @@ private:
     ImopseBounds   bounds{};
     CScheduler* imopseSch_ = nullptr;
     bool imopseIsTA_ = false;
-    std::vector<double> histHV_;
     double rand01();
     int    randInt(int lo, int hi);
     GP_Individual evaluate(const GP_Individual& ind) const;

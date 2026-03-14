@@ -124,9 +124,9 @@ void CGPHH::RunOptimization()
     Instance inst = GPHHAdapter::FromScheduler(*sch);
     gp::initFeatureScaling(inst);
 
-    const bool useBaseline = (GetInt(m_Cfg, "UseBaseline", 1) != 0);
-    const int  seedDepth = GetInt(m_Cfg, "SeedDepth", 3);
-    std::string startRule = ToLower(GetString(m_Cfg, "StartRule", "random"));
+    const bool useBaseline = (GetInt(cfg, "UseBaseline", 1) != 0);
+    const int  seedDepth = GetInt(cfg, "SeedDepth", 3);
+    std::string startRule = ToLower(GetString(cfg, "StartRule", "random"));
 
     std::mt19937 rng((unsigned)P.seed);
 
@@ -147,91 +147,6 @@ void CGPHH::RunOptimization()
     auto best = ea.run();
 
     {
-        const GP_Individual* gen0Best = nullptr;
-        if (ea.hasBestGen0()) gen0Best = &ea.getBestGen0();
-
-        std::ostringstream tlog;
-        tlog << "Seed=" << (unsigned long long)P.seed << "\n";
-        tlog << "StartRule=" << startRule
-            << " SeedDepth=" << seedDepth
-            << " UseBaseline=" << (useBaseline ? 1 : 0)
-            << " UseNSGA2=" << (P.useNSGA2 ? 1 : 0)
-            << " UseBNTGA=" << (P.useBNTGA ? 1 : 0)
-            << "\n";
-        tlog << "FinalBest: makespan=" << best.makespan << " cost=" << best.cost << "\n\n";
-
-        tlog << "Clamp(Task): calls=" << ea.getClampCallsTask()
-            << " applied=" << ea.getClampAppliedTask();
-
-        if (ea.getClampAppliedTask() > 0) {
-            tlog << " avgDepthBefore=" << (double)ea.getClampPrevDepthSumTask() / (double)ea.getClampAppliedTask()
-                << " avgNodesBefore=" << (double)ea.getClampPrevNodesSumTask() / (double)ea.getClampAppliedTask();
-        }
-        tlog << "\n";
-
-        tlog << "Clamp(Res ): calls=" << ea.getClampCallsRes()
-            << " applied=" << ea.getClampAppliedRes();
-
-        tlog << "MacroSubtree(Task): applied=" << ea.getMacroSubtreeAppliedTask() << "\n";
-        tlog << "MacroSubtree(Res ): applied=" << ea.getMacroSubtreeAppliedRes() << "\n\n";
-
-        if (ea.getClampAppliedRes() > 0) {
-            tlog << " avgDepthBefore=" << (double)ea.getClampPrevDepthSumRes() / (double)ea.getClampAppliedRes()
-                << " avgNodesBefore=" << (double)ea.getClampPrevNodesSumRes() / (double)ea.getClampAppliedRes();
-        }
-        tlog << "\n\n";
-
-        auto dumpTree = [&](const char* tag, const GPTree& tr) {
-            tlog << tag << "\n";
-            tlog << "nodes=" << tr.nodeCount() << " depth=" << tr.depth() << "\n";
-            tlog << "expr=" << tr.toString() << "\n\n";
-            };
-
-        dumpTree("START_TASK_TREE", startTreeTask);
-        dumpTree("START_RES_TREE", startTreeRes);
-
-        if (gen0Best) {
-            dumpTree("GEN0_BEST_TASK_TREE", gen0Best->taskTree);
-            dumpTree("GEN0_BEST_RES_TREE", gen0Best->resTree);
-        }
-
-        dumpTree("FINAL_BEST_TASK_TREE", best.taskTree);
-        dumpTree("FINAL_BEST_RES_TREE", best.resTree);
-
-        CExperimentLogger::LogResult(tlog.str().c_str(), "res_tree_report.txt");
-
-        std::ostringstream j;
-        j << "{\n";
-        j << "  \"seed\": " << (unsigned long long)P.seed << ",\n";
-        j << "  \"startRule\": \"" << startRule << "\",\n";
-        j << "  \"seedDepth\": " << seedDepth << ",\n";
-        j << "  \"useBaseline\": " << (useBaseline ? "true" : "false") << ",\n";
-        j << "  \"useNSGA2\": " << (P.useNSGA2 ? "true" : "false") << ",\n";
-        j << "  \"useBNTGA\": " << (P.useBNTGA ? "true" : "false") << ",\n";
-        j << "  \"finalBest\": {\"makespan\": " << best.makespan << ", \"cost\": " << best.cost << "},\n";
-
-        j << "  \"startTask\": " << startTreeTask.toJson() << ",\n";
-        if (gen0Best) {
-            j << "  \"gen0BestTask\": " << gen0Best->taskTree.toJson() << ",\n";
-        }
-        else {
-            j << "  \"gen0BestTask\": null,\n";
-        }
-        j << "  \"finalBestTask\": " << best.taskTree.toJson() << ",\n";
-
-        j << "  \"startRes\": " << startTreeRes.toJson() << ",\n";
-        if (gen0Best) {
-            j << "  \"gen0BestRes\": " << gen0Best->resTree.toJson() << ",\n";
-        }
-        else {
-            j << "  \"gen0BestRes\": null,\n";
-        }
-        j << "  \"finalBestRes\": " << best.resTree.toJson() << "\n";
-
-        j << "}\n";
-
-        CExperimentLogger::LogResult(j.str().c_str(), "res_tree_report.json");
-
         if (enableFinalDiagnostics) {
             ResChoiceDiag diag;
             Scheduler::setResChoiceDiag(&diag);
@@ -313,18 +228,6 @@ void CGPHH::RunOptimization()
         }
     }
 
-    {
-        const auto& hv = ea.getHistHV();
-        std::ostringstream oss;
-        oss << "gen;ffe;hv\n";
-        for (size_t i = 0; i < hv.size(); ++i) {
-            size_t ffe = (i + 1) * P.popSize;
-            oss << i << ";" << ffe << ";" << hv[i] << "\n";
-        }
-        CExperimentLogger::LogResult(oss.str().c_str(), "hv_history.csv");
-    }
-
-
     const auto& pf = ea.getPareto();
 
     std::vector<GP_ParetoPoint> pfSorted = pf;
@@ -374,20 +277,4 @@ void CGPHH::RunOptimization()
         CExperimentLogger::LogResult(oss.str().c_str(), "results_norm.csv");
     }
 
-
-    if (useBaseline) {
-        std::string s =
-            "Baseline=ON StartRule=" + startRule +
-            " SeedDepth=" + std::to_string(seedDepth) + "\n";
-        CExperimentLogger::LogResult(s.c_str(), "gphh_params.txt");
-    }
-    else {
-        CExperimentLogger::LogResult("Baseline=OFF\n", "gphh_params.txt");
-    }
-
-    std::string msg =
-        "SeedUsed=" + std::to_string((unsigned long long)P.seed) +
-        " Best: makespan=" + std::to_string(best.makespan) +
-        " cost=" + std::to_string(best.cost) + "\n";
-    CExperimentLogger::LogResult(msg.c_str(), "gphh_summary.txt");
 }

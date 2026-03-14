@@ -5,8 +5,6 @@
 #include "../utils/DasDennis/CDasDennis.h"
 #include "../../../../utils/random/CRandom.h"
 #include "../../../../utils/logger/ErrorUtils.h"
-#include "../../../../utils/logger/CExperimentLogger.h"
-#include "../utils/metrics/Hypervolume2D.h"
 
 CSPEA2::CSPEA2(AProblem &problem, AInitialization &initialization, ACrossover &crossover, AMutation &mutation, SConfigMap *configMap)
         : AMOGeneticMethod(problem, initialization, crossover, mutation)
@@ -44,10 +42,6 @@ void CSPEA2::RunOptimization()
     
     ArchiveUtils::CopyToArchiveWithFiltering(m_Population, m_Archive);
 
-    std::ostringstream hv;
-    hv << "gen;hv\n";
-    hv << 0 << ";" << Metrics::HV2D_Ref11_FromArchive(m_Archive) << "\n";
-
     while ( generation < m_GenerationLimit)
     {
         EvolveToNextGeneration();
@@ -61,7 +55,6 @@ void CSPEA2::RunOptimization()
         UpdateFineGrainedFitness(combinedPop, neighborhood);
         EnviroSelection(combinedPop);
         generation++;
-        hv << generation << ";" << Metrics::HV2D_Ref11_FromArchive(m_Archive) << "\n";
     }
 
     std::vector<SMOIndividual*> allArchiveInd = m_Archive;
@@ -73,7 +66,6 @@ void CSPEA2::RunOptimization()
     }
     
     ArchiveUtils::CopyToArchiveWithFiltering(m_NextPopulation, m_Archive);
-    CExperimentLogger::LogResult(hv.str().c_str(), "hv_history.csv");
     ArchiveUtils::LogParetoFront(m_Archive);
 }
 

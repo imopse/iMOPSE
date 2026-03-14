@@ -5,8 +5,6 @@
 #include "../utils/DasDennis/CDasDennis.h"
 #include "../../../../utils/random/CRandom.h"
 #include "../../../../utils/logger/ErrorUtils.h"
-#include "../../../../utils/logger/CExperimentLogger.h"
-#include "../utils/metrics/Hypervolume2D.h"
 
 CMOEAD::CMOEAD(AProblem &problem, AInitialization &initialization, ACrossover &crossover, AMutation &mutation, SConfigMap *configMap)
         : AMOGeneticMethod(problem, initialization, crossover, mutation)
@@ -42,18 +40,12 @@ void CMOEAD::RunOptimization()
     
     ArchiveUtils::CopyToArchiveWithFiltering(m_Population, m_Archive);
 
-    std::ostringstream hv;
-    hv << "gen;hv\n";
-    hv << 0 << ";" << Metrics::HV2D_Ref11_FromArchive(m_Archive) << "\n";
-
     while (generation < m_GenerationLimit)
     {
         EvolveToNextGeneration();
         generation++;
-        hv << generation << ";" << Metrics::HV2D_Ref11_FromArchive(m_Archive) << "\n";
     }
 
-    CExperimentLogger::LogResult(hv.str().c_str(), "hv_history.csv");
     ArchiveUtils::LogParetoFront(m_Archive);
 }
 
