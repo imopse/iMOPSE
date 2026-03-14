@@ -40,7 +40,7 @@ void CMOEAD::RunOptimization()
     
     ArchiveUtils::CopyToArchiveWithFiltering(m_Population, m_Archive);
 
-    while (generation < m_GenerationLimit)
+    while ( generation < m_GenerationLimit)
     {
         EvolveToNextGeneration();
         generation++;

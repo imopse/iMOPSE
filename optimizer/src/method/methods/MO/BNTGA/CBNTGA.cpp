@@ -4,7 +4,6 @@
 #include "../utils/archive/ArchiveUtils.h"
 #include "../../../../utils/logger/ErrorUtils.h"
 
-
 CBNTGA::CBNTGA(AProblem &evaluator, AInitialization &initialization,
                ACrossover &crossover, AMutation &mutation, CGapSelectionByRandomDim& gapSelection, SConfigMap *configMap) :
         AMOGeneticMethod(evaluator, initialization, crossover, mutation), m_GapSelection(gapSelection)
@@ -34,7 +33,6 @@ void CBNTGA::RunOptimization()
     }
 
     ArchiveUtils::CopyToArchiveWithFiltering(m_Population, m_Archive);
-
 
     while (generation < m_GenerationLimit)
     {

@@ -54,6 +54,7 @@ void CSPEA2::RunOptimization()
         BuildNeighborhood(combinedPop, neighborhood);
         UpdateFineGrainedFitness(combinedPop, neighborhood);
         EnviroSelection(combinedPop);
+
         generation++;
     }
 

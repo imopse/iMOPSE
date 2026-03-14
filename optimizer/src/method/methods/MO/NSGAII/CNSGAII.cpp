@@ -99,6 +99,7 @@ void CNSGAII::RunOptimization()
         generation++;
     }
 
+    ArchiveUtils::CopyToArchiveWithFiltering(m_NextPopulation, m_Archive);
     ArchiveUtils::LogParetoFront(m_Archive);
 }
 
