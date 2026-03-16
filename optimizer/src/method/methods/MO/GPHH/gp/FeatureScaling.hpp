@@ -34,6 +34,7 @@ namespace gp {
         double maxResSurplusLevel = 1.0;
         double maxResRelativeWage = 1.0;
         double maxResFutureDemand = 1.0;
+        double maxResReservePressure = 1.0;
     };
 
     void initFeatureScaling(const Instance& I);

@@ -78,7 +78,7 @@ int ResourceAllocator::availableSkillSum(const Instance& I, int now,
     return best;
 }
 
-std::optional<std::vector<int>> ResourceAllocator::cheapestSubset(const Instance& I,
+int ResourceAllocator::cheapestSubsetSingleId(const Instance& I,
     const std::string& skill, int reqLevel, int now)
 {
     int bestId = -1;
@@ -111,9 +111,7 @@ std::optional<std::vector<int>> ResourceAllocator::cheapestSubset(const Instance
                     bestId = r.id;
                 }
             }
-
-            if (bestId < 0) return std::nullopt;
-            return std::vector<int>{ bestId };
+            return bestId;
         }
     }
 
@@ -132,6 +130,13 @@ std::optional<std::vector<int>> ResourceAllocator::cheapestSubset(const Instance
         }
     }
 
+    return bestId;
+}
+
+std::optional<std::vector<int>> ResourceAllocator::cheapestSubset(const Instance& I,
+    const std::string& skill, int reqLevel, int now)
+{
+    int bestId = cheapestSubsetSingleId(I, skill, reqLevel, now);
     if (bestId < 0) return std::nullopt;
     return std::vector<int>{ bestId };
 }

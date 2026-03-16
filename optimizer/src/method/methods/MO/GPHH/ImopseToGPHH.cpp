@@ -3,6 +3,7 @@
 #include <string>
 #include <algorithm>
 #include <vector>
+#include <unordered_map>
 
 static std::string skillName(unsigned typeId) {
     return "Q" + std::to_string(typeId);
@@ -69,6 +70,25 @@ Instance GPHHAdapter::FromScheduler(const CScheduler& sch) {
     }
 
     I.buildIndex();
+
+    std::unordered_map<int, int> resIdToIndex;
+    resIdToIndex.reserve(I.resources.size() * 2);
+    for (int i = 0; i < (int)I.resources.size(); ++i) {
+        resIdToIndex[I.resources[i].id] = i;
+    }
+
+    for (auto& t : I.tasks) {
+        t.capableResourceIndices.clear();
+        t.capableResourceIndices.reserve(t.capableResources.size());
+
+        for (int rid : t.capableResources) {
+            auto it = resIdToIndex.find(rid);
+            if (it != resIdToIndex.end()) {
+                t.capableResourceIndices.push_back(it->second);
+            }
+        }
+    }
+
     I.rebuildStructureSignatures();
     return I;
 }

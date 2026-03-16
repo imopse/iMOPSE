@@ -85,13 +85,12 @@ namespace {
 
         if (req <= 0) return inf();
 
-        if (!t.capableResources.empty() && g_resIndexById) {
+        if (!t.capableResourceIndices.empty()) {
             double sumSal = 0.0;
             int cnt = 0;
-            for (int rid : t.capableResources) {
-                auto itIdx = g_resIndexById->find(rid);
-                if (itIdx == g_resIndexById->end()) continue;
-                sumSal += I.resources[itIdx->second].salary;
+            for (int ri : t.capableResourceIndices) {
+                if (ri < 0 || ri >= (int)I.resources.size()) continue;
+                sumSal += I.resources[ri].salary;
                 ++cnt;
             }
             return (cnt > 0) ? (sumSal / (double)cnt) : inf();
@@ -187,12 +186,11 @@ namespace {
             }
             };
 
-        if (!t.capableResources.empty() && g_resIndexById) {
-            for (int rid : t.capableResources) {
-                auto itIdx = g_resIndexById->find(rid);
-                if (itIdx == g_resIndexById->end()) continue;
+        if (!t.capableResourceIndices.empty()) {
+            for (int ri : t.capableResourceIndices) {
+                if (ri < 0 || ri >= (int)I.resources.size()) continue;
 
-                const auto& r = I.resources[itIdx->second];
+                const auto& r = I.resources[ri];
                 if (r.busyUntil > now) continue;
 
                 considerSalary(r.salary);
@@ -392,12 +390,9 @@ Features computeResourceFeatures(const Instance& I, const Task& t, const Resourc
         f.resSkillLevel = (double)lvlNow;
     }
 
-    if (r.busyUntil > now) {
-        f.resFreeTime = (double)(r.busyUntil - now);
-    }
-    else {
-        f.resFreeTime = (double)(now - r.busyUntil);
-    }
+    f.resWaitTime = (r.busyUntil > now) ? (double)(r.busyUntil - now) : 0.0;
+    f.resIdleTime = (r.busyUntil < now) ? (double)(now - r.busyUntil) : 0.0;
+    f.resCanStartNow = (r.busyUntil <= now) ? 1.0 : 0.0;
 
     f.resMultiSkill = (double)r.skills.size();
 
@@ -408,25 +403,72 @@ Features computeResourceFeatures(const Instance& I, const Task& t, const Resourc
     f.resUtilization = (now > 0) ? (busySoFar / (double)now) : 0.0;
 
     f.resWagePerLevel = r.salary / (double)std::max(1, lvlNow);
+    f.resAssignCost = r.salary * (double)t.duration;
 
     f.resSurplusLevel = (double)std::max(0, lvlNow - req);
 
     double cheapestNow = std::numeric_limits<double>::infinity();
-    for (const auto& rr : I.resources) {
-        if (rr.busyUntil > now) continue;
+    double cheapestCapableOverall = std::numeric_limits<double>::infinity();
+    double waitOfCheapestCapableOverall = std::numeric_limits<double>::infinity();
 
+    for (const auto& rr : I.resources) {
         int lvl = 0;
         auto it = rr.skills.find(t.reqSkill);
         if (it != rr.skills.end()) lvl = it->second;
 
-        if (req <= 0 || lvl >= req) {
+        if (req > 0 && lvl < req) continue;
+
+        const double waitRR = (rr.busyUntil > now) ? (double)(rr.busyUntil - now) : 0.0;
+
+        if (rr.salary < cheapestCapableOverall) {
+            cheapestCapableOverall = rr.salary;
+            waitOfCheapestCapableOverall = waitRR;
+        }
+        else if (rr.salary == cheapestCapableOverall && waitRR < waitOfCheapestCapableOverall) {
+            waitOfCheapestCapableOverall = waitRR;
+        }
+
+        if (rr.busyUntil <= now) {
             cheapestNow = std::min(cheapestNow, rr.salary);
         }
     }
+
     f.resRelativeWage = std::isfinite(cheapestNow) ? (r.salary - cheapestNow) : 0.0;
 
+    double taskSlack = 0.0;
+    if (auto cpm = gp::getCPMPrecalc()) {
+        auto itIx = I.idToIndex.find(t.id);
+        if (itIx != I.idToIndex.end()) {
+            const int ix = itIx->second;
+            if (ix >= 0 && ix < (int)cpm->slack.size()) {
+                taskSlack = (double)cpm->slack[ix];
+            }
+        }
+    }
+
+    const double waitThis = f.resWaitTime;
+    const double waitSavedVsCheapest =
+        std::isfinite(waitOfCheapestCapableOverall)
+        ? std::max(0.0, waitOfCheapestCapableOverall - waitThis)
+        : 0.0;
+
+    const double usefulWaitSaved = std::max(0.0, waitSavedVsCheapest - taskSlack);
+
+    const double premiumCost =
+        std::isfinite(cheapestCapableOverall)
+        ? std::max(0.0, r.salary - cheapestCapableOverall) * (double)t.duration
+        : 0.0;
+
+    f.resHasteValue = premiumCost / (1.0 + usefulWaitSaved);
+    f.resAssignPremiumAll =
+        std::isfinite(cheapestCapableOverall)
+        ? std::max(0.0, r.salary - cheapestCapableOverall) * (double)t.duration
+        : 0.0;
 
     double demand = 0.0;
+    double reservePressure = 0.0;
+    std::unordered_map<std::string, double> familyPressure;
+
     for (const auto& u : I.tasks) {
         if (u.start != -1) continue;
         if (u.id == t.id) continue;
@@ -440,27 +482,107 @@ Features computeResourceFeatures(const Instance& I, const Task& t, const Resourc
         if (reqU > 0 && lvlU < reqU) continue;
 
         int feasibleCount = 0;
+        double cheapest = std::numeric_limits<double>::infinity();
+        double second = std::numeric_limits<double>::infinity();
+
         for (const auto& rr : I.resources) {
             auto jt = rr.skills.find(u.reqSkill);
             int ll = (jt != rr.skills.end()) ? jt->second : 0;
-            if (reqU <= 0 || ll >= reqU) ++feasibleCount;
+            if (reqU > 0 && ll < reqU) continue;
+
+            ++feasibleCount;
+
+            if (rr.salary < cheapest) {
+                second = cheapest;
+                cheapest = rr.salary;
+            }
+            else if (rr.salary < second) {
+                second = rr.salary;
+            }
         }
 
         demand += 1.0 / (double)std::max(1, feasibleCount);
+
+        if (!std::isfinite(second)) second = cheapest;
+        const double priceGap = std::max(0.0, second - cheapest);
+
+        const double reserveContribution =
+            ((double)u.duration * priceGap) / (double)std::max(1, feasibleCount);
+
+        reservePressure += reserveContribution;
+
+        const std::string famKey =
+            u.reqSkill + "#" + std::to_string(std::max(0, u.reqLevel));
+        familyPressure[famKey] += reserveContribution;
     }
+
     f.resFutureDemand = demand;
+    f.resReservePressure = reservePressure;
+
+    const std::string currentFamKey =
+        t.reqSkill + "#" + std::to_string(std::max(0, t.reqLevel));
+
+    double currentFamilyPressure = 0.0;
+    auto itFam = familyPressure.find(currentFamKey);
+    if (itFam != familyPressure.end()) {
+        currentFamilyPressure = itFam->second;
+    }
+
+    double bestOtherFamilyPressure = 0.0;
+    for (const auto& kv : familyPressure) {
+        if (kv.first == currentFamKey) continue;
+        if (kv.second > bestOtherFamilyPressure) {
+            bestOtherFamilyPressure = kv.second;
+        }
+    }
+
+    f.resFamilyMismatch =
+        bestOtherFamilyPressure / (1.0 + currentFamilyPressure);
 
     const auto& S = gp::getFeatureScaling();
+
+    double critRaw = 0.0;
+    double slackRaw = 0.0;
+    if (auto cpm = gp::getCPMPrecalc()) {
+        auto itIx = I.idToIndex.find(t.id);
+        if (itIx != I.idToIndex.end()) {
+            const int ix = itIx->second;
+            if (ix >= 0 && ix < (int)cpm->critLen.size()) critRaw = cpm->critLen[ix];
+            if (ix >= 0 && ix < (int)cpm->slack.size())   slackRaw = cpm->slack[ix];
+        }
+    }
+
+    const double critNorm =
+        (S.maxCritLen > 0.0) ? (critRaw / S.maxCritLen) : 0.0;
+    const double slackNorm =
+        (S.maxSlackPos > 0.0) ? (std::max(0.0, slackRaw) / S.maxSlackPos) : 0.0;
+
+    const double currentNeed =
+        ((double)t.duration * (1.0 + critNorm)) / (1.0 + slackNorm);
+
+    f.resStrategicMismatch =
+        premiumCost * (1.0 + f.resReservePressure) / (1.0 + currentNeed);
     f.resWage = normalize(f.resWage, S.maxMinWageAvail);
     f.resSkillLevel = normalize(f.resSkillLevel, S.maxResSkillLevel);
-    f.resFreeTime = normalize(f.resFreeTime, S.maxWaitRes);
+    f.resWaitTime = normalize(f.resWaitTime, S.maxWaitRes);
+    f.resIdleTime = normalize(f.resIdleTime, S.maxWaitRes);
+    f.resCanStartNow = (f.resCanStartNow > 0.5) ? 1.0 : 0.0;
     f.resMultiSkill = normalize(f.resMultiSkill, S.maxNumSkills);
     f.resUtilization = normalize(f.resUtilization, 1.0);
     f.resWagePerLevel = normalize(f.resWagePerLevel, S.maxResWagePerLevel);
+    f.resHasteValue = normalize(f.resHasteValue, S.maxMinWageAvail * S.maxDuration);
+    f.resAssignCost = normalize(f.resAssignCost, S.maxMinWageAvail * S.maxDuration);
+    f.resAssignPremiumAll = normalize(f.resAssignPremiumAll, S.maxMinWageAvail * S.maxDuration);
+    f.resStrategicMismatch = normalize(
+        f.resStrategicMismatch,
+        (S.maxMinWageAvail * S.maxDuration) * (1.0 + S.maxResReservePressure)
+    );
+    f.resFamilyMismatch = normalize(f.resFamilyMismatch, S.maxResReservePressure);
 
     f.resSurplusLevel = normalize(f.resSurplusLevel, S.maxResSurplusLevel);
     f.resRelativeWage = normalize(f.resRelativeWage, S.maxResRelativeWage);
     f.resFutureDemand = normalize(f.resFutureDemand, S.maxResFutureDemand);
+    f.resReservePressure = normalize(f.resReservePressure, S.maxResReservePressure);
 
     return f;
 }
@@ -473,7 +595,11 @@ Features computeResourceFeaturesFast(
     const Resource& r,
     int now,
     double cheapestNow,
-    double futureDemandExcludingTask
+    double cheapestCapableOverall,
+    double waitOfCheapestCapableOverall,
+    double futureDemandExcludingTask,
+    double reservePressureExcludingTask,
+    double familyMismatchExcludingTask
 ) {
     Features f{};
 
@@ -488,8 +614,9 @@ Features computeResourceFeaturesFast(
         f.resSkillLevel = (double)lvlNow;
     }
 
-    if (r.busyUntil > now) f.resFreeTime = (double)(r.busyUntil - now);
-    else                  f.resFreeTime = (double)(now - r.busyUntil);
+    f.resWaitTime = (r.busyUntil > now) ? (double)(r.busyUntil - now) : 0.0;
+    f.resIdleTime = (r.busyUntil < now) ? (double)(now - r.busyUntil) : 0.0;
+    f.resCanStartNow = (r.busyUntil <= now) ? 1.0 : 0.0;
 
     f.resMultiSkill = (double)r.skills.size();
 
@@ -498,25 +625,83 @@ Features computeResourceFeaturesFast(
     f.resUtilization = (now > 0) ? (busySoFar / (double)now) : 0.0;
 
     f.resWagePerLevel = r.salary / (double)std::max(1, lvlNow);
+    f.resAssignCost = r.salary * (double)t.duration;
     f.resSurplusLevel = (double)std::max(0, lvlNow - req);
 
     f.resRelativeWage = std::isfinite(cheapestNow) ? (r.salary - cheapestNow) : 0.0;
+    f.resAssignPremiumAll =
+        std::isfinite(cheapestCapableOverall)
+        ? std::max(0.0, r.salary - cheapestCapableOverall) * (double)t.duration
+        : 0.0;
 
-    (void)I;
-    (void)taskIx;
+    double taskSlack = 0.0;
+    if (auto cpm = gp::getCPMPrecalc()) {
+        if (taskIx >= 0 && taskIx < (int)cpm->slack.size()) {
+            taskSlack = (double)cpm->slack[taskIx];
+        }
+    }
+
+    const double waitThis = f.resWaitTime;
+    const double waitSavedVsCheapest =
+        std::isfinite(waitOfCheapestCapableOverall)
+        ? std::max(0.0, waitOfCheapestCapableOverall - waitThis)
+        : 0.0;
+
+    const double usefulWaitSaved = std::max(0.0, waitSavedVsCheapest - taskSlack);
+
+    const double premiumCost =
+        std::isfinite(cheapestCapableOverall)
+        ? std::max(0.0, r.salary - cheapestCapableOverall) * (double)t.duration
+        : 0.0;
+
+    f.resHasteValue = premiumCost / (1.0 + usefulWaitSaved);
+
     f.resFutureDemand = futureDemandExcludingTask;
+    f.resReservePressure = reservePressureExcludingTask;
+    f.resFamilyMismatch = familyMismatchExcludingTask;
 
     const auto& S = gp::getFeatureScaling();
+
+    double critRaw = 0.0;
+    double slackRaw = 0.0;
+    if (auto cpm = gp::getCPMPrecalc()) {
+        if (taskIx >= 0 && taskIx < (int)cpm->critLen.size()) critRaw = cpm->critLen[taskIx];
+        if (taskIx >= 0 && taskIx < (int)cpm->slack.size())   slackRaw = cpm->slack[taskIx];
+    }
+
+    const double critNorm =
+        (S.maxCritLen > 0.0) ? (critRaw / S.maxCritLen) : 0.0;
+    const double slackNorm =
+        (S.maxSlackPos > 0.0) ? (std::max(0.0, slackRaw) / S.maxSlackPos) : 0.0;
+
+    const double currentNeed =
+        ((double)t.duration * (1.0 + critNorm)) / (1.0 + slackNorm);
+
+    f.resStrategicMismatch =
+        premiumCost * (1.0 + f.resReservePressure) / (1.0 + currentNeed);
+
+    (void)I;
     f.resWage = normalize(f.resWage, S.maxMinWageAvail);
     f.resSkillLevel = normalize(f.resSkillLevel, S.maxResSkillLevel);
-    f.resFreeTime = normalize(f.resFreeTime, S.maxWaitRes);
+    f.resWaitTime = normalize(f.resWaitTime, S.maxWaitRes);
+    f.resIdleTime = normalize(f.resIdleTime, S.maxWaitRes);
+    f.resCanStartNow = (f.resCanStartNow > 0.5) ? 1.0 : 0.0;
     f.resMultiSkill = normalize(f.resMultiSkill, S.maxNumSkills);
     f.resUtilization = normalize(f.resUtilization, 1.0);
     f.resWagePerLevel = normalize(f.resWagePerLevel, S.maxResWagePerLevel);
+    f.resHasteValue = normalize(f.resHasteValue, S.maxMinWageAvail * S.maxDuration);
+    f.resAssignCost = normalize(f.resAssignCost, S.maxMinWageAvail * S.maxDuration);
+    f.resAssignPremiumAll = normalize(f.resAssignPremiumAll, S.maxMinWageAvail * S.maxDuration);
+    f.resStrategicMismatch = normalize(
+        f.resStrategicMismatch,
+        (S.maxMinWageAvail * S.maxDuration) * (1.0 + S.maxResReservePressure)
+    );
+    f.resFamilyMismatch = normalize(f.resFamilyMismatch, S.maxResReservePressure);
 
     f.resSurplusLevel = normalize(f.resSurplusLevel, S.maxResSurplusLevel);
     f.resRelativeWage = normalize(f.resRelativeWage, S.maxResRelativeWage);
     f.resFutureDemand = normalize(f.resFutureDemand, S.maxResFutureDemand);
+    f.resReservePressure = normalize(f.resReservePressure, S.maxResReservePressure);
 
     return f;
 }

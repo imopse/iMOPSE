@@ -25,10 +25,26 @@ public:
         const Resource& r,
         int now,
         double cheapestNow,
-        double futureDemandExcludingTask
+        double cheapestCapableOverall,
+        double waitOfCheapestCapableOverall,
+        double futureDemandExcludingTask,
+        double reservePressureExcludingTask,
+        double familyMismatchExcludingTask
     ) const {
         if (!tree) return 0.0;
-        Features f = computeResourceFeaturesFast(I, taskIx, t, r, now, cheapestNow, futureDemandExcludingTask);
+        Features f = computeResourceFeaturesFast(
+            I,
+            taskIx,
+            t,
+            r,
+            now,
+            cheapestNow,
+            cheapestCapableOverall,
+            waitOfCheapestCapableOverall,
+            futureDemandExcludingTask,
+            reservePressureExcludingTask,
+            familyMismatchExcludingTask
+        );
         return tree->eval(f);
     }
 };

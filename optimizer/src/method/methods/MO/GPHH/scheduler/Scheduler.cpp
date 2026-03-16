@@ -41,7 +41,12 @@ namespace {
 
         std::vector<std::vector<int>> demandCapableResIdxPerTask;
         std::vector<double> demandWeightPerTask;
+        std::vector<double> reservePressureWeightPerTask;
+        std::vector<int> familyIdByTask;
+        int familyCount = 0;
         std::vector<double> futureDemandByResInit;
+        std::vector<double> reservePressureByResInit;
+        std::vector<double> familyPressureByResFamilyInit;
     };
 
     thread_local ResourceLookupCache g_lookupCache;
@@ -122,7 +127,12 @@ namespace {
         g_staticCache.staticAvgResCost.assign(n, std::numeric_limits<double>::infinity());
         g_staticCache.demandCapableResIdxPerTask.assign(n, {});
         g_staticCache.demandWeightPerTask.assign(n, 0.0);
+        g_staticCache.reservePressureWeightPerTask.assign(n, 0.0);
+        g_staticCache.familyIdByTask.assign(n, -1);
+        g_staticCache.familyCount = 0;
         g_staticCache.futureDemandByResInit.assign(I.resources.size(), 0.0);
+        g_staticCache.reservePressureByResInit.assign(I.resources.size(), 0.0);
+        g_staticCache.familyPressureByResFamilyInit.clear();
 
         for (int i = 0; i < n; ++i) {
             for (int pid : I.tasks[i].predecessors) {
@@ -140,25 +150,6 @@ namespace {
                 }
             }
         }
-
-        for (int ui = 0; ui < n; ++ui) {
-            const Task& u = I.tasks[ui];
-            const int reqU = std::max(0, u.reqLevel);
-
-            if (reqU <= 0) {
-                g_staticCache.feasibleCountPerTask[ui] = (int)I.resources.size();
-            }
-            else {
-                int cnt = 0;
-                for (const auto& rr : I.resources) {
-                    auto jt = rr.skills.find(u.reqSkill);
-                    int ll = (jt != rr.skills.end()) ? jt->second : 0;
-                    if (ll >= reqU) ++cnt;
-                }
-                g_staticCache.feasibleCountPerTask[ui] = cnt;
-            }
-        }
-
         for (int ui = 0; ui < n; ++ui) {
             const Task& u = I.tasks[ui];
             const int reqU = std::max(0, u.reqLevel);
@@ -201,12 +192,81 @@ namespace {
                 (cnt > 0) ? (sumSal / (double)cnt) : std::numeric_limits<double>::infinity();
         }
 
+        {
+            std::unordered_map<std::string, int> familyIndex;
+            familyIndex.reserve((size_t)n * 2);
+
+            for (int ui = 0; ui < n; ++ui) {
+                const Task& u = I.tasks[ui];
+                const std::string key = u.reqSkill + "#" + std::to_string(std::max(0, u.reqLevel));
+
+                auto it = familyIndex.find(key);
+                if (it == familyIndex.end()) {
+                    const int id = (int)familyIndex.size();
+                    familyIndex.emplace(key, id);
+                    g_staticCache.familyIdByTask[ui] = id;
+                }
+                else {
+                    g_staticCache.familyIdByTask[ui] = it->second;
+                }
+            }
+
+            g_staticCache.familyCount = std::max(1, (int)familyIndex.size());
+            g_staticCache.familyPressureByResFamilyInit.assign(
+                I.resources.size() * (size_t)g_staticCache.familyCount,
+                0.0
+            );
+        }
+
         for (int ui = 0; ui < n; ++ui) {
             const Task& u = I.tasks[ui];
             const int reqU = std::max(0, u.reqLevel);
-            const double w = 1.0 / (double)std::max(1, g_staticCache.feasibleCountPerTask[ui]);
 
-            g_staticCache.demandWeightPerTask[ui] = w;
+            const int feasibleCount = std::max(1, g_staticCache.feasibleCountPerTask[ui]);
+            const double demandW = 1.0 / (double)feasibleCount;
+
+            double cheapest = std::numeric_limits<double>::infinity();
+            double second = std::numeric_limits<double>::infinity();
+
+            if (!u.capableResourceIndices.empty()) {
+                for (int ri : u.capableResourceIndices) {
+                    if (ri < 0 || ri >= (int)I.resources.size()) continue;
+                    const double sal = I.resources[ri].salary;
+
+                    if (sal < cheapest) {
+                        second = cheapest;
+                        cheapest = sal;
+                    }
+                    else if (sal < second) {
+                        second = sal;
+                    }
+                }
+            }
+            else {
+                for (int ri = 0; ri < (int)I.resources.size(); ++ri) {
+                    const auto& rr = I.resources[ri];
+                    auto jt = rr.skills.find(u.reqSkill);
+                    const int ll = (jt != rr.skills.end()) ? jt->second : 0;
+                    if (reqU > 0 && ll < reqU) continue;
+
+                    const double sal = rr.salary;
+                    if (sal < cheapest) {
+                        second = cheapest;
+                        cheapest = sal;
+                    }
+                    else if (sal < second) {
+                        second = sal;
+                    }
+                }
+            }
+
+            if (!std::isfinite(second)) second = cheapest;
+            const double priceGap = std::max(0.0, second - cheapest);
+            const double reserveW = ((double)u.duration * priceGap) / (double)feasibleCount;
+            const int famId = g_staticCache.familyIdByTask[ui];
+
+            g_staticCache.demandWeightPerTask[ui] = demandW;
+            g_staticCache.reservePressureWeightPerTask[ui] = reserveW;
 
             auto& caps = g_staticCache.demandCapableResIdxPerTask[ui];
 
@@ -214,23 +274,30 @@ namespace {
                 caps.reserve(I.resources.size());
                 for (int ri = 0; ri < (int)I.resources.size(); ++ri) {
                     caps.push_back(ri);
-                    g_staticCache.futureDemandByResInit[ri] += w;
+                    g_staticCache.futureDemandByResInit[ri] += demandW;
+                    g_staticCache.reservePressureByResInit[ri] += reserveW;
+                    g_staticCache.familyPressureByResFamilyInit[
+                        (size_t)ri * (size_t)g_staticCache.familyCount + (size_t)famId
+                    ] += reserveW;
                 }
                 continue;
             }
 
-            caps.reserve(std::max(1, g_staticCache.feasibleCountPerTask[ui]));
+            caps.reserve(std::max(1, feasibleCount));
             for (int ri = 0; ri < (int)I.resources.size(); ++ri) {
                 const auto& rr = I.resources[ri];
                 auto jt = rr.skills.find(u.reqSkill);
                 const int ll = (jt != rr.skills.end()) ? jt->second : 0;
                 if (ll >= reqU) {
                     caps.push_back(ri);
-                    g_staticCache.futureDemandByResInit[ri] += w;
+                    g_staticCache.futureDemandByResInit[ri] += demandW;
+                    g_staticCache.reservePressureByResInit[ri] += reserveW;
+                    g_staticCache.familyPressureByResFamilyInit[
+                        (size_t)ri * (size_t)g_staticCache.familyCount + (size_t)famId
+                    ] += reserveW;
                 }
             }
         }
-
         g_staticCache.signature = getSchedulerStaticSignature(I);
         g_staticCache.ready = true;
     }
@@ -424,30 +491,30 @@ static inline bool isImopseCapable(const Task& t, int resId) {
 }
 
 static int cheapestSingleCapableNowId(const Instance& I, const Task& t) {
-    if (t.capableResources.empty()) return -1;
+    if (t.capableResourceIndices.empty()) return -1;
 
     int bestId = -1;
     double bestSalary = std::numeric_limits<double>::infinity();
 
-    for (int rid : t.capableResources) {
-        const Resource* r = findRes(I, rid);
-        if (!r) continue;
-        if (r->salary < bestSalary) {
-            bestSalary = r->salary;
-            bestId = rid;
+    for (int ri : t.capableResourceIndices) {
+        if (ri < 0 || ri >= (int)I.resources.size()) continue;
+        const auto& r = I.resources[ri];
+        if (r.salary < bestSalary) {
+            bestSalary = r.salary;
+            bestId = r.id;
         }
     }
     return bestId;
 }
 
 static int waitUntilAnyCapableFree(const Instance& I, const Task& t, int now) {
-    if (t.capableResources.empty()) return std::numeric_limits<int>::max() / 4;
+    if (t.capableResourceIndices.empty()) return std::numeric_limits<int>::max() / 4;
 
     int best = std::numeric_limits<int>::max() / 4;
-    for (int rid : t.capableResources) {
-        const Resource* r = findRes(I, rid);
-        if (!r) continue;
-        int w = std::max(0, r->busyUntil - now);
+    for (int ri : t.capableResourceIndices) {
+        if (ri < 0 || ri >= (int)I.resources.size()) continue;
+        const auto& r = I.resources[ri];
+        int w = std::max(0, r.busyUntil - now);
         best = std::min(best, w);
     }
     return best;
@@ -558,7 +625,10 @@ ScheduleResult Scheduler::withResources(Instance& I,
     if (!g_staticCache.ready ||
         g_staticCache.signature != staticSig ||
         g_staticCache.baseIndeg.size() != (size_t)n ||
-        g_staticCache.futureDemandByResInit.size() != I.resources.size()) {
+        g_staticCache.futureDemandByResInit.size() != I.resources.size() ||
+        g_staticCache.reservePressureByResInit.size() != I.resources.size() ||
+        g_staticCache.familyPressureByResFamilyInit.size() !=
+        I.resources.size() * (size_t)std::max(1, g_staticCache.familyCount)) {
         rebuildSchedulerStaticCache(I);
     }
 
@@ -569,7 +639,12 @@ ScheduleResult Scheduler::withResources(Instance& I,
     const auto& staticAvgResCost = g_staticCache.staticAvgResCost;
     const auto& demandCapableResIdxPerTask = g_staticCache.demandCapableResIdxPerTask;
     const auto& demandWeightPerTask = g_staticCache.demandWeightPerTask;
+    const auto& reservePressureWeightPerTask = g_staticCache.reservePressureWeightPerTask;
+    const auto& familyIdByTask = g_staticCache.familyIdByTask;
+    const int familyCount = g_staticCache.familyCount;
     std::vector<double> futureDemandByRes = g_staticCache.futureDemandByResInit;
+    std::vector<double> reservePressureByRes = g_staticCache.reservePressureByResInit;
+    std::vector<double> familyPressureByResFamily = g_staticCache.familyPressureByResFamilyInit;
 
     std::vector<int> latestPredFinishByTask(n, 0);
 
@@ -669,6 +744,7 @@ ScheduleResult Scheduler::withResources(Instance& I,
             std::cout << "[warn] forcedResource size=" << szF
             << " < tasks=" << I.tasks.size() << "\n";
     }
+    const GPTreeRule* gpRule = dynamic_cast<const GPTreeRule*>(&ruleT);
 
     while (scheduled < n) {
         freeResources(now);
@@ -693,7 +769,7 @@ ScheduleResult Scheduler::withResources(Instance& I,
 
             const GPTreeRule* gp = nullptr;
             if (g_trace) {
-                gp = dynamic_cast<const GPTreeRule*>(&ruleT);
+                gp = gpRule;
                 if (gp) {
                     std::cout << "\n[time now=" << now << "]  GP = " << gp->exprString() << "\n";
                     std::cout << "ID  DUR  REQ  AVAIL  GAP  WAIT  EST  CRITLEN  SLACK  SUCC  TPRED   SCORE\n";
@@ -734,8 +810,8 @@ ScheduleResult Scheduler::withResources(Instance& I,
                             int waitAll = ResourceAllocator::waitUntilFeasible(I, now, t.reqSkill, req);
                             minWaitFeasible = std::min(minWaitFeasible, waitAll);
 
-                            auto fallback = ResourceAllocator::cheapestSubset(I, t.reqSkill, req, now);
-                            if (fallback && fallback->size() == 1 && (*fallback)[0] == forcedId) {
+                            int fallbackId = ResourceAllocator::cheapestSubsetSingleId(I, t.reqSkill, req, now);
+                            if (fallbackId == forcedId) {
                                 allocResId = forcedId;
                             }
                         }
@@ -751,9 +827,9 @@ ScheduleResult Scheduler::withResources(Instance& I,
                             }
                         }
                         else {
-                            auto pick = ResourceAllocator::cheapestSubset(I, t.reqSkill, req, now);
-                            if (pick && pick->size() == 1) {
-                                allocResId = (*pick)[0];
+                            int pickId = ResourceAllocator::cheapestSubsetSingleId(I, t.reqSkill, req, now);
+                            if (pickId >= 0) {
+                                allocResId = pickId;
                             }
                             else {
                                 int wait = ResourceAllocator::waitUntilFeasible(I, now, t.reqSkill, req);
@@ -763,28 +839,52 @@ ScheduleResult Scheduler::withResources(Instance& I,
                     }
                     else {
                         double cheapestNow = std::numeric_limits<double>::infinity();
+                        double cheapestCapableOverall = std::numeric_limits<double>::infinity();
+                        double waitOfCheapestCapableOverall = std::numeric_limits<double>::infinity();
                         {
                             const int req0 = std::max(0, t.reqLevel);
 
-                            if (req0 > 0 && !t.reqSkill.empty()) {
-                                auto itSkill = skillStepCache.find(t.reqSkill);
-                                if (itSkill != skillStepCache.end()) {
-                                    const auto& info = itSkill->second;
-                                    if (req0 < (int)info.cheapestAtLeast.size()) {
-                                        cheapestNow = info.cheapestAtLeast[req0];
+                            if (!t.capableResourceIndices.empty()) {
+                                for (int ri : t.capableResourceIndices) {
+                                    if (ri < 0 || ri >= (int)I.resources.size()) continue;
+
+                                    const auto& rr = I.resources[ri];
+                                    const double waitRR = (rr.busyUntil > now) ? (double)(rr.busyUntil - now) : 0.0;
+
+                                    if (rr.salary < cheapestCapableOverall) {
+                                        cheapestCapableOverall = rr.salary;
+                                        waitOfCheapestCapableOverall = waitRR;
+                                    }
+                                    else if (rr.salary == cheapestCapableOverall &&
+                                        waitRR < waitOfCheapestCapableOverall) {
+                                        waitOfCheapestCapableOverall = waitRR;
+                                    }
+
+                                    if (rr.busyUntil <= now) {
+                                        cheapestNow = std::min(cheapestNow, rr.salary);
                                     }
                                 }
                             }
-
-                            if (!std::isfinite(cheapestNow)) {
+                            else {
                                 for (const auto& rr : I.resources) {
-                                    if (rr.busyUntil > now) continue;
-
                                     int lvl = 0;
                                     auto it = rr.skills.find(t.reqSkill);
                                     if (it != rr.skills.end()) lvl = it->second;
 
-                                    if (req0 <= 0 || lvl >= req0) {
+                                    if (req0 > 0 && lvl < req0) continue;
+
+                                    const double waitRR = (rr.busyUntil > now) ? (double)(rr.busyUntil - now) : 0.0;
+
+                                    if (rr.salary < cheapestCapableOverall) {
+                                        cheapestCapableOverall = rr.salary;
+                                        waitOfCheapestCapableOverall = waitRR;
+                                    }
+                                    else if (rr.salary == cheapestCapableOverall &&
+                                        waitRR < waitOfCheapestCapableOverall) {
+                                        waitOfCheapestCapableOverall = waitRR;
+                                    }
+
+                                    if (rr.busyUntil <= now) {
                                         cheapestNow = std::min(cheapestNow, rr.salary);
                                     }
                                 }
@@ -794,16 +894,53 @@ ScheduleResult Scheduler::withResources(Instance& I,
                         int localBestResId = -1;
                         double localBestResScore = std::numeric_limits<double>::infinity();
 
-                        if (!t.capableResources.empty()) {
-                            for (int rid : t.capableResources) {
-                                auto it = __resIndex.find(rid);
-                                if (it == __resIndex.end()) continue;
+                        if (!t.capableResourceIndices.empty()) {
+                            for (int ri : t.capableResourceIndices) {
+                                if (ri < 0 || ri >= (int)I.resources.size()) continue;
 
-                                const Resource& r = I.resources[it->second];
-                                double futureDemandExcludingTask = futureDemandByRes[it->second] - demandWeightPerTask[ix];
+                                const Resource& r = I.resources[ri];
+                                double futureDemandExcludingTask = futureDemandByRes[ri] - demandWeightPerTask[ix];
                                 if (futureDemandExcludingTask < 0.0) futureDemandExcludingTask = 0.0;
 
-                                double s = ruleR->scoreFast(I, ix, t, r, now, cheapestNow, futureDemandExcludingTask);
+                                double reservePressureExcludingTask =
+                                    reservePressureByRes[ri] - reservePressureWeightPerTask[ix];
+                                if (reservePressureExcludingTask < 0.0) reservePressureExcludingTask = 0.0;
+
+                                double familyMismatchExcludingTask = 0.0;
+                                if (familyCount > 0) {
+                                    const int famId = familyIdByTask[ix];
+                                    const size_t base = (size_t)ri * (size_t)familyCount;
+
+                                    double currentFamilyPressure =
+                                        familyPressureByResFamily[base + (size_t)famId] - reservePressureWeightPerTask[ix];
+                                    if (currentFamilyPressure < 0.0) currentFamilyPressure = 0.0;
+
+                                    double bestOtherFamilyPressure = 0.0;
+                                    for (int f = 0; f < familyCount; ++f) {
+                                        if (f == famId) continue;
+                                        bestOtherFamilyPressure = std::max(
+                                            bestOtherFamilyPressure,
+                                            familyPressureByResFamily[base + (size_t)f]
+                                        );
+                                    }
+
+                                    familyMismatchExcludingTask =
+                                        bestOtherFamilyPressure / (1.0 + currentFamilyPressure);
+                                }
+
+                                double s = ruleR->scoreFast(
+                                    I,
+                                    ix,
+                                    t,
+                                    r,
+                                    now,
+                                    cheapestNow,
+                                    cheapestCapableOverall,
+                                    waitOfCheapestCapableOverall,
+                                    futureDemandExcludingTask,
+                                    reservePressureExcludingTask,
+                                    familyMismatchExcludingTask
+                                );
                                 if (s < localBestResScore) {
                                     localBestResScore = s;
                                     localBestResId = r.id;
@@ -821,7 +958,45 @@ ScheduleResult Scheduler::withResources(Instance& I,
                                 double futureDemandExcludingTask = futureDemandByRes[ri] - demandWeightPerTask[ix];
                                 if (futureDemandExcludingTask < 0.0) futureDemandExcludingTask = 0.0;
 
-                                double s = ruleR->scoreFast(I, ix, t, r, now, cheapestNow, futureDemandExcludingTask);
+                                double reservePressureExcludingTask =
+                                    reservePressureByRes[ri] - reservePressureWeightPerTask[ix];
+                                if (reservePressureExcludingTask < 0.0) reservePressureExcludingTask = 0.0;
+
+                                double familyMismatchExcludingTask = 0.0;
+                                if (familyCount > 0) {
+                                    const int famId = familyIdByTask[ix];
+                                    const size_t base = (size_t)ri * (size_t)familyCount;
+
+                                    double currentFamilyPressure =
+                                        familyPressureByResFamily[base + (size_t)famId] - reservePressureWeightPerTask[ix];
+                                    if (currentFamilyPressure < 0.0) currentFamilyPressure = 0.0;
+
+                                    double bestOtherFamilyPressure = 0.0;
+                                    for (int f = 0; f < familyCount; ++f) {
+                                        if (f == famId) continue;
+                                        bestOtherFamilyPressure = std::max(
+                                            bestOtherFamilyPressure,
+                                            familyPressureByResFamily[base + (size_t)f]
+                                        );
+                                    }
+
+                                    familyMismatchExcludingTask =
+                                        bestOtherFamilyPressure / (1.0 + currentFamilyPressure);
+                                }
+
+                                double s = ruleR->scoreFast(
+                                    I,
+                                    ix,
+                                    t,
+                                    r,
+                                    now,
+                                    cheapestNow,
+                                    cheapestCapableOverall,
+                                    waitOfCheapestCapableOverall,
+                                    futureDemandExcludingTask,
+                                    reservePressureExcludingTask,
+                                    familyMismatchExcludingTask
+                                );
                                 if (s < localBestResScore) {
                                     localBestResScore = s;
                                     localBestResId = r.id;
@@ -884,8 +1059,8 @@ ScheduleResult Scheduler::withResources(Instance& I,
                     }
                 }
                 else {
-                    if (const auto* gpFast = dynamic_cast<const GPTreeRule*>(&ruleT)) {
-                        sc = gpFast->scoreFast(ix, t);
+                    if (gpRule) {
+                        sc = gpRule->scoreFast(ix, t);
                     }
                     else {
                         sc = ruleT.score(t);
@@ -981,10 +1156,27 @@ ScheduleResult Scheduler::withResources(Instance& I,
                 startedAny = true;
 
                 const double scheduledTaskWeight = demandWeightPerTask[best];
-                if (scheduledTaskWeight > 0.0) {
-                    for (int ri : demandCapableResIdxPerTask[best]) {
+                const double scheduledReserveWeight = reservePressureWeightPerTask[best];
+                const int scheduledFamId = familyIdByTask[best];
+
+                for (int ri : demandCapableResIdxPerTask[best]) {
+                    if (scheduledTaskWeight > 0.0) {
                         futureDemandByRes[ri] -= scheduledTaskWeight;
                         if (futureDemandByRes[ri] < 0.0) futureDemandByRes[ri] = 0.0;
+                    }
+
+                    if (scheduledReserveWeight > 0.0) {
+                        reservePressureByRes[ri] -= scheduledReserveWeight;
+                        if (reservePressureByRes[ri] < 0.0) reservePressureByRes[ri] = 0.0;
+
+                        if (familyCount > 0) {
+                            const size_t idx =
+                                (size_t)ri * (size_t)familyCount + (size_t)scheduledFamId;
+                            familyPressureByResFamily[idx] -= scheduledReserveWeight;
+                            if (familyPressureByResFamily[idx] < 0.0) {
+                                familyPressureByResFamily[idx] = 0.0;
+                            }
+                        }
                     }
                 }
 

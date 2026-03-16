@@ -77,6 +77,24 @@ bool DefParser::parseFile(const std::string& path, Instance& out)
         t.predecessors.swap(ok);
     }
 
+    std::unordered_map<int, int> resIdToIndex;
+    resIdToIndex.reserve(out.resources.size() * 2);
+    for (int i = 0; i < (int)out.resources.size(); ++i) {
+        resIdToIndex[out.resources[i].id] = i;
+    }
+
+    for (auto& t : out.tasks) {
+        t.capableResourceIndices.clear();
+        t.capableResourceIndices.reserve(t.capableResources.size());
+
+        for (int rid : t.capableResources) {
+            auto it = resIdToIndex.find(rid);
+            if (it != resIdToIndex.end()) {
+                t.capableResourceIndices.push_back(it->second);
+            }
+        }
+    }
+
     out.rebuildStructureSignatures();
     return true;
 }

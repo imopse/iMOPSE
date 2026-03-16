@@ -130,6 +130,7 @@ namespace gp {
         double maxResSurplusLevel = 1.0;
         double maxResRelativeWage = 1.0;
         double maxResFutureDemand = 1.0;
+        double maxResReservePressure = 1.0;
 
         for (const auto& t : I.tasks) {
             int req = std::max(0, t.reqLevel);
@@ -163,6 +164,7 @@ namespace gp {
 
         for (const auto& r : I.resources) {
             double demand = 0.0;
+            double reservePressure = 0.0;
 
             for (const auto& t : I.tasks) {
                 int req = std::max(0, t.reqLevel);
@@ -174,16 +176,36 @@ namespace gp {
                 if (req > 0 && lvl < req) continue;
 
                 int feasibleCount = 0;
+                double cheapest = std::numeric_limits<double>::infinity();
+                double second = std::numeric_limits<double>::infinity();
+
                 for (const auto& rr : I.resources) {
                     auto jt = rr.skills.find(t.reqSkill);
                     int ll = (jt != rr.skills.end()) ? jt->second : 0;
-                    if (req <= 0 || ll >= req) ++feasibleCount;
+                    if (req > 0 && ll < req) continue;
+
+                    ++feasibleCount;
+
+                    if (rr.salary < cheapest) {
+                        second = cheapest;
+                        cheapest = rr.salary;
+                    }
+                    else if (rr.salary < second) {
+                        second = rr.salary;
+                    }
                 }
 
                 demand += 1.0 / (double)std::max(1, feasibleCount);
+
+                if (!std::isfinite(second)) second = cheapest;
+                const double priceGap = std::max(0.0, second - cheapest);
+
+                reservePressure +=
+                    ((double)t.duration * priceGap) / (double)std::max(1, feasibleCount);
             }
 
             maxResFutureDemand = std::max(maxResFutureDemand, demand);
+            maxResReservePressure = std::max(maxResReservePressure, reservePressure);
         }
 
         s.maxMinFeasibleCostNow = std::max(1.0, maxMinFeasibleCostNow);
@@ -193,6 +215,7 @@ namespace gp {
         s.maxResSurplusLevel = std::max(1.0, maxResSurplusLevel);
         s.maxResRelativeWage = std::max(1.0, maxResRelativeWage);
         s.maxResFutureDemand = std::max(1.0, maxResFutureDemand);
+        s.maxResReservePressure = std::max(1.0, maxResReservePressure);
 
         s.maxWaitRes = std::max(1.0, projHorizon);
         s.maxEstPrec = std::max(1.0, projHorizon);

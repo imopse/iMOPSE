@@ -14,6 +14,11 @@ public:
     static int waitUntilFeasible(const Instance& I, int now,
         const std::string& skill, int reqLevel);
 
+    static int cheapestSubsetSingleId(const Instance& I,
+        const std::string& skill,
+        int reqLevel,
+        int now);
+
     static std::optional<std::vector<int>> cheapestSubset(const Instance& I,
         const std::string& skill,
         int reqLevel,

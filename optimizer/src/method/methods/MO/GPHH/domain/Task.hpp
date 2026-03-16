@@ -12,6 +12,7 @@ struct Task {
     int imopseIndex = -1;
 
     std::vector<int> capableResources;
+    std::vector<int> capableResourceIndices;
 
     int start = -1;
     int finish = -1;

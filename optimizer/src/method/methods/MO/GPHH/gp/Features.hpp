@@ -42,10 +42,18 @@ struct Features {
     double resUtil = 0.0;
 
     double resSkillLevel = 0.0;
-    double resFreeTime = 0.0;
+    double resWaitTime = 0.0;
+    double resIdleTime = 0.0;
+    double resCanStartNow = 0.0;
     double resMultiSkill = 0.0;
     double resUtilization = 0.0;
     double resWagePerLevel = 0.0;
+    double resAssignCost = 0.0;
+    double resAssignPremiumAll = 0.0;
+    double resHasteValue = 0.0;
+    double resReservePressure = 0.0;
+    double resStrategicMismatch = 0.0;
+    double resFamilyMismatch = 0.0;
 
     double resSurplusLevel = 0.0;
     double resRelativeWage = 0.0;
@@ -90,7 +98,9 @@ Features computeResourceFeaturesFast(
     const Resource& r,
     int now,
     double cheapestNow,
-    double futureDemandExcludingTask
+    double cheapestCapableOverall,
+    double waitOfCheapestCapableOverall,
+    double futureDemandExcludingTask,
+    double reservePressureExcludingTask,
+    double familyMismatchExcludingTask
 );
-
-
