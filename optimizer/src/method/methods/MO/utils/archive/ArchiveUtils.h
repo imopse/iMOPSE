@@ -15,4 +15,5 @@ namespace ArchiveUtils
                            int runId);
     std::vector<std::vector<float>> ToEvaluation(const std::vector<SMOIndividual *> &archive);
     void LogParetoFront(const std::vector<SMOIndividual *> &archive);
+    void LogParetoFront(const std::vector<SMOIndividual *> &archive, int fet);
 };

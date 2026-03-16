@@ -73,6 +73,7 @@ void ArchiveUtils::CopyToArchiveWithFiltering(const std::vector<SMOIndividual*>&
         {
             if (ind->IsDominatedBy(filteredInd))
             {
+                delete ind;
                 return true;
             }
         }
@@ -114,7 +115,15 @@ void ArchiveUtils::CopyToArchiveWithFiltering(const SMOIndividual* individual, s
         // Now check if already archived individuals are not dominated by new, remove otherwise
         archive.erase(std::remove_if(archive.begin(), archive.end(), [individual](const SMOIndividual* ind)
         {
-            return ind->IsDominatedBy(individual);
+            if (ind->IsDominatedBy(individual))
+            {
+                delete ind;
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }), archive.end());
 
         archive.push_back(new SMOIndividual(*individual));
@@ -137,4 +146,13 @@ void ArchiveUtils::LogParetoFront(const std::vector<SMOIndividual*>& archive)
     std::ostringstream oss;
     CCSV<float>::ToCSV(oss, ArchiveUtils::ToEvaluation(archive));
     CExperimentLogger::LogResult(oss.str().c_str());
+}
+void ArchiveUtils::LogParetoFront(const std::vector<SMOIndividual*>& archive, int fet)
+{
+    std::ostringstream oss;
+    CCSV<float>::ToCSV(oss, ArchiveUtils::ToEvaluation(archive));
+    std::string fileName = "results_";
+    fileName += std::to_string(fet);
+    fileName += std::string(".csv");
+    CExperimentLogger::LogResult(oss.str().c_str(), fileName.c_str());
 }

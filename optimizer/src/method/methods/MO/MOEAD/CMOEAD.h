@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <set>
 #include "../AMOGeneticMethod.h"
 #include "../../../configMap/SConfigMap.h"
@@ -17,7 +18,7 @@ public:
     ~CMOEAD() override = default;
 
     void RunOptimization() override;
-private:
+protected:
     struct SSubproblem
     {
         std::vector<float> m_WeightVector;
@@ -33,5 +34,11 @@ private:
     void ConstructSubproblems(size_t number, size_t size);
     void ConstructSubproblemsSimple2D(size_t number, size_t size);
     void ConstructSubproblemsMultiD(size_t number, size_t size, size_t count);
-    bool IsBetterInSubproblem(SMOIndividual *pIndividual, SMOIndividual *&pIndividual1, SSubproblem &subproblem);
+    bool IsBetterInSubproblem(SMOIndividual* newIndividual, SMOIndividual* oldIndividual, SSubproblem& subproblem);
+
+    // TODO - copied from ParetoAnalyzer - remove it or move somewhere else
+    // Calculate Hyper-volume using values as they are (either absolute or normalized), using the reference point
+    float CalcHV(std::vector<SMOIndividual*>& individuals, const std::vector<float>& refPoint);
+
+    std::chrono::time_point<std::chrono::steady_clock> m_StartTime;
 };

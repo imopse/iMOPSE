@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include "../../../configMap/SConfigMap.h"
 #include "../../../individual/MO/SMOIndividual.h"
 #include "../AMOGeneticMethod.h"
@@ -26,4 +27,10 @@ private:
     
     void EvolveToNextGeneration();
     void CrossoverAndMutate(SMOIndividual *firstParent, SMOIndividual *secondParent);
+
+    // TODO - copied from ParetoAnalyzer - remove it or move somewhere else
+    // Calculate Hyper-volume using values as they are (either absolute or normalized), using the reference point
+    float CalcHV(std::vector<SMOIndividual*>& individuals, const std::vector<float>& refPoint);
+
+    std::chrono::time_point<std::chrono::steady_clock> m_StartTime;
 };

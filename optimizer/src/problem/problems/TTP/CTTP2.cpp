@@ -123,6 +123,36 @@ void CTTP2::LogSolution(AIndividual& individual)
     
 }
 
+void CTTP2::PickMostValItemsFromTheEnd(AIndividual& individual) const
+{
+    const auto &items = m_TTPTemplate.GetItems();
+    const auto &cityItems = m_TTPTemplate.GetCityItems();
+    int capacity = m_TTPTemplate.GetCapacity();
+    size_t citiesSize = m_TTPTemplate.GetCitiesSize();
+
+    int currWeight = 0;
+
+    // For each city from the end
+    for (int i = (citiesSize - 1); i >= 0; --i)
+    {
+        size_t cityIdx = individual.m_Genotype.m_IntGenotype[i];
+        const std::vector<size_t> &itemsInCity = cityItems[cityIdx];
+        for (const size_t &itemIdx: itemsInCity)
+        {
+            int itemWeight = items[itemIdx].m_Weight;
+            if (currWeight + itemWeight <= capacity)
+            {
+                individual.m_Genotype.m_BoolGenotype[itemIdx] = true;
+                currWeight += itemWeight;
+            }
+            else
+            {
+                individual.m_Genotype.m_BoolGenotype[itemIdx] = false;
+            }
+        }
+    }
+}
+
 void CTTP2::CreateProblemEncoding()
 {
     size_t citiesSize = m_TTPTemplate.GetCitiesSize();

@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <sys/stat.h> // Library for file system statistics
+#include <regex>
 
 bool CReadUtils::fileExists(const char *path)
 {
