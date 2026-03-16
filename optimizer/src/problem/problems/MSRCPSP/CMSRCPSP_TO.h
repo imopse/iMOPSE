@@ -15,6 +15,8 @@ public:
     void Evaluate(AIndividual& individual) override;
     void LogSolution(AIndividual& individual) override;
     void LogAdditionalData() override {};
+    CScheduler& GetScheduler() { return m_Scheduler; }
+    const CScheduler& GetScheduler() const { return m_Scheduler; }
 private:
     void CreateProblemEncoding();
 

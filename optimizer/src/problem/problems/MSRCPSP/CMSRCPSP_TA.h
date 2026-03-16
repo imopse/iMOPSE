@@ -20,6 +20,8 @@ public:
     float FindBestGeneValueCostWise(size_t geneIdx) const;
     std::vector<size_t> FindNumberOfResourcesUse(const std::vector<float>& solution) const;
     float FindBestGeneValueUsageWise(size_t geneIdx, const std::vector<size_t>& currentResourcesUsage) const;
+    CScheduler& GetScheduler() { return m_Scheduler; }
+    const CScheduler& GetScheduler() const { return m_Scheduler; }
 
 private:
     void CreateProblemEncoding();

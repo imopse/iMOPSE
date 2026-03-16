@@ -11,6 +11,8 @@ public:
     std::vector<float> m_NormalizedEvaluation;
     bool m_isValid = true;
     
+    virtual ~AIndividual() = default;
+    
 protected:
     AIndividual(SGenotype& genotype, std::vector<float>& evaluation, std::vector<float>& normalizedEvaluation)
         : m_Genotype(genotype)
