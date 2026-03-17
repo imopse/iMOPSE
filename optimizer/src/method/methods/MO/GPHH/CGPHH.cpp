@@ -86,6 +86,9 @@ void CGPHH::RunOptimization()
     P.useBNTGA = (GetInt(cfg, "UseBNTGA", 0) != 0);
     P.useImopseEvaluate = (GetInt(cfg, "UseImopseEvaluate", 1) != 0);
 
+    P.logGenerations = (GetInt(cfg, "LogGenerations", 0) != 0);
+    P.generationLogFile = GetString(cfg, "GenerationLogFile", "gphh_generation_log.csv");
+
 
     P.popSize = (size_t)GetInt(cfg, "PopulationSize", (int)P.popSize);
     P.generations = (size_t)GetInt(cfg, "Generations", (int)P.generations);

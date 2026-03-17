@@ -27,8 +27,8 @@ public:
         double cheapestNow,
         double cheapestCapableOverall,
         double waitOfCheapestCapableOverall,
-        double futureDemandExcludingTask,
         double reservePressureExcludingTask,
+        double criticalReserveExcludingTask,
         double familyMismatchExcludingTask
     ) const {
         if (!tree) return 0.0;
@@ -41,8 +41,8 @@ public:
             cheapestNow,
             cheapestCapableOverall,
             waitOfCheapestCapableOverall,
-            futureDemandExcludingTask,
             reservePressureExcludingTask,
+            criticalReserveExcludingTask,
             familyMismatchExcludingTask
         );
         return tree->eval(f);

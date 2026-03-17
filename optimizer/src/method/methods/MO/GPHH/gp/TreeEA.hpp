@@ -5,6 +5,7 @@
 #include <memory>
 #include <utility>
 #include <algorithm>
+#include <string>
 
 #include "../domain/Instance.hpp"
 #include "../scheduler/Scheduler.hpp"
@@ -31,6 +32,9 @@ struct GPEA_Params {
     bool useNSGA2 = false;
     bool useBNTGA = false;
     bool useImopseEvaluate = false;
+
+    bool        logGenerations = false;
+    std::string generationLogFile = "gphh_generation_log.csv";
 };
 
 struct GP_Individual {

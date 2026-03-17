@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <vector>
+#include <string>
 #include "../domain/Instance.hpp"
 #include "../rules/IDispatchingRule.hpp"
 #include "../rules/GPTreeRule.hpp"

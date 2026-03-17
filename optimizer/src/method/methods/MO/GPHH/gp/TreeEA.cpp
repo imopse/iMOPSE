@@ -6,6 +6,14 @@
 #include <cassert>
 #include <algorithm>
 #include <numeric>
+#include <fstream>
+#include <filesystem>
+#include <iomanip>
+#include <map>
+#include <iostream>
+#include "../../../../../utils/logger/CExperimentLogger.h"
+
+extern bool g_trace;
 
 static bool dominates(const GP_ParetoPoint& a, const GP_ParetoPoint& b) {
     const bool noWorse = (a.makespan <= b.makespan) && (a.cost <= b.cost);
@@ -27,10 +35,7 @@ static const std::vector<FeatureId>& resFeatPool() {
         FeatureId::RES_WAGE,
         FeatureId::RES_SKILL_LEVEL,
         FeatureId::RES_WAIT_TIME,
-        FeatureId::RES_IDLE_TIME,
         FeatureId::RES_CAN_START_NOW,
-        FeatureId::RES_MULTI_SKILL,
-        FeatureId::RES_UTILIZATION,
         FeatureId::RES_WAGE_PER_LEVEL,
         FeatureId::RES_ASSIGN_COST,
         FeatureId::RES_ASSIGN_PREMIUM_ALL,
@@ -39,10 +44,376 @@ static const std::vector<FeatureId>& resFeatPool() {
         FeatureId::RES_STRATEGIC_MISMATCH,
         FeatureId::RES_FAMILY_MISMATCH,
         FeatureId::RES_SURPLUS_LEVEL,
-        FeatureId::RES_RELATIVE_WAGE,
-        FeatureId::RES_FUTURE_DEMAND
+        FeatureId::RES_RELATIVE_WAGE
     };
     return v;
+}
+
+struct GenLogOpCounts {
+    int crossoverChildren = 0;
+    int paramMutChildren = 0;
+    int structMutChildren = 0;
+    int macroMutChildren = 0;
+};
+
+struct ChildOpFlags {
+    bool crossover = false;
+    bool paramMut = false;
+    bool structMut = false;
+    bool macroMut = false;
+};
+
+struct GenLogArchiveEntryCounts {
+    int totalEntries = 0;
+    int entriesByCrossover = 0;
+    int entriesByParamMut = 0;
+    int entriesByStructMut = 0;
+    int entriesByMacroMut = 0;
+    int entriesLe700 = 0;
+    int entriesLe800 = 0;
+};
+
+struct LoggedChild {
+    GP_Individual ind;
+    ChildOpFlags ops;
+};
+
+static std::string makeGenerationLogPath(const GPEA_Params& P) {
+    namespace fs = std::filesystem;
+
+    fs::path dir = CExperimentLogger::m_OutputDataPathPrefix.empty()
+        ? fs::current_path()
+        : fs::path(CExperimentLogger::m_OutputDataPathPrefix);
+
+    return (dir / P.generationLogFile).string();
+}
+
+static void writeGenerationLogHeader(const GPEA_Params& P) {
+    if (!P.logGenerations) return;
+
+    std::ofstream out(makeGenerationLogPath(P), std::ofstream::out | std::ofstream::trunc);
+    if (!out.is_open()) return;
+
+    out << "generation"
+        << ",pop_size"
+        << ",archive_size"
+        << ",archive_delta"
+        << ",best_fitness"
+        << ",best_makespan"
+        << ",best_cost"
+        << ",best_cost_le_600"
+        << ",best_cost_le_700"
+        << ",best_cost_le_800"
+        << ",best_cost_le_1000"
+        << ",best_cost_le_1300"
+        << ",avg_task_depth"
+        << ",avg_res_depth"
+        << ",avg_task_nodes"
+        << ",avg_res_nodes"
+        << ",children_with_crossover"
+        << ",children_with_param_mut"
+        << ",children_with_struct_mut"
+        << ",children_with_macro_mut"
+        << ",archive_entries_total"
+        << ",archive_entries_by_crossover"
+        << ",archive_entries_by_param_mut"
+        << ",archive_entries_by_struct_mut"
+        << ",archive_entries_by_macro_mut"
+        << ",archive_entries_le_700"
+        << ",archive_entries_le_800"
+        << "\n";
+}
+
+static double bestCostUnderMakespan(const std::vector<GP_Individual>& pop, int maxMakespan) {
+    double best = std::numeric_limits<double>::infinity();
+
+    for (const auto& x : pop) {
+        if (x.makespan <= maxMakespan && x.cost < best) {
+            best = x.cost;
+        }
+    }
+
+    return std::isfinite(best) ? best : -1.0;
+}
+
+static int countUnderMakespan(const std::vector<GP_Individual>& xs, int maxMakespan) {
+    int cnt = 0;
+    for (const auto& x : xs) {
+        if (x.makespan <= maxMakespan) ++cnt;
+    }
+    return cnt;
+}
+
+static int bestMakespanInSet(const std::vector<GP_Individual>& xs) {
+    if (xs.empty()) return -1;
+
+    int best = std::numeric_limits<int>::max();
+    for (const auto& x : xs) {
+        if (x.makespan < best) best = x.makespan;
+    }
+    return (best == std::numeric_limits<int>::max()) ? -1 : best;
+}
+
+static double bestCostInSet(const std::vector<GP_Individual>& xs) {
+    if (xs.empty()) return -1.0;
+
+    double best = std::numeric_limits<double>::infinity();
+    for (const auto& x : xs) {
+        if (x.cost < best) best = x.cost;
+    }
+    return std::isfinite(best) ? best : -1.0;
+}
+
+static void appendGenerationLog(
+    const GPEA_Params& P,
+    size_t generation,
+    const std::vector<GP_Individual>& pop,
+    size_t archiveSize,
+    long long archiveDelta,
+    const GenLogOpCounts& ops,
+    const GenLogArchiveEntryCounts& archiveOps)
+{
+    if (!P.logGenerations || pop.empty()) return;
+
+    auto itBest = std::min_element(pop.begin(), pop.end(),
+        [](const GP_Individual& a, const GP_Individual& b) {
+            return a.fitness < b.fitness;
+        });
+
+    double sumTaskDepth = 0.0;
+    double sumResDepth = 0.0;
+    double sumTaskNodes = 0.0;
+    double sumResNodes = 0.0;
+
+    for (const auto& ind : pop) {
+        sumTaskDepth += ind.taskTree.depth();
+        sumResDepth += ind.resTree.depth();
+        sumTaskNodes += ind.taskTree.nodeCount();
+        sumResNodes += ind.resTree.nodeCount();
+    }
+
+    const double denom = std::max<size_t>(1, pop.size());
+
+    const double avgTaskDepth = sumTaskDepth / denom;
+    const double avgResDepth = sumResDepth / denom;
+    const double avgTaskNodes = sumTaskNodes / denom;
+    const double avgResNodes = sumResNodes / denom;
+
+    std::ofstream out(makeGenerationLogPath(P), std::ofstream::out | std::ofstream::app);
+    if (!out.is_open()) return;
+
+    out << std::fixed << std::setprecision(6);
+
+    out << generation
+        << "," << pop.size()
+        << "," << archiveSize
+        << "," << archiveDelta
+        << "," << itBest->fitness
+        << "," << itBest->makespan
+        << "," << itBest->cost
+        << "," << bestCostUnderMakespan(pop, 600)
+        << "," << bestCostUnderMakespan(pop, 700)
+        << "," << bestCostUnderMakespan(pop, 800)
+        << "," << bestCostUnderMakespan(pop, 1000)
+        << "," << bestCostUnderMakespan(pop, 1300)
+        << "," << avgTaskDepth
+        << "," << avgResDepth
+        << "," << avgTaskNodes
+        << "," << avgResNodes
+        << "," << ops.crossoverChildren
+        << "," << ops.paramMutChildren
+        << "," << ops.structMutChildren
+        << "," << ops.macroMutChildren
+        << "," << archiveOps.totalEntries
+        << "," << archiveOps.entriesByCrossover
+        << "," << archiveOps.entriesByParamMut
+        << "," << archiveOps.entriesByStructMut
+        << "," << archiveOps.entriesByMacroMut
+        << "," << archiveOps.entriesLe700
+        << "," << archiveOps.entriesLe800
+        << "\n";
+}
+
+static std::string makeArchiveDumpPath(const GPEA_Params& P) {
+    namespace fs = std::filesystem;
+    fs::path genPath = makeGenerationLogPath(P);
+    return (genPath.parent_path() / "gphh_archive_dump.txt").string();
+}
+
+static std::string makeSchedulerTracePath(const GPEA_Params& P, const std::string& fileName) {
+    namespace fs = std::filesystem;
+    fs::path genPath = makeGenerationLogPath(P);
+    return (genPath.parent_path() / fileName).string();
+}
+
+static const char* featureIdToStringLocal(FeatureId f) {
+    switch (f) {
+    case FeatureId::DURATION: return "DURATION";
+    case FeatureId::REQ_LEVEL: return "REQ_LEVEL";
+    case FeatureId::AVAIL_SKILL: return "AVAIL_SKILL";
+    case FeatureId::EST_PREC: return "EST_PREC";
+    case FeatureId::SUCC_COUNT: return "SUCC_COUNT";
+    case FeatureId::DESC_COUNT: return "DESC_COUNT";
+    case FeatureId::CRITLEN: return "CRITLEN";
+    case FeatureId::SLACK: return "SLACK";
+    case FeatureId::CRITICAL_PRESSURE: return "CRITICAL_PRESSURE";
+    case FeatureId::AVAIL_GAP: return "AVAIL_GAP";
+    case FeatureId::WAIT_RES: return "WAIT_RES";
+    case FeatureId::TOT_PRED: return "TOT_PRED";
+    case FeatureId::CHEAPEST_COST_NOW: return "CHEAPEST_COST_NOW";
+    case FeatureId::COST_PER_SKILL_NOW: return "COST_PER_SKILL_NOW";
+    case FeatureId::MIN_WAGE_AVAIL: return "MIN_WAGE_AVAIL";
+    case FeatureId::AVG_WAGE_AVAIL: return "AVG_WAGE_AVAIL";
+    case FeatureId::TEAM_SIZE_MIN_NOW: return "TEAM_SIZE_MIN_NOW";
+    case FeatureId::NUM_TASKS: return "NUM_TASKS";
+    case FeatureId::NUM_RESOURCES: return "NUM_RESOURCES";
+    case FeatureId::NUM_SKILLS: return "NUM_SKILLS";
+    case FeatureId::TASK_RES_COUNT: return "TASK_RES_COUNT";
+    case FeatureId::AVG_RES_COST: return "AVG_RES_COST";
+    case FeatureId::UNSCHED_TASKS: return "UNSCHED_TASKS";
+    case FeatureId::MIN_FEASIBLE_COST_NOW: return "MIN_FEASIBLE_COST_NOW";
+    case FeatureId::COST_REGRET_NOW: return "COST_REGRET_NOW";
+
+    case FeatureId::RES_WAGE: return "RES_WAGE";
+    case FeatureId::RES_SKILL_LEVEL: return "RES_SKILL_LEVEL";
+    case FeatureId::RES_WAIT_TIME: return "RES_WAIT_TIME";
+    case FeatureId::RES_IDLE_TIME: return "RES_IDLE_TIME";
+    case FeatureId::RES_CAN_START_NOW: return "RES_CAN_START_NOW";
+    case FeatureId::RES_UTILIZATION: return "RES_UTILIZATION";
+    case FeatureId::RES_WAGE_PER_LEVEL: return "RES_WAGE_PER_LEVEL";
+    case FeatureId::RES_ASSIGN_COST: return "RES_ASSIGN_COST";
+    case FeatureId::RES_ASSIGN_PREMIUM_ALL: return "RES_ASSIGN_PREMIUM_ALL";
+    case FeatureId::RES_HASTE_VALUE: return "RES_HASTE_VALUE";
+    case FeatureId::RES_CRITICAL_RESERVE: return "RES_CRITICAL_RESERVE";
+    case FeatureId::RES_RESERVE_PRESSURE: return "RES_RESERVE_PRESSURE";
+    case FeatureId::RES_STRATEGIC_MISMATCH: return "RES_STRATEGIC_MISMATCH";
+    case FeatureId::RES_FAMILY_MISMATCH: return "RES_FAMILY_MISMATCH";
+    case FeatureId::RES_SURPLUS_LEVEL: return "RES_SURPLUS_LEVEL";
+    case FeatureId::RES_RELATIVE_WAGE: return "RES_RELATIVE_WAGE";
+    }
+    return "UNKNOWN";
+}
+
+static std::map<std::string, int> countFeatureUsage(const GPTree& tree) {
+    std::map<std::string, int> counts;
+
+    for (const auto& n : tree.nodes) {
+        if (n.kind == NodeKind::FEATURE) {
+            counts[featureIdToStringLocal(n.feat)]++;
+        }
+    }
+
+    return counts;
+}
+
+static void writeFeatureCounts(std::ofstream& out, const std::map<std::string, int>& counts) {
+    if (counts.empty()) {
+        out << "NONE";
+        return;
+    }
+
+    bool first = true;
+    for (const auto& kv : counts) {
+        if (!first) out << ", ";
+        out << kv.first << "=" << kv.second;
+        first = false;
+    }
+}
+
+static const GP_Individual* bestMakespanPtr(const std::vector<GP_Individual>& xs) {
+    if (xs.empty()) return nullptr;
+
+    const GP_Individual* best = &xs[0];
+    for (const auto& x : xs) {
+        if (x.makespan < best->makespan ||
+            (x.makespan == best->makespan && x.cost < best->cost)) {
+            best = &x;
+        }
+    }
+    return best;
+}
+
+static const GP_Individual* cheapestPtr(const std::vector<GP_Individual>& xs) {
+    if (xs.empty()) return nullptr;
+
+    const GP_Individual* best = &xs[0];
+    for (const auto& x : xs) {
+        if (x.cost < best->cost ||
+            (std::abs(x.cost - best->cost) < 1e-9 && x.makespan < best->makespan)) {
+            best = &x;
+        }
+    }
+    return best;
+}
+
+static const GP_Individual* bestCostUnderMakespanPtr(const std::vector<GP_Individual>& xs, int maxMakespan) {
+    const GP_Individual* best = nullptr;
+
+    for (const auto& x : xs) {
+        if (x.makespan <= maxMakespan) {
+            if (best == nullptr ||
+                x.cost < best->cost ||
+                (std::abs(x.cost - best->cost) < 1e-9 && x.makespan < best->makespan)) {
+                best = &x;
+            }
+        }
+    }
+
+    return best;
+}
+
+static void dumpIndividualBlock(std::ofstream& out, const std::string& label, const GP_Individual* ind) {
+    out << "===== " << label << " =====\n";
+
+    if (ind == nullptr) {
+        out << "NONE\n\n";
+        return;
+    }
+
+    out << "makespan=" << ind->makespan
+        << ", cost=" << ind->cost
+        << ", fitness=" << ind->fitness
+        << ", msNorm=" << ind->msNorm
+        << ", costNorm=" << ind->costNorm
+        << "\n";
+
+    out << "taskTreeDepth=" << ind->taskTree.depth()
+        << ", taskTreeNodes=" << ind->taskTree.nodeCount()
+        << ", resTreeDepth=" << ind->resTree.depth()
+        << ", resTreeNodes=" << ind->resTree.nodeCount()
+        << "\n";
+
+    out << "taskTree=" << ind->taskTree.toString() << "\n";
+    out << "resTree=" << ind->resTree.toString() << "\n";
+
+    out << "taskFeatureCounts=";
+    writeFeatureCounts(out, countFeatureUsage(ind->taskTree));
+    out << "\n";
+
+    out << "resFeatureCounts=";
+    writeFeatureCounts(out, countFeatureUsage(ind->resTree));
+    out << "\n\n";
+}
+
+static void writeArchiveDump(const GPEA_Params& P, const std::vector<GP_Individual>& archive) {
+    if (!P.logGenerations) return;
+
+    std::ofstream out(makeArchiveDumpPath(P), std::ofstream::out | std::ofstream::trunc);
+    if (!out.is_open()) return;
+
+    out << std::fixed << std::setprecision(6);
+
+    out << "archive_size=" << archive.size() << "\n";
+    out << "archive_count_le_600=" << countUnderMakespan(archive, 600) << "\n";
+    out << "archive_count_le_700=" << countUnderMakespan(archive, 700) << "\n";
+    out << "archive_count_le_800=" << countUnderMakespan(archive, 800) << "\n";
+    out << "archive_count_le_1000=" << countUnderMakespan(archive, 1000) << "\n";
+    out << "archive_count_le_1300=" << countUnderMakespan(archive, 1300) << "\n\n";
+
+    dumpIndividualBlock(out, "BEST_MAKESPAN", bestMakespanPtr(archive));
+    dumpIndividualBlock(out, "BEST_COST_UNDER_700", bestCostUnderMakespanPtr(archive, 700));
+    dumpIndividualBlock(out, "BEST_COST_UNDER_800", bestCostUnderMakespanPtr(archive, 800));
+    dumpIndividualBlock(out, "CHEAPEST_OVERALL", cheapestPtr(archive));
 }
 
 TreeEA::TreeEA(Instance& I, const GPEA_Params& params, CScheduler* imopseScheduler, bool isTAProblem)
@@ -397,9 +768,17 @@ void TreeEA::mutateParam(GPTree& t, bool isResTree) {
     case NodeKind::UNARY:
         n.uop = (rand01() < 0.5 ? UnaryOp::NEG : UnaryOp::ABS);
         break;
-    case NodeKind::BINARY:
-        n.bop = static_cast<BinaryOp>(randInt(0, 5));
+    case NodeKind::BINARY: {
+        static const BinaryOp ops[] = {
+            BinaryOp::ADD,
+            BinaryOp::SUB,
+            BinaryOp::MUL,
+            BinaryOp::MIN,
+            BinaryOp::MAX
+        };
+        n.bop = ops[randInt(0, 4)];
         break;
+    }
     }
 }
 
@@ -443,7 +822,16 @@ void TreeEA::mutateStruct(GPTree& t, bool isResTree) {
         t.nodes.reserve(t.nodes.size() + 2);
 
         t.nodes[i].kind = NodeKind::BINARY;
-        t.nodes[i].bop = static_cast<BinaryOp>(randInt(0, 5));
+        {
+            static const BinaryOp ops[] = {
+                BinaryOp::ADD,
+                BinaryOp::SUB,
+                BinaryOp::MUL,
+                BinaryOp::MIN,
+                BinaryOp::MAX
+            };
+            t.nodes[i].bop = ops[randInt(0, 4)];
+        }
 
         GPNode L{}, R{};
         if (rand01() < 0.5) { L.kind = NodeKind::FEATURE; L.feat = pool[randInt(0, (int)pool.size() - 1)]; }
@@ -605,6 +993,83 @@ void TreeEA::copyToArchiveWithFiltering(const std::vector<GP_Individual>& indivi
         GP_Individual copy = *filteredInd;
         copy.selectedCount = 0;
         archive_.push_back(std::move(copy));
+    }
+}
+
+static void copyToArchiveWithFilteringLogged(
+    std::vector<GP_Individual>& archive,
+    const std::vector<LoggedChild>& children,
+    GenLogArchiveEntryCounts& stats)
+{
+    std::vector<const LoggedChild*> filteredChildren;
+    filteredChildren.reserve(children.size());
+
+    for (size_t p = 0; p < children.size(); ++p)
+    {
+        const LoggedChild* cand = &children[p];
+        const GP_Individual* newInd = &cand->ind;
+        bool isDominated = false;
+
+        size_t i = 0;
+        while (!isDominated && i < children.size())
+        {
+            if (p != i)
+            {
+                isDominated = isDominatedByNorm(*newInd, children[i].ind);
+                if (!isDominated && p < i)
+                {
+                    isDominated = isDuplicateEvalValueNorm(*newInd, children[i].ind);
+                }
+            }
+            ++i;
+        }
+
+        i = 0;
+        while (!isDominated && i < archive.size())
+        {
+            isDominated = isDominatedByNorm(*newInd, archive[i]);
+            if (!isDominated)
+            {
+                isDominated = isDuplicateEvalValueNorm(*newInd, archive[i]);
+            }
+            ++i;
+        }
+
+        if (!isDominated)
+        {
+            filteredChildren.push_back(cand);
+        }
+    }
+
+    archive.erase(std::remove_if(archive.begin(), archive.end(),
+        [&](const GP_Individual& ind)
+        {
+            for (const LoggedChild* child : filteredChildren)
+            {
+                if (isDominatedByNorm(ind, child->ind))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }),
+        archive.end());
+
+    archive.reserve(archive.size() + filteredChildren.size());
+
+    for (const LoggedChild* child : filteredChildren)
+    {
+        GP_Individual copy = child->ind;
+        copy.selectedCount = 0;
+        archive.push_back(std::move(copy));
+
+        ++stats.totalEntries;
+        if (child->ops.crossover) ++stats.entriesByCrossover;
+        if (child->ops.paramMut) ++stats.entriesByParamMut;
+        if (child->ops.structMut) ++stats.entriesByStructMut;
+        if (child->ops.macroMut) ++stats.entriesByMacroMut;
+        if (child->ind.makespan <= 700) ++stats.entriesLe700;
+        if (child->ind.makespan <= 800) ++stats.entriesLe800;
     }
 }
 
@@ -832,6 +1297,8 @@ GP_Individual TreeEA::run() {
     std::vector<GP_Individual> pop;
     initPopulation(pop);
 
+    writeGenerationLogHeader(P);
+
     if (P.useBNTGA) {
         archive_.clear();
         archive_.reserve(P.popSize * 2);
@@ -862,10 +1329,31 @@ GP_Individual TreeEA::run() {
         bestGen0_ = *bestIt0;
         hasBestGen0_ = true;
 
+        GenLogArchiveEntryCounts gen0ArchiveOps{};
+        gen0ArchiveOps.totalEntries = (int)archive_.size();
+        gen0ArchiveOps.entriesLe700 = countUnderMakespan(archive_, 700);
+        gen0ArchiveOps.entriesLe800 = countUnderMakespan(archive_, 800);
+
+        appendGenerationLog(
+            P,
+            0,
+            pop,
+            archive_.size(),
+            (long long)archive_.size(),
+            GenLogOpCounts{},
+            gen0ArchiveOps
+        );
+
         for (size_t gen = 0; gen < P.generations; ++gen) {
 
             std::vector<GP_Individual> offspring;
             offspring.reserve(P.popSize);
+
+            std::vector<LoggedChild> loggedOffspring;
+            loggedOffspring.reserve(P.popSize);
+
+            GenLogOpCounts genOps{};
+            const size_t archiveBefore = archive_.size();
 
             auto pairs = selectParentsBNTGA(/*objectiveNumber=*/2, (int)P.popSize);
 
@@ -880,34 +1368,73 @@ GP_Individual TreeEA::run() {
                 GP_Individual c1 = archiveSnap[ia];
                 GP_Individual c2 = archiveSnap[ib];
 
-                if (rand01() < P.pCrossover) crossover(c1.taskTree, c2.taskTree, false);
-                if (rand01() < P.pCrossover) crossover(c1.resTree, c2.resTree, true);
+                ChildOpFlags op1{}, op2{};
 
-                if (rand01() < P.pMutParam)  mutateParam(c1.taskTree, false);
-                if (rand01() < P.pMutParam)  mutateParam(c2.taskTree, false);
-                if (rand01() < P.pMutParam)  mutateParam(c1.resTree, true);
-                if (rand01() < P.pMutParam)  mutateParam(c2.resTree, true);
+                if (rand01() < P.pCrossover) {
+                    crossover(c1.taskTree, c2.taskTree, false);
+                    op1.crossover = true;
+                    op2.crossover = true;
+                }
+                if (rand01() < P.pCrossover) {
+                    crossover(c1.resTree, c2.resTree, true);
+                    op1.crossover = true;
+                    op2.crossover = true;
+                }
 
-                auto structOrMacro = [&](GPTree& tr, bool isRes) {
-                    if (rand01() < P.pMutMacroSubtree) mutateMacroSubtreeReplace(tr, isRes);
-                    else if (rand01() < P.pMutStruct)  mutateStruct(tr, isRes);
+                if (rand01() < P.pMutParam) {
+                    mutateParam(c1.taskTree, false);
+                    op1.paramMut = true;
+                }
+                if (rand01() < P.pMutParam) {
+                    mutateParam(c2.taskTree, false);
+                    op2.paramMut = true;
+                }
+                if (rand01() < P.pMutParam) {
+                    mutateParam(c1.resTree, true);
+                    op1.paramMut = true;
+                }
+                if (rand01() < P.pMutParam) {
+                    mutateParam(c2.resTree, true);
+                    op2.paramMut = true;
+                }
+
+                auto structOrMacro = [&](GPTree& tr, bool isRes, ChildOpFlags& opFlags) {
+                    if (rand01() < P.pMutMacroSubtree) {
+                        mutateMacroSubtreeReplace(tr, isRes);
+                        opFlags.macroMut = true;
+                    }
+                    else if (rand01() < P.pMutStruct) {
+                        mutateStruct(tr, isRes);
+                        opFlags.structMut = true;
+                    }
                     };
 
-                structOrMacro(c1.taskTree, false);
-                structOrMacro(c2.taskTree, false);
-                structOrMacro(c1.resTree, true);
-                structOrMacro(c2.resTree, true);
+                structOrMacro(c1.taskTree, false, op1);
+                structOrMacro(c2.taskTree, false, op2);
+                structOrMacro(c1.resTree, true, op1);
+                structOrMacro(c2.resTree, true, op2);
 
                 auto e1 = evaluate(c1);
+                if (op1.crossover) ++genOps.crossoverChildren;
+                if (op1.paramMut) ++genOps.paramMutChildren;
+                if (op1.structMut) ++genOps.structMutChildren;
+                if (op1.macroMut) ++genOps.macroMutChildren;
                 offspring.push_back(e1);
+                loggedOffspring.push_back(LoggedChild{ e1, op1 });
 
                 if (offspring.size() < P.popSize) {
                     auto e2 = evaluate(c2);
+                    if (op2.crossover) ++genOps.crossoverChildren;
+                    if (op2.paramMut) ++genOps.paramMutChildren;
+                    if (op2.structMut) ++genOps.structMutChildren;
+                    if (op2.macroMut) ++genOps.macroMutChildren;
                     offspring.push_back(e2);
+                    loggedOffspring.push_back(LoggedChild{ e2, op2 });
                 }
             }
 
-            copyToArchiveWithFiltering(offspring);
+            GenLogArchiveEntryCounts archiveOps{};
+            copyToArchiveWithFilteringLogged(archive_, loggedOffspring, archiveOps);
 
             pop.swap(offspring);
 
@@ -928,6 +1455,19 @@ GP_Individual TreeEA::run() {
 
             if (itBest->fitness < bestSoFar.fitness) bestSoFar = *itBest;
 
+            const long long archiveDelta =
+                (long long)archive_.size() - (long long)archiveBefore;
+
+            appendGenerationLog(
+                P,
+                gen + 1,
+                pop,
+                archive_.size(),
+                archiveDelta,
+                genOps,
+                archiveOps
+            );
+
         }
 
         pareto_.clear();
@@ -940,6 +1480,61 @@ GP_Individual TreeEA::run() {
             p.costNorm = x.costNorm;
             pareto_.push_back(p);
         }
+
+        writeArchiveDump(P, archive_);
+
+        auto writeTraceFor = [&](const std::string& fileName,
+            const std::string& label,
+            const GP_Individual* ind)
+            {
+                if (!P.logGenerations || ind == nullptr) return;
+
+                std::ofstream out(makeSchedulerTracePath(P, fileName), std::ofstream::out | std::ofstream::trunc);
+                if (!out.is_open()) return;
+
+                out << std::fixed << std::setprecision(6);
+                out << "TRACE_LABEL=" << label << "\n";
+                out << "makespan=" << ind->makespan
+                    << ", cost=" << ind->cost
+                    << ", fitness=" << ind->fitness
+                    << ", msNorm=" << ind->msNorm
+                    << ", costNorm=" << ind->costNorm
+                    << "\n";
+                out << "taskTree=" << ind->taskTree.toString() << "\n";
+                out << "resTree=" << ind->resTree.toString() << "\n\n";
+
+                Instance& Itrace = resetWorkingInstance();
+                GPTreeRule ruleT(ind->taskTree);
+                GPTreeResRule ruleR(ind->resTree);
+
+                ScheduleOptions traceOpt;
+                traceOpt.computeObjectiveStats = true;
+                traceOpt.keepTaskAssignedResources = true;
+                traceOpt.captureAssignedResByImopse = false;
+
+                bool oldTrace = g_trace;
+                std::streambuf* oldBuf = std::cout.rdbuf(out.rdbuf());
+
+                g_trace = true;
+                auto traceRes = Scheduler::withResources(Itrace, ruleT, &ruleR, traceOpt);
+                g_trace = oldTrace;
+                std::cout.rdbuf(oldBuf);
+
+                out << "\nTRACE_RESULT makespan=" << traceRes.makespan
+                    << ", totalCost=" << traceRes.totalCost << "\n";
+            };
+
+        writeTraceFor(
+            "gphh_trace_best_makespan.txt",
+            "BEST_MAKESPAN",
+            bestMakespanPtr(archive_)
+        );
+
+        writeTraceFor(
+            "gphh_trace_best_cost_le_700.txt",
+            "BEST_COST_LE_700",
+            bestCostUnderMakespanPtr(archive_, 700)
+        );
 
         return bestSoFar;
     }
@@ -976,6 +1571,15 @@ GP_Individual TreeEA::run() {
     bestGen0_ = *itBest0;
     hasBestGen0_ = true;
 
+    appendGenerationLog(
+        P,
+        0,
+        pop,
+        P.useNSGA2 ? archive_.size() : pareto_.size(),
+        (long long)(P.useNSGA2 ? archive_.size() : pareto_.size()),
+        GenLogOpCounts{},
+        GenLogArchiveEntryCounts{}
+    );
     GP_Individual bestSoFar = bestGen0_;
 
 
@@ -983,6 +1587,9 @@ GP_Individual TreeEA::run() {
 
         std::vector<GP_Individual> offspring;
         offspring.reserve(P.popSize);
+
+        GenLogOpCounts genOps{};
+        const size_t archiveBefore = P.useNSGA2 ? archive_.size() : pareto_.size();
 
         while (offspring.size() < P.popSize) {
 
@@ -994,30 +1601,68 @@ GP_Individual TreeEA::run() {
             GP_Individual c1 = p1;
             GP_Individual c2 = p2;
 
-            if (rand01() < P.pCrossover) crossover(c1.taskTree, c2.taskTree, false);
-            if (rand01() < P.pCrossover) crossover(c1.resTree, c2.resTree, true);
+            ChildOpFlags op1{}, op2{};
 
-            if (rand01() < P.pMutParam)  mutateParam(c1.taskTree, false);
-            if (rand01() < P.pMutParam)  mutateParam(c2.taskTree, false);
-            if (rand01() < P.pMutParam)  mutateParam(c1.resTree, true);
-            if (rand01() < P.pMutParam)  mutateParam(c2.resTree, true);
+            if (rand01() < P.pCrossover) {
+                crossover(c1.taskTree, c2.taskTree, false);
+                op1.crossover = true;
+                op2.crossover = true;
+            }
+            if (rand01() < P.pCrossover) {
+                crossover(c1.resTree, c2.resTree, true);
+                op1.crossover = true;
+                op2.crossover = true;
+            }
 
-            auto structOrMacro = [&](GPTree& tr, bool isRes) {
-                if (rand01() < P.pMutMacroSubtree) mutateMacroSubtreeReplace(tr, isRes);
-                else if (rand01() < P.pMutStruct)  mutateStruct(tr, isRes);
+            if (rand01() < P.pMutParam) {
+                mutateParam(c1.taskTree, false);
+                op1.paramMut = true;
+            }
+            if (rand01() < P.pMutParam) {
+                mutateParam(c2.taskTree, false);
+                op2.paramMut = true;
+            }
+            if (rand01() < P.pMutParam) {
+                mutateParam(c1.resTree, true);
+                op1.paramMut = true;
+            }
+            if (rand01() < P.pMutParam) {
+                mutateParam(c2.resTree, true);
+                op2.paramMut = true;
+            }
+
+            auto structOrMacro = [&](GPTree& tr, bool isRes, ChildOpFlags& opFlags) {
+                if (rand01() < P.pMutMacroSubtree) {
+                    mutateMacroSubtreeReplace(tr, isRes);
+                    opFlags.macroMut = true;
+                }
+                else if (rand01() < P.pMutStruct) {
+                    mutateStruct(tr, isRes);
+                    opFlags.structMut = true;
+                }
                 };
 
-            structOrMacro(c1.taskTree, false);
-            structOrMacro(c2.taskTree, false);
-            structOrMacro(c1.resTree, true);
-            structOrMacro(c2.resTree, true);
+            structOrMacro(c1.taskTree, false, op1);
+            structOrMacro(c2.taskTree, false, op2);
+            structOrMacro(c1.resTree, true, op1);
+            structOrMacro(c2.resTree, true, op2);
 
             auto e1 = evaluate(c1);
+            if (op1.crossover) ++genOps.crossoverChildren;
+            if (op1.paramMut) ++genOps.paramMutChildren;
+            if (op1.structMut) ++genOps.structMutChildren;
+            if (op1.macroMut) ++genOps.macroMutChildren;
+
             if (!P.useNSGA2) updatePareto(e1);
             offspring.push_back(e1);
 
             if (offspring.size() < P.popSize) {
                 auto e2 = evaluate(c2);
+                if (op2.crossover) ++genOps.crossoverChildren;
+                if (op2.paramMut) ++genOps.paramMutChildren;
+                if (op2.structMut) ++genOps.structMutChildren;
+                if (op2.macroMut) ++genOps.macroMutChildren;
+
                 if (!P.useNSGA2) updatePareto(e2);
                 offspring.push_back(e2);
             }
@@ -1065,6 +1710,20 @@ GP_Individual TreeEA::run() {
 
         if (itBest->fitness < bestSoFar.fitness) bestSoFar = *itBest;
 
+        const size_t archiveAfter = P.useNSGA2 ? archive_.size() : pareto_.size();
+        const long long archiveDelta =
+            (long long)archiveAfter - (long long)archiveBefore;
+
+        appendGenerationLog(
+            P,
+            gen + 1,
+            pop,
+            archiveAfter,
+            archiveDelta,
+            genOps,
+            GenLogArchiveEntryCounts{}
+        );
+
     }
 
     if (P.useNSGA2) {
@@ -1078,6 +1737,8 @@ GP_Individual TreeEA::run() {
             p.costNorm = x.costNorm;
             pareto_.push_back(p);
         }
+
+        writeArchiveDump(P, archive_);
     }
 
     return bestSoFar;

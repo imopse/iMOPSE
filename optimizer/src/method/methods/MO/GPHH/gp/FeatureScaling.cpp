@@ -129,7 +129,6 @@ namespace gp {
 
         double maxResSurplusLevel = 1.0;
         double maxResRelativeWage = 1.0;
-        double maxResFutureDemand = 1.0;
         double maxResReservePressure = 1.0;
 
         for (const auto& t : I.tasks) {
@@ -204,7 +203,6 @@ namespace gp {
                     ((double)t.duration * priceGap) / (double)std::max(1, feasibleCount);
             }
 
-            maxResFutureDemand = std::max(maxResFutureDemand, demand);
             maxResReservePressure = std::max(maxResReservePressure, reservePressure);
         }
 
@@ -214,15 +212,16 @@ namespace gp {
 
         s.maxResSurplusLevel = std::max(1.0, maxResSurplusLevel);
         s.maxResRelativeWage = std::max(1.0, maxResRelativeWage);
-        s.maxResFutureDemand = std::max(1.0, maxResFutureDemand);
         s.maxResReservePressure = std::max(1.0, maxResReservePressure);
 
         s.maxWaitRes = std::max(1.0, projHorizon);
         s.maxEstPrec = std::max(1.0, projHorizon);
         s.maxCritLen = s.maxEstPrec;
         s.maxSlackPos = s.maxEstPrec;
+        s.maxCriticalPressure = s.maxCritLen;
 
         s.maxSuccCount = s.maxNumTasks;
+        s.maxDescCount = s.maxNumTasks;
         s.maxTotPred = s.maxNumTasks;
 
         g_scaling = s;

@@ -40,6 +40,7 @@ namespace gp {
         out.cmaxCPM = 0;
         out.slack.assign(N, 0);
         out.succCount.assign(N, 0);
+        out.descCount.assign(N, 0);
 
         auto topo = topoOrder(I);
         if ((int)topo.size() != N) return false;
@@ -85,6 +86,26 @@ namespace gp {
         for (int v = 0; v < N; ++v) {
             out.slack[v] = out.lst[v] - out.est[v];
             out.succCount[v] = (int)succ[v].size();
+        }
+
+        for (int v = 0; v < N; ++v) {
+            std::unordered_set<int> seen;
+            std::vector<int> stack;
+
+            for (int s : succ[v])
+                stack.push_back(s);
+
+            while (!stack.empty()) {
+                int u = stack.back();
+                stack.pop_back();
+
+                if (seen.insert(u).second) {
+                    for (int s : succ[u])
+                        stack.push_back(s);
+                }
+            }
+
+            out.descCount[v] = (int)seen.size();
         }
 
         for (int v = 0; v < N; ++v) {

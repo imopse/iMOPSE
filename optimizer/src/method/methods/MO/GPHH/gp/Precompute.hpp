@@ -11,6 +11,7 @@ namespace gp {
         std::vector<int> totPred;
         std::vector<int> slack;
         std::vector<int> succCount;
+        std::vector<int> descCount;
         int cmaxCPM = 0;
     };
 

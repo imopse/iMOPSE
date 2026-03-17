@@ -26,11 +26,17 @@ double GPTree::featureValue(FeatureId id, const Features& f) const {
     case FeatureId::SUCC_COUNT:
         return f.succCount;
 
+    case FeatureId::DESC_COUNT:
+        return f.descCount;
+
     case FeatureId::CRITLEN:
         return f.critLen;
 
     case FeatureId::SLACK:
         return f.slack;
+
+    case FeatureId::CRITICAL_PRESSURE:
+        return f.criticalPressure;
 
     case FeatureId::AVAIL_GAP:
         return f.availGap;
@@ -95,9 +101,6 @@ double GPTree::featureValue(FeatureId id, const Features& f) const {
     case FeatureId::RES_CAN_START_NOW:
         return f.resCanStartNow;
 
-    case FeatureId::RES_MULTI_SKILL:
-        return f.resMultiSkill;
-
     case FeatureId::RES_UTILIZATION:
         return f.resUtilization;
 
@@ -116,6 +119,9 @@ double GPTree::featureValue(FeatureId id, const Features& f) const {
     case FeatureId::RES_RESERVE_PRESSURE:
         return f.resReservePressure;
 
+    case FeatureId::RES_CRITICAL_RESERVE:
+        return f.resCriticalReserve;
+
     case FeatureId::RES_STRATEGIC_MISMATCH:
         return f.resStrategicMismatch;
 
@@ -127,9 +133,6 @@ double GPTree::featureValue(FeatureId id, const Features& f) const {
 
     case FeatureId::RES_RELATIVE_WAGE:
         return f.resRelativeWage;
-
-    case FeatureId::RES_FUTURE_DEMAND:
-        return f.resFutureDemand;
 
     default:
         return 0.0;
@@ -192,8 +195,10 @@ std::string GPTree::nodeLabel(int idx) const {
         case FeatureId::AVAIL_SKILL:          nm = "AVAIL";        break;
         case FeatureId::EST_PREC:             nm = "EST";          break;
         case FeatureId::SUCC_COUNT:           nm = "SUCC";         break;
+        case FeatureId::DESC_COUNT:           nm = "DESC";         break;
         case FeatureId::CRITLEN:              nm = "CRITLEN";      break;
         case FeatureId::SLACK:                nm = "SLACK";        break;
+        case FeatureId::CRITICAL_PRESSURE:    nm = "CRIT_PRESS";   break;
         case FeatureId::AVAIL_GAP:            nm = "GAP";          break;
         case FeatureId::WAIT_RES:             nm = "WAIT";         break;
         case FeatureId::TOT_PRED:             nm = "TPRED";        break;
@@ -216,18 +221,17 @@ std::string GPTree::nodeLabel(int idx) const {
         case FeatureId::RES_WAIT_TIME:        nm = "RES_WAIT";     break;
         case FeatureId::RES_IDLE_TIME:        nm = "RES_IDLE";     break;
         case FeatureId::RES_CAN_START_NOW:    nm = "RES_CAN_NOW";  break;
-        case FeatureId::RES_MULTI_SKILL:      nm = "RES_MULTI";      break;
         case FeatureId::RES_UTILIZATION:      nm = "RES_UTIL";       break;
         case FeatureId::RES_WAGE_PER_LEVEL:   nm = "RES_W_PER_L";    break;
         case FeatureId::RES_ASSIGN_COST:      nm = "RES_COST";       break;
         case FeatureId::RES_ASSIGN_PREMIUM_ALL:nm = "RES_PREMIUM";   break;
-        case FeatureId::RES_HASTE_VALUE:      nm = "RES_HASTE";    break;
-        case FeatureId::RES_RESERVE_PRESSURE:   nm = "RES_RESERVE";     break;
-        case FeatureId::RES_STRATEGIC_MISMATCH: nm = "RES_STR_MIS";     break;
+        case FeatureId::RES_HASTE_VALUE:      nm = "RES_HASTE";      break;
+        case FeatureId::RES_RESERVE_PRESSURE: nm = "RES_RESERVE";    break;
+        case FeatureId::RES_CRITICAL_RESERVE: nm = "RES_CRIT_RES";   break;
+        case FeatureId::RES_STRATEGIC_MISMATCH: nm = "RES_STR_MIS";  break;
         case FeatureId::RES_FAMILY_MISMATCH:    nm = "RES_FAM_MIS";     break;
         case FeatureId::RES_SURPLUS_LEVEL:      nm = "RES_SURPLUS";     break;
         case FeatureId::RES_RELATIVE_WAGE:    nm = "RES_REL_WAGE"; break;
-        case FeatureId::RES_FUTURE_DEMAND:    nm = "RES_FUT_DEM";  break;
         }
         oss << "FEAT:" << nm;
         break;
@@ -267,8 +271,10 @@ namespace {
         case FeatureId::AVAIL_SKILL:          return "AVAIL";
         case FeatureId::EST_PREC:             return "EST";
         case FeatureId::SUCC_COUNT:           return "SUCC";
+        case FeatureId::DESC_COUNT:           return "DESC";
         case FeatureId::CRITLEN:              return "CRITLEN";
         case FeatureId::SLACK:                return "SLACK";
+        case FeatureId::CRITICAL_PRESSURE:    return "CRIT_PRESS";
         case FeatureId::AVAIL_GAP:            return "GAP";
         case FeatureId::WAIT_RES:             return "WAIT";
         case FeatureId::TOT_PRED:             return "TPRED";
@@ -291,18 +297,17 @@ namespace {
         case FeatureId::RES_WAIT_TIME:        return "RES_WAIT";
         case FeatureId::RES_IDLE_TIME:        return "RES_IDLE";
         case FeatureId::RES_CAN_START_NOW:    return "RES_CAN_NOW";
-        case FeatureId::RES_MULTI_SKILL:       return "RES_MULTI";
         case FeatureId::RES_UTILIZATION:       return "RES_UTIL";
         case FeatureId::RES_WAGE_PER_LEVEL:    return "RES_W_PER_L";
         case FeatureId::RES_ASSIGN_COST:       return "RES_COST";
         case FeatureId::RES_ASSIGN_PREMIUM_ALL:return "RES_PREMIUM";
-        case FeatureId::RES_HASTE_VALUE:    return "RES_HASTE";
-        case FeatureId::RES_RESERVE_PRESSURE:   return "RES_RESERVE";
+        case FeatureId::RES_HASTE_VALUE:      return "RES_HASTE";
+        case FeatureId::RES_RESERVE_PRESSURE: return "RES_RESERVE";
+        case FeatureId::RES_CRITICAL_RESERVE: return "RES_CRIT_RES";
         case FeatureId::RES_STRATEGIC_MISMATCH: return "RES_STR_MIS";
         case FeatureId::RES_FAMILY_MISMATCH:    return "RES_FAM_MIS";
         case FeatureId::RES_SURPLUS_LEVEL:      return "RES_SURPLUS";
         case FeatureId::RES_RELATIVE_WAGE:    return "RES_REL_WAGE";
-        case FeatureId::RES_FUTURE_DEMAND:    return "RES_FUT_DEM";
         }
         return "?";
     }
@@ -385,8 +390,10 @@ std::string GPTree::toStringAt(int idx) const {
         case FeatureId::AVAIL_SKILL:          nm = "AVAIL";        break;
         case FeatureId::EST_PREC:             nm = "EST";          break;
         case FeatureId::SUCC_COUNT:           nm = "SUCC";         break;
+        case FeatureId::DESC_COUNT:           nm = "DESC";         break;
         case FeatureId::CRITLEN:              nm = "CRITLEN";      break;
         case FeatureId::SLACK:                nm = "SLACK";        break;
+        case FeatureId::CRITICAL_PRESSURE:    nm = "CRIT_PRESS";   break;
         case FeatureId::AVAIL_GAP:            nm = "GAP";          break;
         case FeatureId::WAIT_RES:             nm = "WAIT";         break;
         case FeatureId::TOT_PRED:             nm = "TPRED";        break;
@@ -403,24 +410,22 @@ std::string GPTree::toStringAt(int idx) const {
         case FeatureId::UNSCHED_TASKS:        nm = "UNSCHED";      break;
         case FeatureId::MIN_FEASIBLE_COST_NOW:nm = "MIN_COST_NOW"; break;
         case FeatureId::COST_REGRET_NOW:      nm = "REGRET_NOW";   break;
-
         case FeatureId::RES_WAGE:             nm = "RES_WAGE";     break;
         case FeatureId::RES_SKILL_LEVEL:      nm = "RES_SKILL";    break;
         case FeatureId::RES_WAIT_TIME:        nm = "RES_WAIT";     break;
         case FeatureId::RES_IDLE_TIME:        nm = "RES_IDLE";     break;
         case FeatureId::RES_CAN_START_NOW:    nm = "RES_CAN_NOW";  break;
-        case FeatureId::RES_MULTI_SKILL:       nm = "RES_MULTI";    break;
         case FeatureId::RES_UTILIZATION:       nm = "RES_UTIL";     break;
         case FeatureId::RES_WAGE_PER_LEVEL:    nm = "RES_W_PER_L";  break;
         case FeatureId::RES_ASSIGN_COST:       nm = "RES_COST";     break;
         case FeatureId::RES_ASSIGN_PREMIUM_ALL:nm = "RES_PREMIUM";  break;
-        case FeatureId::RES_HASTE_VALUE:    nm = "RES_HASTE";    break;
-        case FeatureId::RES_RESERVE_PRESSURE:   nm = "RES_RESERVE";   break;
-        case FeatureId::RES_STRATEGIC_MISMATCH: nm = "RES_STR_MIS";   break;
+        case FeatureId::RES_HASTE_VALUE:      nm = "RES_HASTE";      break;
+        case FeatureId::RES_RESERVE_PRESSURE: nm = "RES_RESERVE";    break;
+        case FeatureId::RES_CRITICAL_RESERVE: nm = "RES_CRIT_RES";   break;
+        case FeatureId::RES_STRATEGIC_MISMATCH: nm = "RES_STR_MIS";  break;
         case FeatureId::RES_FAMILY_MISMATCH:    nm = "RES_FAM_MIS";   break;
         case FeatureId::RES_SURPLUS_LEVEL:      nm = "RES_SURPLUS";   break;
         case FeatureId::RES_RELATIVE_WAGE:    nm = "RES_REL_WAGE"; break;
-        case FeatureId::RES_FUTURE_DEMAND:    nm = "RES_FUT_DEM";  break;
         }
         oss << nm;
         break;
@@ -463,48 +468,50 @@ static UnaryOp sampleU(std::mt19937& rng) {
 }
 
 static BinaryOp sampleB(std::mt19937& rng) {
-    std::uniform_int_distribution<int> U(0, 5);
-    return static_cast<BinaryOp>(U(rng));
+    static const BinaryOp ops[] = {
+        BinaryOp::ADD,
+        BinaryOp::SUB,
+        BinaryOp::MUL,
+        BinaryOp::MIN,
+        BinaryOp::MAX
+    };
+    std::uniform_int_distribution<int> U(0, 4);
+    return ops[U(rng)];
 }
 
 static FeatureId sampleFeatMS(std::mt19937& rng) {
-    std::uniform_int_distribution<int> U(0, 11);
+    std::uniform_int_distribution<int> U(0, 10);
     switch (U(rng)) {
     case 0:  return FeatureId::DURATION;
     case 1:  return FeatureId::REQ_LEVEL;
-    case 2:  return FeatureId::AVAIL_SKILL;
-    case 3:  return FeatureId::EST_PREC;
-    case 4:  return FeatureId::SUCC_COUNT;
+    case 2:  return FeatureId::EST_PREC;
+    case 3:  return FeatureId::SUCC_COUNT;
+    case 4:  return FeatureId::DESC_COUNT;
     case 5:  return FeatureId::CRITLEN;
     case 6:  return FeatureId::SLACK;
-    case 7:  return FeatureId::AVAIL_GAP;
-    case 8:  return FeatureId::WAIT_RES;
-    case 9:  return FeatureId::TOT_PRED;
-    case 10: return FeatureId::MIN_FEASIBLE_COST_NOW;
+    case 7:  return FeatureId::CRITICAL_PRESSURE;
+    case 8:  return FeatureId::AVAIL_GAP;
+    case 9:  return FeatureId::MIN_FEASIBLE_COST_NOW;
     default: return FeatureId::COST_REGRET_NOW;
     }
 }
 
 static FeatureId sampleFeatRES(std::mt19937& rng) {
-    std::uniform_int_distribution<int> U(0, 16);
+    std::uniform_int_distribution<int> U(0, 12);
     switch (U(rng)) {
     case 0:  return FeatureId::RES_WAGE;
     case 1:  return FeatureId::RES_SKILL_LEVEL;
     case 2:  return FeatureId::RES_WAIT_TIME;
-    case 3:  return FeatureId::RES_IDLE_TIME;
-    case 4:  return FeatureId::RES_CAN_START_NOW;
-    case 5:  return FeatureId::RES_MULTI_SKILL;
-    case 6:  return FeatureId::RES_UTILIZATION;
-    case 7:  return FeatureId::RES_WAGE_PER_LEVEL;
-    case 8:  return FeatureId::RES_ASSIGN_COST;
-    case 9:  return FeatureId::RES_ASSIGN_PREMIUM_ALL;
-    case 10: return FeatureId::RES_HASTE_VALUE;
-    case 11: return FeatureId::RES_RESERVE_PRESSURE;
-    case 12: return FeatureId::RES_STRATEGIC_MISMATCH;
-    case 13: return FeatureId::RES_FAMILY_MISMATCH;
-    case 14: return FeatureId::RES_SURPLUS_LEVEL;
-    case 15: return FeatureId::RES_RELATIVE_WAGE;
-    default: return FeatureId::RES_FUTURE_DEMAND;
+    case 3:  return FeatureId::RES_CAN_START_NOW;
+    case 4:  return FeatureId::RES_WAGE_PER_LEVEL;
+    case 5:  return FeatureId::RES_ASSIGN_COST;
+    case 6:  return FeatureId::RES_ASSIGN_PREMIUM_ALL;
+    case 7:  return FeatureId::RES_HASTE_VALUE;
+    case 8:  return FeatureId::RES_RESERVE_PRESSURE;
+    case 9:  return FeatureId::RES_STRATEGIC_MISMATCH;
+    case 10: return FeatureId::RES_FAMILY_MISMATCH;
+    case 11: return FeatureId::RES_SURPLUS_LEVEL;
+    default: return FeatureId::RES_RELATIVE_WAGE;
     }
 }
 
@@ -683,14 +690,13 @@ std::vector<FeatureId> GPTree::allFeatures() {
     return {
         FeatureId::DURATION,
         FeatureId::REQ_LEVEL,
-        FeatureId::AVAIL_SKILL,
         FeatureId::EST_PREC,
         FeatureId::SUCC_COUNT,
+        FeatureId::DESC_COUNT,
         FeatureId::CRITLEN,
         FeatureId::SLACK,
+        FeatureId::CRITICAL_PRESSURE,
         FeatureId::AVAIL_GAP,
-        FeatureId::WAIT_RES,
-        FeatureId::TOT_PRED,
         FeatureId::CHEAPEST_COST_NOW,
         FeatureId::COST_PER_SKILL_NOW,
         FeatureId::MIN_WAGE_AVAIL,
@@ -708,7 +714,7 @@ std::vector<UnaryOp> GPTree::allUnaryOps() {
 }
 
 std::vector<BinaryOp> GPTree::allBinaryOps() {
-    return { BinaryOp::ADD, BinaryOp::SUB, BinaryOp::MUL, BinaryOp::DIV, BinaryOp::MIN, BinaryOp::MAX };
+    return { BinaryOp::ADD, BinaryOp::SUB, BinaryOp::MUL, BinaryOp::MIN, BinaryOp::MAX };
 }
 
 int GPTree::cloneSubtreeDFS(int nodeId, std::vector<int>& order) const {
