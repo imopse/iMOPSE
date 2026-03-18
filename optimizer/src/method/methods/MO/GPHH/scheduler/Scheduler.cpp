@@ -226,8 +226,8 @@ namespace {
 
         for (const auto& t : I.tasks) {
             std::size_t taskHash = Instance::hashCombine(std::hash<int>{}(t.id), std::hash<int>{}(t.duration));
-            taskHash = Instance::hashCombine(taskHash, std::hash<std::string>{}(t.reqSkill));
-            taskHash = Instance::hashCombine(taskHash, std::hash<int>{}(t.reqLevel));
+            taskHash = Instance::hashCombine(taskHash, std::hash<std::string>{}(t.requirementKey()));
+            taskHash = Instance::hashCombine(taskHash, std::hash<int>{}(t.totalRequiredLevel()));
             taskHash = Instance::hashCombine(taskHash, std::hash<int>{}(t.imopseIndex));
 
             std::size_t predHash = 0;
@@ -293,42 +293,45 @@ namespace {
         }
         for (int ui = 0; ui < n; ++ui) {
             const Task& u = I.tasks[ui];
-            const int reqU = std::max(0, u.reqLevel);
+            const int reqU = std::max(0, u.totalRequiredLevel());
 
             if (reqU <= 0) {
+                g_staticCache.feasibleCountPerTask[ui] = (int)I.resources.size();
                 g_staticCache.staticTaskResCount[ui] = (double)I.resources.size();
                 g_staticCache.staticAvgResCost[ui] = std::numeric_limits<double>::infinity();
                 continue;
             }
 
-            if (!u.capableResources.empty()) {
-                g_staticCache.staticTaskResCount[ui] = (double)u.capableResources.size();
+            if (!u.capableResourceIndices.empty()) {
+                g_staticCache.feasibleCountPerTask[ui] = (int)u.capableResourceIndices.size();
+                g_staticCache.staticTaskResCount[ui] = (double)u.capableResourceIndices.size();
 
                 double sumSal = 0.0;
                 int cnt = 0;
-                for (int rid : u.capableResources) {
-                    auto itIdx = __resIndex.find(rid);
-                    if (itIdx == __resIndex.end()) continue;
-                    sumSal += I.resources[itIdx->second].salary;
+                for (int ri : u.capableResourceIndices) {
+                    if (ri < 0 || ri >= (int)I.resources.size()) continue;
+                    sumSal += I.resources[ri].salary;
                     ++cnt;
                 }
+
                 g_staticCache.staticAvgResCost[ui] =
                     (cnt > 0) ? (sumSal / (double)cnt) : std::numeric_limits<double>::infinity();
                 continue;
             }
 
-            g_staticCache.staticTaskResCount[ui] = (double)g_staticCache.feasibleCountPerTask[ui];
-
+            int feasibleCnt = 0;
             double sumSal = 0.0;
             int cnt = 0;
+
             for (const auto& rr : I.resources) {
-                auto jt = rr.skills.find(u.reqSkill);
-                const int ll = (jt != rr.skills.end()) ? jt->second : 0;
-                if (ll >= reqU) {
-                    sumSal += rr.salary;
-                    ++cnt;
-                }
+                if (!u.canBeDoneBy(rr)) continue;
+                ++feasibleCnt;
+                sumSal += rr.salary;
+                ++cnt;
             }
+
+            g_staticCache.feasibleCountPerTask[ui] = feasibleCnt;
+            g_staticCache.staticTaskResCount[ui] = (double)feasibleCnt;
             g_staticCache.staticAvgResCost[ui] =
                 (cnt > 0) ? (sumSal / (double)cnt) : std::numeric_limits<double>::infinity();
         }
@@ -339,7 +342,7 @@ namespace {
 
             for (int ui = 0; ui < n; ++ui) {
                 const Task& u = I.tasks[ui];
-                const std::string key = u.reqSkill + "#" + std::to_string(std::max(0, u.reqLevel));
+                const std::string key = u.requirementKey();
 
                 auto it = familyIndex.find(key);
                 if (it == familyIndex.end()) {
@@ -361,7 +364,7 @@ namespace {
 
         for (int ui = 0; ui < n; ++ui) {
             const Task& u = I.tasks[ui];
-            const int reqU = std::max(0, u.reqLevel);
+            const int reqU = std::max(0, u.totalRequiredLevel());
 
             const int feasibleCount = std::max(1, g_staticCache.feasibleCountPerTask[ui]);
 
@@ -385,9 +388,7 @@ namespace {
             else {
                 for (int ri = 0; ri < (int)I.resources.size(); ++ri) {
                     const auto& rr = I.resources[ri];
-                    auto jt = rr.skills.find(u.reqSkill);
-                    const int ll = (jt != rr.skills.end()) ? jt->second : 0;
-                    if (reqU > 0 && ll < reqU) continue;
+                    if (reqU > 0 && !u.canBeDoneBy(rr)) continue;
 
                     const double sal = rr.salary;
                     if (sal < cheapest) {
@@ -449,11 +450,24 @@ namespace {
             }
 
             caps.reserve(std::max(1, feasibleCount));
-            for (int ri = 0; ri < (int)I.resources.size(); ++ri) {
-                const auto& rr = I.resources[ri];
-                auto jt = rr.skills.find(u.reqSkill);
-                const int ll = (jt != rr.skills.end()) ? jt->second : 0;
-                if (ll >= reqU) {
+
+            if (!u.capableResourceIndices.empty()) {
+                for (int ri : u.capableResourceIndices) {
+                    if (ri < 0 || ri >= (int)I.resources.size()) continue;
+
+                    caps.push_back(ri);
+                    g_staticCache.reservePressureByResInit[ri] += reserveW;
+                    g_staticCache.criticalReserveByResInit[ri] += criticalReserveW;
+                    g_staticCache.familyPressureByResFamilyInit[
+                        (size_t)ri * (size_t)g_staticCache.familyCount + (size_t)famId
+                    ] += reserveW;
+                }
+            }
+            else {
+                for (int ri = 0; ri < (int)I.resources.size(); ++ri) {
+                    const auto& rr = I.resources[ri];
+                    if (reqU > 0 && !u.canBeDoneBy(rr)) continue;
+
                     caps.push_back(ri);
                     g_staticCache.reservePressureByResInit[ri] += reserveW;
                     g_staticCache.criticalReserveByResInit[ri] += criticalReserveW;

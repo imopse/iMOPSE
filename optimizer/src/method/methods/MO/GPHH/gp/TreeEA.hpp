@@ -32,6 +32,7 @@ struct GPEA_Params {
     bool useNSGA2 = false;
     bool useBNTGA = false;
     bool useImopseEvaluate = false;
+    int ablationMode = 0;
 
     bool        logGenerations = false;
     std::string generationLogFile = "gphh_generation_log.csv";

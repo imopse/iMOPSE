@@ -53,6 +53,10 @@ bool DefParser::parseFile(const std::string& path, Instance& out)
 
             t.reqSkill = sk;
             t.reqLevel = lev;
+            t.requiredSkills.clear();
+            if (!sk.empty() && lev > 0) {
+                t.requiredSkills.push_back(SkillRequirement{ sk, lev });
+            }
 
             int p;
             while (ss >> p) t.predecessors.push_back(p);

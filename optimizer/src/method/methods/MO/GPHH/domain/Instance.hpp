@@ -55,8 +55,8 @@ struct Instance {
 
         for (const auto& t : tasks) {
             std::size_t taskHash = hashCombine(std::hash<int>{}(t.id), std::hash<int>{}(t.duration));
-            taskHash = hashCombine(taskHash, std::hash<std::string>{}(t.reqSkill));
-            taskHash = hashCombine(taskHash, std::hash<int>{}(t.reqLevel));
+            taskHash = hashCombine(taskHash, std::hash<std::string>{}(t.requirementKey()));
+            taskHash = hashCombine(taskHash, std::hash<int>{}(t.totalRequiredLevel()));
             taskHash = hashCombine(taskHash, std::hash<int>{}(t.imopseIndex));
 
             std::size_t predHash = 0;

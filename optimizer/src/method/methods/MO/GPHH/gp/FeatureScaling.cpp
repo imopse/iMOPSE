@@ -3,6 +3,8 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <string>
+#include <cmath>
+#include <limits>
 
 namespace gp {
 
@@ -22,14 +24,13 @@ namespace gp {
         double projHorizon = 0.0;
         for (const auto& t : I.tasks) {
             maxDur = std::max(maxDur, (double)t.duration);
-            maxReq = std::max(maxReq, (double)t.reqLevel);
+            maxReq = std::max(maxReq, (double)t.totalRequiredLevel());
             projHorizon += t.duration;
         }
         s.maxDuration = std::max(1.0, maxDur);
         s.maxReqLevel = std::max(1.0, maxReq);
 
         std::unordered_set<std::string> allSkills;
-        std::unordered_map<std::string, int> skillSum;
 
         double maxSalary = 0.0;
         double maxResSkillLevelFound = 0.0;
@@ -38,7 +39,6 @@ namespace gp {
             maxSalary = std::max(maxSalary, r.salary);
             for (const auto& kv : r.skills) {
                 allSkills.insert(kv.first);
-                skillSum[kv.first] += kv.second;
                 maxResSkillLevelFound = std::max(maxResSkillLevelFound, (double)kv.second);
             }
         }
@@ -46,26 +46,30 @@ namespace gp {
         s.maxNumSkills = std::max(1.0, (double)allSkills.size());
         s.maxResSkillLevel = std::max(1.0, maxResSkillLevelFound);
 
-        int maxSkillSum = 0;
-        for (const auto& kv : skillSum) {
-            maxSkillSum = std::max(maxSkillSum, kv.second);
+        double maxAvailSkill = 1.0;
+        for (const auto& t : I.tasks) {
+            for (const auto& r : I.resources) {
+                if (!t.canBeDoneBy(r)) continue;
+                maxAvailSkill = std::max(maxAvailSkill, (double)t.matchedLevelOn(r));
+            }
         }
-        s.maxAvailSkill = std::max(1.0, (double)maxSkillSum);
+        s.maxAvailSkill = std::max(1.0, maxAvailSkill);
         s.maxAvailGapPos = s.maxAvailSkill;
 
         double maxTaskResCount = 1.0;
         for (const auto& t : I.tasks) {
-            int req = std::max(0, t.reqLevel);
+            int req = std::max(0, t.totalRequiredLevel());
             int cnt = 0;
 
             if (req <= 0) {
                 cnt = (int)I.resources.size();
             }
+            else if (!t.capableResourceIndices.empty()) {
+                cnt = (int)t.capableResourceIndices.size();
+            }
             else {
                 for (const auto& r : I.resources) {
-                    auto it = r.skills.find(t.reqSkill);
-                    int lvl = (it != r.skills.end()) ? it->second : 0;
-                    if (lvl >= req) ++cnt;
+                    if (t.canBeDoneBy(r)) ++cnt;
                 }
             }
 
@@ -88,22 +92,19 @@ namespace gp {
         double maxResWagePerLevel = 1.0;
 
         for (const auto& t : I.tasks) {
-            int req = std::max(0, t.reqLevel);
+            int req = std::max(0, t.totalRequiredLevel());
 
             std::vector<double> wages;
             wages.reserve(I.resources.size());
 
             for (const auto& r : I.resources) {
-                int lvl = 0;
-                auto it = r.skills.find(t.reqSkill);
-                if (it != r.skills.end()) lvl = it->second;
+                if (req > 0 && !t.canBeDoneBy(r)) continue;
 
-                if (req <= 0 || lvl >= req) {
-                    wages.push_back(r.salary);
+                wages.push_back(r.salary);
 
-                    double wagePerLevel = r.salary / (double)std::max(1, lvl);
-                    maxResWagePerLevel = std::max(maxResWagePerLevel, wagePerLevel);
-                }
+                double provided = (double)std::max(1, t.matchedLevelOn(r));
+                double wagePerLevel = r.salary / provided;
+                maxResWagePerLevel = std::max(maxResWagePerLevel, wagePerLevel);
             }
 
             if (!wages.empty()) {
@@ -132,56 +133,40 @@ namespace gp {
         double maxResReservePressure = 1.0;
 
         for (const auto& t : I.tasks) {
-            int req = std::max(0, t.reqLevel);
+            int req = std::max(0, t.totalRequiredLevel());
 
             double cheapest = std::numeric_limits<double>::infinity();
 
             for (const auto& r : I.resources) {
-                int lvl = 0;
-                auto it = r.skills.find(t.reqSkill);
-                if (it != r.skills.end()) lvl = it->second;
+                if (req > 0 && !t.canBeDoneBy(r)) continue;
 
-                if (req <= 0 || lvl >= req) {
-                    cheapest = std::min(cheapest, r.salary);
-                    maxResSurplusLevel = std::max(maxResSurplusLevel, (double)std::max(0, lvl - req));
-                }
+                cheapest = std::min(cheapest, r.salary);
+                maxResSurplusLevel = std::max(maxResSurplusLevel, (double)t.surplusLevelOn(r));
             }
 
             if (std::isfinite(cheapest)) {
                 for (const auto& r : I.resources) {
-                    int lvl = 0;
-                    auto it = r.skills.find(t.reqSkill);
-                    if (it != r.skills.end()) lvl = it->second;
-
-                    if (req <= 0 || lvl >= req) {
-                        double rel = r.salary - cheapest;
-                        maxResRelativeWage = std::max(maxResRelativeWage, rel);
-                    }
+                    if (req > 0 && !t.canBeDoneBy(r)) continue;
+                    double rel = r.salary - cheapest;
+                    maxResRelativeWage = std::max(maxResRelativeWage, rel);
                 }
             }
         }
 
         for (const auto& r : I.resources) {
-            double demand = 0.0;
             double reservePressure = 0.0;
 
             for (const auto& t : I.tasks) {
-                int req = std::max(0, t.reqLevel);
+                int req = std::max(0, t.totalRequiredLevel());
 
-                int lvl = 0;
-                auto it = r.skills.find(t.reqSkill);
-                if (it != r.skills.end()) lvl = it->second;
-
-                if (req > 0 && lvl < req) continue;
+                if (req > 0 && !t.canBeDoneBy(r)) continue;
 
                 int feasibleCount = 0;
                 double cheapest = std::numeric_limits<double>::infinity();
                 double second = std::numeric_limits<double>::infinity();
 
                 for (const auto& rr : I.resources) {
-                    auto jt = rr.skills.find(t.reqSkill);
-                    int ll = (jt != rr.skills.end()) ? jt->second : 0;
-                    if (req > 0 && ll < req) continue;
+                    if (req > 0 && !t.canBeDoneBy(rr)) continue;
 
                     ++feasibleCount;
 
@@ -193,8 +178,6 @@ namespace gp {
                         second = rr.salary;
                     }
                 }
-
-                demand += 1.0 / (double)std::max(1, feasibleCount);
 
                 if (!std::isfinite(second)) second = cheapest;
                 const double priceGap = std::max(0.0, second - cheapest);

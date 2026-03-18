@@ -36,9 +36,26 @@ Instance GPHHAdapter::FromScheduler(const CScheduler& sch) {
         for (auto pid : t.GetPredecessors()) tt.predecessors.push_back((int)pid);
 
         const auto& req = t.GetRequiredSkills();
-        if (!req.empty()) {
-            tt.reqSkill = skillName(req[0].m_TypeID);
-            tt.reqLevel = (int)req[0].m_Level;
+
+        tt.requiredSkills.clear();
+        tt.requiredSkills.reserve(req.size());
+
+        for (const auto& rs : req) {
+            tt.requiredSkills.push_back(
+                SkillRequirement{ skillName(rs.m_TypeID), (int)rs.m_Level }
+            );
+        }
+
+        std::sort(tt.requiredSkills.begin(), tt.requiredSkills.end(),
+            [](const SkillRequirement& a, const SkillRequirement& b) {
+                if (a.skill != b.skill) return a.skill < b.skill;
+                return a.level < b.level;
+            });
+
+        if (!tt.requiredSkills.empty()) {
+            tt.reqSkill = tt.requiredSkills.front().skill;
+
+            tt.reqLevel = tt.totalRequiredLevel();
         }
         else {
             tt.reqSkill = "";

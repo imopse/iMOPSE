@@ -85,6 +85,7 @@ void CGPHH::RunOptimization()
     P.useNSGA2 = (GetInt(cfg, "UseNSGA2", 0) != 0);
     P.useBNTGA = (GetInt(cfg, "UseBNTGA", 0) != 0);
     P.useImopseEvaluate = (GetInt(cfg, "UseImopseEvaluate", 1) != 0);
+    P.ablationMode = GetInt(cfg, "AblationMode", 0);
 
     P.logGenerations = (GetInt(cfg, "LogGenerations", 0) != 0);
     P.generationLogFile = GetString(cfg, "GenerationLogFile", "gphh_generation_log.csv");

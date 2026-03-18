@@ -58,6 +58,61 @@ namespace {
         return unsched;
     }
 
+    inline bool canUseSingleSkillCache(const Task& t) {
+        return t.requiredSkills.empty() || t.requiredSkills.size() == 1;
+    }
+
+    inline int totalReq(const Task& t) {
+        return std::max(0, t.totalRequiredLevel());
+    }
+
+    inline double bestFreeMatchedLevel(const Instance& I, const Task& t, int now) {
+        double best = 0.0;
+
+        if (!t.capableResourceIndices.empty()) {
+            for (int ri : t.capableResourceIndices) {
+                if (ri < 0 || ri >= (int)I.resources.size()) continue;
+                const auto& r = I.resources[ri];
+                if (r.busyUntil > now) continue;
+                best = std::max(best, (double)t.matchedLevelOn(r));
+            }
+            return best;
+        }
+
+        for (const auto& r : I.resources) {
+            if (r.busyUntil > now) continue;
+            if (!t.canBeDoneBy(r)) continue;
+            best = std::max(best, (double)t.matchedLevelOn(r));
+        }
+
+        return best;
+    }
+
+    inline double bestWaitForTask(const Instance& I, const Task& t, int now) {
+        const int req = totalReq(t);
+        if (req <= 0) return 0.0;
+
+        int bestWait = std::numeric_limits<int>::max();
+
+        if (!t.capableResourceIndices.empty()) {
+            for (int ri : t.capableResourceIndices) {
+                if (ri < 0 || ri >= (int)I.resources.size()) continue;
+                const auto& r = I.resources[ri];
+                if (r.busyUntil <= now) return 0.0;
+                bestWait = std::min(bestWait, r.busyUntil - now);
+            }
+            return (double)bestWait;
+        }
+
+        for (const auto& r : I.resources) {
+            if (!t.canBeDoneBy(r)) continue;
+            if (r.busyUntil <= now) return 0.0;
+            bestWait = std::min(bestWait, r.busyUntil - now);
+        }
+
+        return (double)bestWait;
+    }
+
     inline double taskResCountFeature(const Instance& I, int taskIx, const Task& t, int req) {
         if (g_taskResCountByTask && taskIx >= 0 && taskIx < (int)g_taskResCountByTask->size()) {
             return (*g_taskResCountByTask)[taskIx];
@@ -71,9 +126,7 @@ namespace {
 
         int cnt = 0;
         for (const auto& r : I.resources) {
-            auto it = r.skills.find(t.reqSkill);
-            int lvl = (it != r.skills.end()) ? it->second : 0;
-            if (lvl >= req) ++cnt;
+            if (t.canBeDoneBy(r)) ++cnt;
         }
         return (double)cnt;
     }
@@ -99,11 +152,9 @@ namespace {
         double sumSal = 0.0;
         int cnt = 0;
         for (const auto& r : I.resources) {
-            auto it = r.skills.find(t.reqSkill);
-            if (it != r.skills.end() && it->second >= req) {
-                sumSal += r.salary;
-                ++cnt;
-            }
+            if (!t.canBeDoneBy(r)) continue;
+            sumSal += r.salary;
+            ++cnt;
         }
         return (cnt > 0) ? (sumSal / (double)cnt) : inf();
     }
@@ -152,7 +203,7 @@ namespace {
             return;
         }
 
-        if (t.capableResources.empty() && req > 0 && !t.reqSkill.empty()) {
+        if (canUseSingleSkillCache(t) && t.capableResources.empty() && req > 0 && !t.reqSkill.empty()) {
             double first = std::numeric_limits<double>::infinity();
             double second = std::numeric_limits<double>::infinity();
 
@@ -161,7 +212,7 @@ namespace {
 
                 f.teamSizeMinNow = 1.0;
                 f.cheapestCostNow = first;
-                f.costPerSkillNow = first / (double)req;
+                f.costPerSkillNow = first / (double)std::max(1, req);
                 f.minFeasibleCostNow = first * (double)t.duration;
                 f.costRegretNow = (second - first) * (double)t.duration;
                 f.minWageAvail = first;
@@ -169,7 +220,6 @@ namespace {
                 return;
             }
         }
-
 
         double first = std::numeric_limits<double>::infinity();
         double second = std::numeric_limits<double>::infinity();
@@ -199,14 +249,8 @@ namespace {
         else {
             for (const auto& r : I.resources) {
                 if (r.busyUntil > now) continue;
-
-                int lvl = 0;
-                auto it = r.skills.find(t.reqSkill);
-                if (it != r.skills.end()) lvl = it->second;
-
-                if (req <= 0 || lvl >= req) {
-                    considerSalary(r.salary);
-                }
+                if (!t.canBeDoneBy(r)) continue;
+                considerSalary(r.salary);
             }
         }
 
@@ -225,7 +269,7 @@ namespace {
 
         f.teamSizeMinNow = 1.0;
         f.cheapestCostNow = first;
-        f.costPerSkillNow = (req > 0) ? (first / (double)req) : first;
+        f.costPerSkillNow = first / (double)std::max(1, req);
         f.minFeasibleCostNow = first * (double)t.duration;
         f.costRegretNow = (second - first) * (double)t.duration;
         f.minWageAvail = first;
@@ -346,8 +390,8 @@ Features computeFeatures(const PriorityContext& ctx, int taskIx) {
     const Task& t = I.tasks[taskIx];
 
     f.duration = t.duration;
-    f.reqLevel = t.reqLevel;
-    const int req = std::max(0, t.reqLevel);
+    f.reqLevel = (double)t.totalRequiredLevel();
+    const int req = totalReq(t);
 
     const auto& S = gp::getFeatureScaling();
 
@@ -372,20 +416,20 @@ Features computeFeatures(const PriorityContext& ctx, int taskIx) {
     double availCached = -1.0;
     double waitCached = -1.0;
 
-    if (req > 0 && !t.reqSkill.empty()) {
+    if (req > 0 && canUseSingleSkillCache(t) && !t.reqSkill.empty()) {
         availCached = cachedAvailSkill(t.reqSkill);
         waitCached = cachedWaitRes(t.reqSkill, req);
     }
 
     f.availSkill = (availCached >= 0.0)
         ? availCached
-        : (double)ResourceAllocator::availableSkillSum(I, ctx.now, t.reqSkill);
+        : bestFreeMatchedLevel(I, t, ctx.now);
 
     f.availGap = f.availSkill - (double)req;
 
     f.waitRes = (waitCached >= 0.0)
         ? waitCached
-        : (double)ResourceAllocator::waitUntilFeasible(I, ctx.now, t.reqSkill, req);
+        : bestWaitForTask(I, t, ctx.now);
 
     f.feasibleNow = predsDone && (f.waitRes <= 0.0);
 
@@ -420,13 +464,9 @@ Features computeResourceFeatures(const Instance& I, const Task& t, const Resourc
 
     f.resWage = r.salary;
 
-    int req = std::max(0, t.reqLevel);
-    int lvlNow = 0;
-    {
-        auto it = r.skills.find(t.reqSkill);
-        lvlNow = (it != r.skills.end()) ? it->second : 0;
-        f.resSkillLevel = (double)lvlNow;
-    }
+    int req = totalReq(t);
+    int lvlNow = t.matchedLevelOn(r);
+    f.resSkillLevel = (double)lvlNow;
 
     const bool canStartNowRaw = (r.busyUntil <= now);
     const double rawWaitTime = canStartNowRaw ? 0.0 : (double)(r.busyUntil - now);
@@ -443,8 +483,7 @@ Features computeResourceFeatures(const Instance& I, const Task& t, const Resourc
 
     f.resWagePerLevel = r.salary / (double)std::max(1, lvlNow);
     f.resAssignCost = r.salary * (double)t.duration;
-
-    f.resSurplusLevel = (double)std::max(0, lvlNow - req);
+    f.resSurplusLevel = (double)t.surplusLevelOn(r);
 
     double cheapestNow = std::numeric_limits<double>::infinity();
     double cheapestCapableOverall = std::numeric_limits<double>::infinity();
@@ -513,22 +552,15 @@ Features computeResourceFeatures(const Instance& I, const Task& t, const Resourc
         if (u.start != -1) continue;
         if (u.id == t.id) continue;
 
-        int reqU = std::max(0, u.reqLevel);
-
-        int lvlU = 0;
-        auto it = r.skills.find(u.reqSkill);
-        if (it != r.skills.end()) lvlU = it->second;
-
-        if (reqU > 0 && lvlU < reqU) continue;
+        int reqU = totalReq(u);
+        if (reqU > 0 && !u.canBeDoneBy(r)) continue;
 
         int feasibleCount = 0;
         double cheapest = std::numeric_limits<double>::infinity();
         double second = std::numeric_limits<double>::infinity();
 
         for (const auto& rr : I.resources) {
-            auto jt = rr.skills.find(u.reqSkill);
-            int ll = (jt != rr.skills.end()) ? jt->second : 0;
-            if (reqU > 0 && ll < reqU) continue;
+            if (reqU > 0 && !u.canBeDoneBy(rr)) continue;
 
             ++feasibleCount;
 
@@ -578,16 +610,14 @@ Features computeResourceFeatures(const Instance& I, const Task& t, const Resourc
         reservePressure += reserveContribution;
         criticalReservePressure += criticalReserveContribution;
 
-        const std::string famKey =
-            u.reqSkill + "#" + std::to_string(std::max(0, u.reqLevel));
+        const std::string famKey = u.requirementKey();
         familyPressure[famKey] += reserveContribution;
     }
 
     f.resReservePressure = reservePressure;
     f.resCriticalReserve = criticalReservePressure;
 
-    const std::string currentFamKey =
-        t.reqSkill + "#" + std::to_string(std::max(0, t.reqLevel));
+    const std::string currentFamKey = t.requirementKey();
 
     double currentFamilyPressure = 0.0;
     auto itFam = familyPressure.find(currentFamKey);
@@ -675,14 +705,10 @@ Features computeResourceFeaturesFast(
 
     f.resWage = r.salary;
 
-    const int req = std::max(0, t.reqLevel);
+    const int req = totalReq(t);
 
-    int lvlNow = 0;
-    {
-        auto it = r.skills.find(t.reqSkill);
-        lvlNow = (it != r.skills.end()) ? it->second : 0;
-        f.resSkillLevel = (double)lvlNow;
-    }
+    int lvlNow = t.matchedLevelOn(r);
+    f.resSkillLevel = (double)lvlNow;
 
     const bool canStartNowRaw = (r.busyUntil <= now);
     const double rawWaitTime = canStartNowRaw ? 0.0 : (double)(r.busyUntil - now);
@@ -697,7 +723,7 @@ Features computeResourceFeaturesFast(
 
     f.resWagePerLevel = r.salary / (double)std::max(1, lvlNow);
     f.resAssignCost = r.salary * (double)t.duration;
-    f.resSurplusLevel = (double)std::max(0, lvlNow - req);
+    f.resSurplusLevel = (double)t.surplusLevelOn(r);
 
     f.resRelativeWage = std::isfinite(cheapestNow) ? (r.salary - cheapestNow) : 0.0;
     f.resAssignPremiumAll =

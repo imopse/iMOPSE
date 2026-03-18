@@ -9,6 +9,7 @@
 #include <fstream>
 #include <filesystem>
 #include <iomanip>
+#include <unordered_map>
 #include <map>
 #include <iostream>
 #include "../../../../../utils/logger/CExperimentLogger.h"
@@ -88,6 +89,8 @@ static std::string makeGenerationLogPath(const GPEA_Params& P) {
     return (dir / P.generationLogFile).string();
 }
 
+static std::string makeSchedulerTracePath(const GPEA_Params& P, const std::string& fileName);
+
 static void writeGenerationLogHeader(const GPEA_Params& P) {
     if (!P.logGenerations) return;
 
@@ -110,6 +113,15 @@ static void writeGenerationLogHeader(const GPEA_Params& P) {
         << ",avg_res_depth"
         << ",avg_task_nodes"
         << ",avg_res_nodes"
+        << ",unique_task_trees"
+        << ",unique_res_trees"
+        << ",unique_tree_pairs"
+        << ",unique_task_ratio"
+        << ",unique_res_ratio"
+        << ",unique_pair_ratio"
+        << ",max_task_tree_repeat"
+        << ",max_res_tree_repeat"
+        << ",max_tree_pair_repeat"
         << ",children_with_crossover"
         << ",children_with_param_mut"
         << ",children_with_struct_mut"
@@ -136,12 +148,199 @@ static double bestCostUnderMakespan(const std::vector<GP_Individual>& pop, int m
     return std::isfinite(best) ? best : -1.0;
 }
 
+static bool usesTaskTree(const GPEA_Params& P) {
+    return P.ablationMode != 2;
+}
+
+static bool usesResTree(const GPEA_Params& P) {
+    return P.ablationMode != 1;
+}
+
+static GPTree makeConstZeroTree() {
+    GPTree t;
+    GPNode n{};
+    n.kind = NodeKind::CONST;
+    n.constant = 0.0;
+    n.left = -1;
+    n.right = -1;
+    t.nodes.push_back(n);
+    t.root = 0;
+    return t;
+}
+
+class FixedTaskOrderRule : public IDispatchingRule {
+public:
+    double score(const Task& t) const override {
+        if (t.imopseIndex >= 0) return (double)t.imopseIndex;
+        return (double)t.id;
+    }
+
+    std::string name() const override {
+        return "FIXED_TASK_ORDER";
+    }
+};
+
 static int countUnderMakespan(const std::vector<GP_Individual>& xs, int maxMakespan) {
     int cnt = 0;
     for (const auto& x : xs) {
         if (x.makespan <= maxMakespan) ++cnt;
     }
     return cnt;
+}
+
+static const std::string kTreePairSeparator = "\n<<<GPHH_PAIR_SEPARATOR>>>\n";
+
+struct TreeDiversityStats {
+    size_t uniqueTaskTrees = 0;
+    size_t uniqueResTrees = 0;
+    size_t uniqueTreePairs = 0;
+
+    double uniqueTaskRatio = 0.0;
+    double uniqueResRatio = 0.0;
+    double uniquePairRatio = 0.0;
+
+    int maxTaskTreeRepeat = 0;
+    int maxResTreeRepeat = 0;
+    int maxTreePairRepeat = 0;
+};
+
+struct TreeDiversitySnapshot {
+    TreeDiversityStats stats;
+    std::unordered_map<std::string, int> taskCounts;
+    std::unordered_map<std::string, int> resCounts;
+    std::unordered_map<std::string, int> pairCounts;
+};
+
+static TreeDiversitySnapshot analyzeTreeDiversity(const std::vector<GP_Individual>& xs) {
+    TreeDiversitySnapshot snap;
+
+    for (const auto& ind : xs) {
+        const std::string taskKey = ind.taskTree.toString();
+        const std::string resKey = ind.resTree.toString();
+        const std::string pairKey = taskKey + kTreePairSeparator + resKey;
+
+        ++snap.taskCounts[taskKey];
+        ++snap.resCounts[resKey];
+        ++snap.pairCounts[pairKey];
+    }
+
+    snap.stats.uniqueTaskTrees = snap.taskCounts.size();
+    snap.stats.uniqueResTrees = snap.resCounts.size();
+    snap.stats.uniqueTreePairs = snap.pairCounts.size();
+
+    const double denom = (double)std::max<size_t>(1, xs.size());
+    snap.stats.uniqueTaskRatio = (double)snap.stats.uniqueTaskTrees / denom;
+    snap.stats.uniqueResRatio = (double)snap.stats.uniqueResTrees / denom;
+    snap.stats.uniquePairRatio = (double)snap.stats.uniqueTreePairs / denom;
+
+    for (const auto& kv : snap.taskCounts) {
+        snap.stats.maxTaskTreeRepeat = std::max(snap.stats.maxTaskTreeRepeat, kv.second);
+    }
+    for (const auto& kv : snap.resCounts) {
+        snap.stats.maxResTreeRepeat = std::max(snap.stats.maxResTreeRepeat, kv.second);
+    }
+    for (const auto& kv : snap.pairCounts) {
+        snap.stats.maxTreePairRepeat = std::max(snap.stats.maxTreePairRepeat, kv.second);
+    }
+
+    return snap;
+}
+
+static std::vector<std::pair<std::string, int>> sortCountsDesc(
+    const std::unordered_map<std::string, int>& counts)
+{
+    std::vector<std::pair<std::string, int>> rows(counts.begin(), counts.end());
+
+    std::sort(rows.begin(), rows.end(),
+        [](const auto& a, const auto& b) {
+            if (a.second != b.second) return a.second > b.second;
+            return a.first < b.first;
+        });
+
+    return rows;
+}
+
+static void writeTopRepeatedTrees(
+    std::ofstream& out,
+    const std::string& header,
+    const std::unordered_map<std::string, int>& counts,
+    size_t topK)
+{
+    out << "===== " << header << " =====\n";
+
+    auto rows = sortCountsDesc(counts);
+    if (rows.empty()) {
+        out << "NONE\n\n";
+        return;
+    }
+
+    const size_t limit = std::min(topK, rows.size());
+    for (size_t i = 0; i < limit; ++i) {
+        out << "#" << (i + 1) << " count=" << rows[i].second << "\n";
+        out << rows[i].first << "\n\n";
+    }
+}
+
+static void writeTopRepeatedPairs(
+    std::ofstream& out,
+    const std::unordered_map<std::string, int>& counts,
+    size_t topK)
+{
+    out << "===== TOP_REPEATED_TREE_PAIRS =====\n";
+
+    auto rows = sortCountsDesc(counts);
+    if (rows.empty()) {
+        out << "NONE\n\n";
+        return;
+    }
+
+    const size_t limit = std::min(topK, rows.size());
+    for (size_t i = 0; i < limit; ++i) {
+        out << "#" << (i + 1) << " count=" << rows[i].second << "\n";
+
+        const std::string& key = rows[i].first;
+        const size_t pos = key.find(kTreePairSeparator);
+
+        if (pos == std::string::npos) {
+            out << "PAIR_KEY=" << key << "\n\n";
+            continue;
+        }
+
+        out << "taskTree=" << key.substr(0, pos) << "\n";
+        out << "resTree=" << key.substr(pos + kTreePairSeparator.size()) << "\n\n";
+    }
+}
+
+static void writeTreeDiversityDump(
+    const GPEA_Params& P,
+    const std::string& fileName,
+    const std::string& label,
+    const std::vector<GP_Individual>& xs)
+{
+    if (!P.logGenerations) return;
+
+    std::ofstream out(makeSchedulerTracePath(P, fileName), std::ofstream::out | std::ofstream::trunc);
+    if (!out.is_open()) return;
+
+    out << std::fixed << std::setprecision(6);
+
+    const auto snap = analyzeTreeDiversity(xs);
+
+    out << "LABEL=" << label << "\n";
+    out << "population_size=" << xs.size() << "\n";
+    out << "unique_task_trees=" << snap.stats.uniqueTaskTrees << "\n";
+    out << "unique_res_trees=" << snap.stats.uniqueResTrees << "\n";
+    out << "unique_tree_pairs=" << snap.stats.uniqueTreePairs << "\n";
+    out << "unique_task_ratio=" << snap.stats.uniqueTaskRatio << "\n";
+    out << "unique_res_ratio=" << snap.stats.uniqueResRatio << "\n";
+    out << "unique_pair_ratio=" << snap.stats.uniquePairRatio << "\n";
+    out << "max_task_tree_repeat=" << snap.stats.maxTaskTreeRepeat << "\n";
+    out << "max_res_tree_repeat=" << snap.stats.maxResTreeRepeat << "\n";
+    out << "max_tree_pair_repeat=" << snap.stats.maxTreePairRepeat << "\n\n";
+
+    writeTopRepeatedTrees(out, "TOP_REPEATED_TASK_TREES", snap.taskCounts, 10);
+    writeTopRepeatedTrees(out, "TOP_REPEATED_RES_TREES", snap.resCounts, 10);
+    writeTopRepeatedPairs(out, snap.pairCounts, 10);
 }
 
 static int bestMakespanInSet(const std::vector<GP_Individual>& xs) {
@@ -199,6 +398,8 @@ static void appendGenerationLog(
     const double avgTaskNodes = sumTaskNodes / denom;
     const double avgResNodes = sumResNodes / denom;
 
+    const auto diversity = analyzeTreeDiversity(pop);
+
     std::ofstream out(makeGenerationLogPath(P), std::ofstream::out | std::ofstream::app);
     if (!out.is_open()) return;
 
@@ -220,6 +421,15 @@ static void appendGenerationLog(
         << "," << avgResDepth
         << "," << avgTaskNodes
         << "," << avgResNodes
+        << "," << diversity.stats.uniqueTaskTrees
+        << "," << diversity.stats.uniqueResTrees
+        << "," << diversity.stats.uniqueTreePairs
+        << "," << diversity.stats.uniqueTaskRatio
+        << "," << diversity.stats.uniqueResRatio
+        << "," << diversity.stats.uniquePairRatio
+        << "," << diversity.stats.maxTaskTreeRepeat
+        << "," << diversity.stats.maxResTreeRepeat
+        << "," << diversity.stats.maxTreePairRepeat
         << "," << ops.crossoverChildren
         << "," << ops.paramMutChildren
         << "," << ops.structMutChildren
@@ -238,6 +448,12 @@ static std::string makeArchiveDumpPath(const GPEA_Params& P) {
     namespace fs = std::filesystem;
     fs::path genPath = makeGenerationLogPath(P);
     return (genPath.parent_path() / "gphh_archive_dump.txt").string();
+}
+
+static std::string makeArchivePointsPath(const GPEA_Params& P) {
+    namespace fs = std::filesystem;
+    fs::path genPath = makeGenerationLogPath(P);
+    return (genPath.parent_path() / "gphh_archive_points.csv").string();
 }
 
 static std::string makeSchedulerTracePath(const GPEA_Params& P, const std::string& fileName) {
@@ -318,6 +534,25 @@ static void writeFeatureCounts(std::ofstream& out, const std::map<std::string, i
         out << kv.first << "=" << kv.second;
         first = false;
     }
+}
+
+static std::string csvEscape(const std::string& s) {
+    std::string out;
+    out.reserve(s.size() + 8);
+    out.push_back('"');
+
+    for (char c : s) {
+        if (c == '"') {
+            out.push_back('"');
+            out.push_back('"');
+        }
+        else {
+            out.push_back(c);
+        }
+    }
+
+    out.push_back('"');
+    return out;
 }
 
 static const GP_Individual* bestMakespanPtr(const std::vector<GP_Individual>& xs) {
@@ -416,6 +651,31 @@ static void writeArchiveDump(const GPEA_Params& P, const std::vector<GP_Individu
     dumpIndividualBlock(out, "CHEAPEST_OVERALL", cheapestPtr(archive));
 }
 
+static void writeArchivePointsCsv(const GPEA_Params& P, const std::vector<GP_Individual>& archive) {
+    if (!P.logGenerations) return;
+
+    std::ofstream out(makeArchivePointsPath(P), std::ofstream::out | std::ofstream::trunc);
+    if (!out.is_open()) return;
+
+    out << std::fixed << std::setprecision(6);
+
+    out << "idx,makespan,cost,msNorm,costNorm,selectedCount,taskTree,resTree\n";
+
+    for (size_t i = 0; i < archive.size(); ++i) {
+        const auto& x = archive[i];
+
+        out << i
+            << "," << x.makespan
+            << "," << x.cost
+            << "," << x.msNorm
+            << "," << x.costNorm
+            << "," << x.selectedCount
+            << "," << csvEscape(x.taskTree.toString())
+            << "," << csvEscape(x.resTree.toString())
+            << "\n";
+    }
+}
+
 TreeEA::TreeEA(Instance& I, const GPEA_Params& params, CScheduler* imopseScheduler, bool isTAProblem)
     : inst(I),
     workInst_(I),
@@ -468,8 +728,18 @@ Instance& TreeEA::resetWorkingInstance() const {
 GP_Individual TreeEA::evaluate(const GP_Individual& src) const {
     GP_Individual ind = src;
     Instance& Ic = resetWorkingInstance();
-    GPTreeRule    ruleT(ind.taskTree);
-    GPTreeResRule ruleR(ind.resTree);
+
+    GPTreeRule gpTaskRule(ind.taskTree);
+    GPTreeResRule gpResRule(ind.resTree);
+    FixedTaskOrderRule fixedTaskRule;
+
+    const IDispatchingRule& taskRule =
+        (P.ablationMode == 2)
+        ? static_cast<const IDispatchingRule&>(fixedTaskRule)
+        : static_cast<const IDispatchingRule&>(gpTaskRule);
+
+    const GPTreeResRule* resRule =
+        usesResTree(P) ? &gpResRule : nullptr;
 
     const bool leanDecode = (P.useImopseEvaluate && imopseSch_ && imopseIsTA_);
 
@@ -478,7 +748,7 @@ GP_Individual TreeEA::evaluate(const GP_Individual& src) const {
     schedOpt.keepTaskAssignedResources = !leanDecode;
     schedOpt.captureAssignedResByImopse = leanDecode;
 
-    auto sim = Scheduler::withResources(Ic, ruleT, &ruleR, schedOpt);
+    auto sim = Scheduler::withResources(Ic, taskRule, resRule, schedOpt);
 
     int ms = sim.makespan;
     double cost = sim.totalCost;
@@ -497,16 +767,25 @@ GP_Individual TreeEA::evaluate(const GP_Individual& src) const {
             float bestSal = sch.GetResourceById(best)->GetSalary();
             for (size_t k = 1; k < cap.size(); ++k) {
                 float s = sch.GetResourceById(cap[k])->GetSalary();
-                if (s < bestSal) { bestSal = s; best = cap[k]; }
+                if (s < bestSal) {
+                    bestSal = s;
+                    best = cap[k];
+                }
             }
             return best;
             };
 
         sch.Reset();
         for (size_t i = 0; i < n; ++i) {
-            int rid = (i < sim.assignedResByImopseTaskIndex.size()) ? sim.assignedResByImopseTaskIndex[i] : -1;
-            TResourceID resId = (rid > 0) ? (TResourceID)rid : pickCheapestCapable(i);
-            sch.Assign(i, resId);
+            int rid = (i < sim.assignedResByImopseTaskIndex.size())
+                ? sim.assignedResByImopseTaskIndex[i]
+                : -1;
+
+                TResourceID resId = (rid > 0)
+                    ? (TResourceID)rid
+                    : pickCheapestCapable(i);
+
+                sch.Assign(i, resId);
         }
         sch.BuildTimestamps_TA();
 
@@ -544,16 +823,18 @@ void TreeEA::initPopulation(std::vector<GP_Individual>& pop) {
 
     if (hasSeed_ && P.popSize > 0) {
         GP_Individual ind;
-        ind.taskTree = seedTask_;
-        ind.resTree = seedRes_;
+        ind.taskTree = usesTaskTree(P) ? seedTask_ : makeConstZeroTree();
+        ind.resTree = usesResTree(P) ? seedRes_ : makeConstZeroTree();
         ind = evaluate(ind);
         pop.push_back(ind);
     }
 
     while (pop.size() < P.popSize) {
         GP_Individual ind;
-        ind.taskTree = GPTree::RandomTreeMS(rng, P.maxDepth);
-        ind.resTree = GPTree::RandomTreeRES(rng, P.maxDepth);
+        ind.taskTree = usesTaskTree(P) ? GPTree::RandomTreeMS(rng, P.maxDepth)
+            : makeConstZeroTree();
+        ind.resTree = usesResTree(P) ? GPTree::RandomTreeRES(rng, P.maxDepth)
+            : makeConstZeroTree();
         ind = evaluate(ind);
         pop.push_back(ind);
     }
@@ -1370,30 +1651,30 @@ GP_Individual TreeEA::run() {
 
                 ChildOpFlags op1{}, op2{};
 
-                if (rand01() < P.pCrossover) {
+                if (usesTaskTree(P) && rand01() < P.pCrossover) {
                     crossover(c1.taskTree, c2.taskTree, false);
                     op1.crossover = true;
                     op2.crossover = true;
                 }
-                if (rand01() < P.pCrossover) {
+                if (usesResTree(P) && rand01() < P.pCrossover) {
                     crossover(c1.resTree, c2.resTree, true);
                     op1.crossover = true;
                     op2.crossover = true;
                 }
 
-                if (rand01() < P.pMutParam) {
+                if (usesTaskTree(P) && rand01() < P.pMutParam) {
                     mutateParam(c1.taskTree, false);
                     op1.paramMut = true;
                 }
-                if (rand01() < P.pMutParam) {
+                if (usesTaskTree(P) && rand01() < P.pMutParam) {
                     mutateParam(c2.taskTree, false);
                     op2.paramMut = true;
                 }
-                if (rand01() < P.pMutParam) {
+                if (usesResTree(P) && rand01() < P.pMutParam) {
                     mutateParam(c1.resTree, true);
                     op1.paramMut = true;
                 }
-                if (rand01() < P.pMutParam) {
+                if (usesResTree(P) && rand01() < P.pMutParam) {
                     mutateParam(c2.resTree, true);
                     op2.paramMut = true;
                 }
@@ -1409,10 +1690,14 @@ GP_Individual TreeEA::run() {
                     }
                     };
 
-                structOrMacro(c1.taskTree, false, op1);
-                structOrMacro(c2.taskTree, false, op2);
-                structOrMacro(c1.resTree, true, op1);
-                structOrMacro(c2.resTree, true, op2);
+                if (usesTaskTree(P)) {
+                    structOrMacro(c1.taskTree, false, op1);
+                    structOrMacro(c2.taskTree, false, op2);
+                }
+                if (usesResTree(P)) {
+                    structOrMacro(c1.resTree, true, op1);
+                    structOrMacro(c2.resTree, true, op2);
+                }
 
                 auto e1 = evaluate(c1);
                 if (op1.crossover) ++genOps.crossoverChildren;
@@ -1482,6 +1767,21 @@ GP_Individual TreeEA::run() {
         }
 
         writeArchiveDump(P, archive_);
+        writeArchivePointsCsv(P, archive_);
+
+        writeTreeDiversityDump(
+            P,
+            "gphh_tree_diversity_final_population.txt",
+            "FINAL_POPULATION",
+            pop
+        );
+
+        writeTreeDiversityDump(
+            P,
+            "gphh_tree_diversity_archive.txt",
+            "FINAL_ARCHIVE",
+            archive_
+        );
 
         auto writeTraceFor = [&](const std::string& fileName,
             const std::string& label,
@@ -1504,8 +1804,16 @@ GP_Individual TreeEA::run() {
                 out << "resTree=" << ind->resTree.toString() << "\n\n";
 
                 Instance& Itrace = resetWorkingInstance();
-                GPTreeRule ruleT(ind->taskTree);
-                GPTreeResRule ruleR(ind->resTree);
+                GPTreeRule gpTaskRule(ind->taskTree);
+                GPTreeResRule gpResRule(ind->resTree);
+                FixedTaskOrderRule fixedTaskRule;
+
+                const IDispatchingRule& taskRule =
+                    (P.ablationMode == 2) ? static_cast<const IDispatchingRule&>(fixedTaskRule)
+                    : static_cast<const IDispatchingRule&>(gpTaskRule);
+
+                const GPTreeResRule* resRule =
+                    usesResTree(P) ? &gpResRule : nullptr;
 
                 ScheduleOptions traceOpt;
                 traceOpt.computeObjectiveStats = true;
@@ -1516,7 +1824,7 @@ GP_Individual TreeEA::run() {
                 std::streambuf* oldBuf = std::cout.rdbuf(out.rdbuf());
 
                 g_trace = true;
-                auto traceRes = Scheduler::withResources(Itrace, ruleT, &ruleR, traceOpt);
+                auto traceRes = Scheduler::withResources(Itrace, taskRule, resRule, traceOpt);
                 g_trace = oldTrace;
                 std::cout.rdbuf(oldBuf);
 
@@ -1603,30 +1911,30 @@ GP_Individual TreeEA::run() {
 
             ChildOpFlags op1{}, op2{};
 
-            if (rand01() < P.pCrossover) {
+            if (usesTaskTree(P) && rand01() < P.pCrossover) {
                 crossover(c1.taskTree, c2.taskTree, false);
                 op1.crossover = true;
                 op2.crossover = true;
             }
-            if (rand01() < P.pCrossover) {
+            if (usesResTree(P) && rand01() < P.pCrossover) {
                 crossover(c1.resTree, c2.resTree, true);
                 op1.crossover = true;
                 op2.crossover = true;
             }
 
-            if (rand01() < P.pMutParam) {
+            if (usesTaskTree(P) && rand01() < P.pMutParam) {
                 mutateParam(c1.taskTree, false);
                 op1.paramMut = true;
             }
-            if (rand01() < P.pMutParam) {
+            if (usesTaskTree(P) && rand01() < P.pMutParam) {
                 mutateParam(c2.taskTree, false);
                 op2.paramMut = true;
             }
-            if (rand01() < P.pMutParam) {
+            if (usesResTree(P) && rand01() < P.pMutParam) {
                 mutateParam(c1.resTree, true);
                 op1.paramMut = true;
             }
-            if (rand01() < P.pMutParam) {
+            if (usesResTree(P) && rand01() < P.pMutParam) {
                 mutateParam(c2.resTree, true);
                 op2.paramMut = true;
             }
@@ -1642,10 +1950,14 @@ GP_Individual TreeEA::run() {
                 }
                 };
 
-            structOrMacro(c1.taskTree, false, op1);
-            structOrMacro(c2.taskTree, false, op2);
-            structOrMacro(c1.resTree, true, op1);
-            structOrMacro(c2.resTree, true, op2);
+            if (usesTaskTree(P)) {
+                structOrMacro(c1.taskTree, false, op1);
+                structOrMacro(c2.taskTree, false, op2);
+            }
+            if (usesResTree(P)) {
+                structOrMacro(c1.resTree, true, op1);
+                structOrMacro(c2.resTree, true, op2);
+            }
 
             auto e1 = evaluate(c1);
             if (op1.crossover) ++genOps.crossoverChildren;
@@ -1739,7 +2051,23 @@ GP_Individual TreeEA::run() {
         }
 
         writeArchiveDump(P, archive_);
+        writeArchivePointsCsv(P, archive_);
     }
 
+    writeTreeDiversityDump(
+        P,
+        "gphh_tree_diversity_final_population.txt",
+        "FINAL_POPULATION",
+        pop
+    );
+
+    if (P.useNSGA2) {
+        writeTreeDiversityDump(
+            P,
+            "gphh_tree_diversity_archive.txt",
+            "FINAL_ARCHIVE",
+            archive_
+        );
+    }
     return bestSoFar;
 }
