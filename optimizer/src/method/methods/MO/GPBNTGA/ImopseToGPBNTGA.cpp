@@ -1,4 +1,4 @@
-#include "ImopseToGPHH.h"
+#include "ImopseToGPBNTGA.h"
 #include "problem/problems/MSRCPSP/CScheduler.h"
 #include <string>
 #include <algorithm>
@@ -9,7 +9,7 @@ static std::string skillName(unsigned typeId) {
     return "Q" + std::to_string(typeId);
 }
 
-Instance GPHHAdapter::FromScheduler(const CScheduler& sch) {
+Instance GPBNTGAAdapter::FromScheduler(const CScheduler& sch) {
     Instance I;
 
     for (const auto& r : sch.GetResources()) {

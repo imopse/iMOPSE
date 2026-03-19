@@ -15,24 +15,15 @@ struct Features {
     double duration = 0.0;
     double reqLevel = 0.0;
     double availSkill = 0.0;
-    double estPrec = 0.0;
-    double succCount = 0.0;
-    double descCount = 0.0;
 
     bool feasibleNow = false;
 
     double critLen = 0.0;
     double slack = 0.0;
-    double criticalPressure = 0.0;
     double availGap = 0.0;
-    double waitRes = 0.0;
-    double totPred = 0.0;
 
     double cheapestCostNow = std::numeric_limits<double>::infinity();
     double costPerSkillNow = std::numeric_limits<double>::infinity();
-    double minWageAvail = std::numeric_limits<double>::infinity();
-    double avgWageAvail = std::numeric_limits<double>::infinity();
-    double teamSizeMinNow = std::numeric_limits<double>::infinity();
 
     double minFeasibleCostNow = std::numeric_limits<double>::infinity();
     double costRegretNow = 0.0;
@@ -44,30 +35,18 @@ struct Features {
     double resUtil = 0.0;
 
     double resSkillLevel = 0.0;
-    double resWaitTime = 0.0;
     double resIdleTime = 0.0;
     double resCanStartNow = 0.0;
     double resUtilization = 0.0;
     double resWagePerLevel = 0.0;
     double resAssignCost = 0.0;
     double resAssignPremiumAll = 0.0;
-    double resHasteValue = 0.0;
     double resReservePressure = 0.0;
-    double resCriticalReserve = 0.0;
-    double resStrategicMismatch = 0.0;
     double resFamilyMismatch = 0.0;
-
-    double resSurplusLevel = 0.0;
     double resRelativeWage = 0.0;
 
-    double numTasks = 0.0;
-    double numResources = 0.0;
-    double numSkills = 0.0;
     double taskResCount = 0.0;
-
     double avgResCostForSkill = 0.0;
-
-
     double unschedTasks = 0.0;
 };
 

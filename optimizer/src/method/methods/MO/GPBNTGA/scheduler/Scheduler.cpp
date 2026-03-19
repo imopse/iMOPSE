@@ -11,11 +11,6 @@
 #include "../gp/Precompute.hpp"
 #include <iostream>
 #include <unordered_map>
-#include <unordered_set>
-#include <cstdint>
-#include <iomanip>
-
-extern bool g_trace;
 
 static const std::vector<float>* g_priorityKeys = nullptr;
 static const std::vector<int>* g_forcedResource = nullptr;
@@ -55,143 +50,6 @@ namespace {
 
     thread_local ResourceLookupCache g_lookupCache;
     thread_local SchedulerStaticCache g_staticCache;
-
-    struct SpreadStat {
-        int count = 0;
-        int zeros = 0;
-        int ones = 0;
-        double minV = std::numeric_limits<double>::infinity();
-        double maxV = -std::numeric_limits<double>::infinity();
-        std::unordered_set<std::int64_t> uniqRounded;
-
-        void add(double v) {
-            if (!std::isfinite(v)) return;
-            ++count;
-            if (v < minV) minV = v;
-            if (v > maxV) maxV = v;
-            if (std::abs(v) < 1e-12) ++zeros;
-            if (std::abs(v - 1.0) < 1e-12) ++ones;
-            uniqRounded.insert((std::int64_t)std::llround(v * 1000.0));
-        }
-
-        bool any() const { return count > 0; }
-    };
-
-    static void printSpread(const char* name, const SpreadStat& s) {
-        if (!s.any()) return;
-
-        std::cout
-            << "  " << name
-            << "  min=" << s.minV
-            << "  max=" << s.maxV
-            << "  range=" << (s.maxV - s.minV)
-            << "  uniq~=" << s.uniqRounded.size()
-            << "  zeros=" << s.zeros;
-
-        if (s.ones > 0) {
-            std::cout << "  ones=" << s.ones;
-        }
-        std::cout << "\n";
-    }
-
-    struct TaskSpreadTrace {
-        SpreadStat score;
-        SpreadStat avail;
-        SpreadStat gap;
-        SpreadStat wait;
-        SpreadStat crit;
-        SpreadStat slack;
-        SpreadStat succ;
-        SpreadStat desc;
-        SpreadStat tpred;
-        SpreadStat critPress;
-        SpreadStat minCostNow;
-        SpreadStat regretNow;
-
-        void add(double sc, const Features& f) {
-            score.add(sc);
-            avail.add(f.availSkill);
-            gap.add(f.availGap);
-            wait.add(f.waitRes);
-            crit.add(f.critLen);
-            slack.add(f.slack);
-            succ.add(f.succCount);
-            desc.add(f.descCount);
-            tpred.add(f.totPred);
-            critPress.add(f.criticalPressure);
-            minCostNow.add(f.minFeasibleCostNow);
-            regretNow.add(f.costRegretNow);
-        }
-
-        void print() const {
-            std::cout << "READY_TASK_SPREAD\n";
-            printSpread("TASK_SCORE", score);
-            printSpread("AVAIL", avail);
-            printSpread("GAP", gap);
-            printSpread("WAIT", wait);
-            printSpread("CRITLEN", crit);
-            printSpread("SLACK", slack);
-            printSpread("SUCC", succ);
-            printSpread("DESC", desc);
-            printSpread("TPRED", tpred);
-            printSpread("CRIT_PRESS", critPress);
-            printSpread("MIN_COST_NOW", minCostNow);
-            printSpread("REGRET_NOW", regretNow);
-        }
-    };
-
-    struct ResourceSpreadTrace {
-        int candidates = 0;
-
-        SpreadStat score;
-        SpreadStat wait;
-        SpreadStat canNow;
-        SpreadStat assignCost;
-        SpreadStat assignPremiumAll;
-        SpreadStat haste;
-        SpreadStat reserve;
-        SpreadStat critReserve;
-        SpreadStat stratMismatch;
-        SpreadStat familyMismatch;
-        SpreadStat relWage;
-        SpreadStat surplus;
-        SpreadStat util;
-
-        void add(double sc, const Features& f) {
-            ++candidates;
-            score.add(sc);
-            wait.add(f.resWaitTime);
-            canNow.add(f.resCanStartNow);
-            assignCost.add(f.resAssignCost);
-            assignPremiumAll.add(f.resAssignPremiumAll);
-            haste.add(f.resHasteValue);
-            reserve.add(f.resReservePressure);
-            critReserve.add(f.resCriticalReserve);
-            stratMismatch.add(f.resStrategicMismatch);
-            familyMismatch.add(f.resFamilyMismatch);
-            relWage.add(f.resRelativeWage);
-            surplus.add(f.resSurplusLevel);
-            util.add(f.resUtilization);
-        }
-
-        void print(int taskId) const {
-            std::cout << "RESOURCE_SPREAD for T" << taskId
-                << "  candidates=" << candidates << "\n";
-            printSpread("RES_SCORE", score);
-            printSpread("RES_WAIT", wait);
-            printSpread("RES_CAN_NOW", canNow);
-            printSpread("RES_COST", assignCost);
-            printSpread("RES_PREMIUM_ALL", assignPremiumAll);
-            printSpread("RES_HASTE", haste);
-            printSpread("RES_RESERVE", reserve);
-            printSpread("RES_CRIT_RES", critReserve);
-            printSpread("RES_STR_MIS", stratMismatch);
-            printSpread("RES_FAM_MIS", familyMismatch);
-            printSpread("RES_REL_WAGE", relWage);
-            printSpread("RES_SURPLUS", surplus);
-            printSpread("RES_UTIL", util);
-        }
-    };
 
     static std::size_t getResourceStructureSignature(const Instance& I) {
         if (I.resourceStructureSignatureReady) {
@@ -911,25 +769,16 @@ ScheduleResult Scheduler::withResources(Instance& I,
             processFinishedAtNow();
         }
         };
-
-    if (g_trace) {
-        size_t szK = g_priorityKeys ? g_priorityKeys->size() : 0;
-        size_t szF = g_forcedResource ? g_forcedResource->size() : 0;
-        if (szK && szK < I.tasks.size())
-            std::cout << "[warn] priorityKeys size=" << szK
-            << " < tasks=" << I.tasks.size() << "\n";
-        if (szF && szF < I.tasks.size())
-            std::cout << "[warn] forcedResource size=" << szF
-            << " < tasks=" << I.tasks.size() << "\n";
-    }
     const GPTreeRule* gpRule = dynamic_cast<const GPTreeRule*>(&ruleT);
+
+    std::unordered_map<std::string, SkillStepInfo> skillStepCache;
+    skillStepCache.reserve(g_lookupCache.skillLevels.size());
 
     while (scheduled < n) {
         freeResources(now);
 
         bool startedAny = false;
 
-        std::unordered_map<std::string, SkillStepInfo> skillStepCache;
         buildSkillStepCache(I, now, skillStepCache);
 
         setFeaturePrecomputed(
@@ -943,24 +792,9 @@ ScheduleResult Scheduler::withResources(Instance& I,
         );
 
         while (!ready.empty()) {
-            TaskSpreadTrace readySpread;
             const_cast<IDispatchingRule&>(ruleT).setContext(&I, now);
 
-            const GPTreeRule* gp = nullptr;
-            if (g_trace) {
-                gp = gpRule;
-                if (gp) {
-                    std::cout << "\n[time now=" << now << "]\n";
-                    std::cout << "TASK_RULE = " << gp->exprString() << "\n";
-                    std::cout << "RES_RULE  = " << ((ruleR && ruleR->tree) ? ruleR->tree->toString() : std::string("NONE")) << "\n";
-                    std::cout << "ID  DUR  REQ  AVAIL  GAP  WAIT  EST  CRITLEN  SLACK  SUCC  TPRED   SCORE   BEST_RES  RES_SCORE\n";
-                }
-                else {
-                    std::cout << "\n[time now=" << now << "]  (trace dostępny tylko dla GPTreeRule)\n";
-                }
-            }
-
-            constexpr double kPairResourceWeight = 0.1;
+            constexpr double kPairResourceWeight = 0.5;
 
             int best = -1;
             int bestResId = -1;
@@ -969,30 +803,13 @@ ScheduleResult Scheduler::withResources(Instance& I,
             double bestResScore = std::numeric_limits<double>::infinity();
             int minWaitFeasible = std::numeric_limits<int>::max() / 4;
 
-            struct ResTraceRow {
-                int resId = -1;
-                double score = std::numeric_limits<double>::infinity();
-                Features feat;
-            };
-
             struct TaskCandidate {
                 int ix = -1;
                 int allocResId = -1;
                 double taskScore = std::numeric_limits<double>::infinity();
                 double resScore = std::numeric_limits<double>::infinity();
                 double pairScore = std::numeric_limits<double>::infinity();
-                std::vector<ResTraceRow> topRes;
-                ResourceSpreadTrace resSpread;
             };
-
-            auto pushTop3Res = [](std::vector<ResTraceRow>& rows, int resId, double score, const Features& feat) {
-                rows.push_back(ResTraceRow{ resId, score, feat });
-                std::sort(rows.begin(), rows.end(),
-                    [](const ResTraceRow& a, const ResTraceRow& b) {
-                        return a.score < b.score;
-                    });
-                if (rows.size() > 3) rows.resize(3);
-                };
 
             auto norm01 = [](double v, double lo, double hi) -> double {
                 if (!std::isfinite(v)) return 1.0;
@@ -1004,17 +821,50 @@ ScheduleResult Scheduler::withResources(Instance& I,
                 return x;
                 };
 
-            std::vector<ResTraceRow> bestTaskTopRes;
-            ResourceSpreadTrace bestTaskResSpread;
             std::vector<TaskCandidate> pairCandidates;
             pairCandidates.reserve(ready.size());
+
+            std::vector<double> familyBestPressureByRes;
+            std::vector<double> familySecondBestPressureByRes;
+            std::vector<int> familyBestFamByRes;
+
+            if (familyCount > 0) {
+                const int resCount = (int)I.resources.size();
+
+                familyBestPressureByRes.assign(resCount, 0.0);
+                familySecondBestPressureByRes.assign(resCount, 0.0);
+                familyBestFamByRes.assign(resCount, -1);
+
+                for (int ri = 0; ri < resCount; ++ri) {
+                    const size_t base = (size_t)ri * (size_t)familyCount;
+
+                    double best1 = 0.0;
+                    double best2 = 0.0;
+                    int bestFam = -1;
+
+                    for (int f = 0; f < familyCount; ++f) {
+                        const double v = familyPressureByResFamily[base + (size_t)f];
+
+                        if (v > best1) {
+                            best2 = best1;
+                            best1 = v;
+                            bestFam = f;
+                        }
+                        else if (v > best2) {
+                            best2 = v;
+                        }
+                    }
+
+                    familyBestPressureByRes[ri] = best1;
+                    familySecondBestPressureByRes[ri] = best2;
+                    familyBestFamByRes[ri] = bestFam;
+                }
+            }
 
             for (int ix : ready) {
                 Task& t = I.tasks[ix];
                 const int req = t.reqLevel;
 
-                std::vector<ResTraceRow> localTopRes;
-                ResourceSpreadTrace localResSpread;
                 int localBestResId = -1;
                 double localBestResScore = 0.0;
 
@@ -1168,17 +1018,13 @@ ScheduleResult Scheduler::withResources(Instance& I,
                                     if (currentFamilyPressure < 0.0)
                                         currentFamilyPressure = 0.0;
 
-                                    double bestOtherFamilyPressure = 0.0;
-                                    for (int f = 0; f < familyCount; ++f) {
-                                        if (f == famId) continue;
-                                        bestOtherFamilyPressure = std::max(
-                                            bestOtherFamilyPressure,
-                                            familyPressureByResFamily[base + (size_t)f]
-                                        );
-                                    }
+                                    const double bestOtherFamilyPressure =
+                                        (familyBestFamByRes[ri] == famId)
+                                        ? familySecondBestPressureByRes[ri]
+                                        : familyBestPressureByRes[ri];
 
-                                    familyMismatchExcludingTask =
-                                        bestOtherFamilyPressure / (1.0 + currentFamilyPressure);
+                                        familyMismatchExcludingTask =
+                                            bestOtherFamilyPressure / (1.0 + currentFamilyPressure);
                                 }
 
                                 Features f = computeResourceFeaturesFast(
@@ -1196,11 +1042,6 @@ ScheduleResult Scheduler::withResources(Instance& I,
                                 );
 
                                 double s = ruleR->tree ? ruleR->tree->eval(f) : 0.0;
-
-                                if (g_trace) {
-                                    pushTop3Res(localTopRes, r.id, s, f);
-                                    localResSpread.add(s, f);
-                                }
 
                                 if (s < localBestResScore) {
                                     localBestResScore = s;
@@ -1238,17 +1079,13 @@ ScheduleResult Scheduler::withResources(Instance& I,
                                     if (currentFamilyPressure < 0.0)
                                         currentFamilyPressure = 0.0;
 
-                                    double bestOtherFamilyPressure = 0.0;
-                                    for (int f = 0; f < familyCount; ++f) {
-                                        if (f == famId) continue;
-                                        bestOtherFamilyPressure = std::max(
-                                            bestOtherFamilyPressure,
-                                            familyPressureByResFamily[base + (size_t)f]
-                                        );
-                                    }
+                                    const double bestOtherFamilyPressure =
+                                        (familyBestFamByRes[ri] == famId)
+                                        ? familySecondBestPressureByRes[ri]
+                                        : familyBestPressureByRes[ri];
 
-                                    familyMismatchExcludingTask =
-                                        bestOtherFamilyPressure / (1.0 + currentFamilyPressure);
+                                        familyMismatchExcludingTask =
+                                            bestOtherFamilyPressure / (1.0 + currentFamilyPressure);
                                 }
 
                                 Features f = computeResourceFeaturesFast(
@@ -1266,11 +1103,6 @@ ScheduleResult Scheduler::withResources(Instance& I,
                                 );
 
                                 double s = ruleR->tree ? ruleR->tree->eval(f) : 0.0;
-
-                                if (g_trace) {
-                                    pushTop3Res(localTopRes, r.id, s, f);
-                                    localResSpread.add(s, f);
-                                }
 
                                 if (s < localBestResScore) {
                                     localBestResScore = s;
@@ -1293,61 +1125,15 @@ ScheduleResult Scheduler::withResources(Instance& I,
                 }
 
                 if (allocResId < 0) {
-                    if (g_trace && gp) {
-                        int avail = ResourceAllocator::availableSkillSum(I, now, t.reqSkill);
-                        int wait = ResourceAllocator::waitUntilFeasible(I, now, t.reqSkill, req);
-
-                        std::cout << "T" << t.id
-                            << "  " << t.duration
-                            << "   " << req
-                            << "    " << avail
-                            << "    " << (avail - req)
-                            << "   " << wait
-                            << "   " << 0
-                            << "     " << 0
-                            << "     " << 0
-                            << "    " << 0
-                            << "     " << 0
-                            << "    " << 1e12
-                            << "    " << -1
-                            << "    " << 1e12
-                            << "  (X)\n";
-                    }
                     continue;
                 }
 
                 double sc;
-                if (gp) {
-                    ScoreTrace tr = gp->scoreWithTraceFast(ix, t);
-                    sc = tr.score;
-
-                    if (g_trace) {
-                        readySpread.add(sc, tr.feat);
-
-                        std::cout << "T" << t.id
-                            << "  " << t.duration
-                            << "   " << tr.feat.reqLevel
-                            << "    " << tr.feat.availSkill
-                            << "    " << tr.feat.availGap
-                            << "   " << tr.feat.waitRes
-                            << "   " << tr.feat.estPrec
-                            << "     " << tr.feat.critLen
-                            << "     " << tr.feat.slack
-                            << "    " << tr.feat.succCount
-                            << "     " << tr.feat.totPred
-                            << "    " << (std::isfinite(sc) ? sc : 1e12)
-                            << "    " << localBestResId
-                            << "    " << (std::isfinite(localBestResScore) ? localBestResScore : 1e12)
-                            << "\n";
-                    }
+                if (gpRule) {
+                    sc = gpRule->scoreFast(ix, t);
                 }
                 else {
-                    if (gpRule) {
-                        sc = gpRule->scoreFast(ix, t);
-                    }
-                    else {
-                        sc = ruleT.score(t);
-                    }
+                    sc = ruleT.score(t);
                 }
 
                 TaskCandidate cand;
@@ -1355,8 +1141,6 @@ ScheduleResult Scheduler::withResources(Instance& I,
                 cand.allocResId = allocResId;
                 cand.taskScore = sc;
                 cand.resScore = std::isfinite(localBestResScore) ? localBestResScore : 0.0;
-                cand.topRes = std::move(localTopRes);
-                cand.resSpread = std::move(localResSpread);
 
                 pairCandidates.push_back(std::move(cand));
             }
@@ -1417,40 +1201,8 @@ ScheduleResult Scheduler::withResources(Instance& I,
                         bestScore = cand.pairScore;
                         bestTaskScore = cand.taskScore;
                         bestResScore = cand.resScore;
-                        bestTaskTopRes = cand.topRes;
-                        bestTaskResSpread = cand.resSpread;
                     }
                 }
-            }
-
-            if (g_trace && best != -1) {
-                std::cout << "=> wybieram T" << I.tasks[best].id
-                    << "  (pairScore=" << bestScore
-                    << ", taskScore=" << bestTaskScore
-                    << ", resScore=" << bestResScore
-                    << ", bestRes=" << bestResId << ")\n";
-
-                if (!bestTaskTopRes.empty()) {
-                    std::cout << "TOP_RESOURCES for T" << I.tasks[best].id
-                        << " : ID  SCORE  WAIT  ASSIGN_COST  ASSIGN_PREM_ALL  HASTE  RESERVE  CRIT_RES  STR_MIS  FAM_MIS  CAN_NOW\n";
-
-                    for (const auto& rr : bestTaskTopRes) {
-                        std::cout << "R" << rr.resId
-                            << "  " << rr.score
-                            << "  " << rr.feat.resWaitTime
-                            << "  " << rr.feat.resAssignCost
-                            << "  " << rr.feat.resAssignPremiumAll
-                            << "  " << rr.feat.resHasteValue
-                            << "  " << rr.feat.resReservePressure
-                            << "  " << rr.feat.resCriticalReserve
-                            << "  " << rr.feat.resStrategicMismatch
-                            << "  " << rr.feat.resFamilyMismatch
-                            << "  " << rr.feat.resCanStartNow
-                            << "\n";
-                    }
-                }
-                readySpread.print();
-                bestTaskResSpread.print(I.tasks[best].id);
             }
 
             if (best == -1) {

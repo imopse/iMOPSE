@@ -1,9 +1,9 @@
-#include "CGPHH.h"
+#include "CGPBNTGA.h"
 #include "scheduler/Scheduler.hpp"
 #include "problem/problems/MSRCPSP/CMSRCPSP_TA.h"
 #include "problem/problems/MSRCPSP/CMSRCPSP_TO.h"
 #include "../utils/archive/ArchiveUtils.h"
-#include "ImopseToGPHH.h"
+#include "ImopseToGPBNTGA.h"
 #include "gp/TreeEA.hpp"
 #include "utils/random/CRandom.h"
 #include "gp/FeatureScaling.hpp"
@@ -16,9 +16,7 @@
 #include <sstream>
 #include <vector>
 
-extern bool g_trace;
-
-CGPHH::CGPHH(AProblem& problem, AInitialization& init, SConfigMap* cfg)
+CGPBNTGA::CGPBNTGA(AProblem& problem, AInitialization& init, SConfigMap* cfg)
     : AMethod(problem, init), m_Cfg(cfg)
 {
     if (m_Cfg && m_Cfg->HasValue("Seed")) {
@@ -57,7 +55,7 @@ static std::string ToLower(std::string s)
     return s;
 }
 
-void CGPHH::RunOptimization()
+void CGPBNTGA::RunOptimization()
 {
     CScheduler* sch = nullptr;
     bool isTAProblem = false;
@@ -66,7 +64,7 @@ void CGPHH::RunOptimization()
     if (auto* p = dynamic_cast<CMSRCPSP_TO*>(&m_Problem)) { sch = &p->GetScheduler(); isTAProblem = false; }
 
     if (!sch) {
-        throw std::runtime_error("GPHH works only with MSRCPSP_TA/MSRCPSP_TO problems.");
+        throw std::runtime_error("GPBNTGA works only with MSRCPSP_TA/MSRCPSP_TO problems.");
     }
 
     SConfigMap cfgCopy;
@@ -82,13 +80,8 @@ void CGPHH::RunOptimization()
     P.maxDepth = 8;
     P.tournamentK = 2;
     P.eliteCount = 0;
-    P.useNSGA2 = (GetInt(cfg, "UseNSGA2", 0) != 0);
     P.useBNTGA = (GetInt(cfg, "UseBNTGA", 0) != 0);
     P.useImopseEvaluate = (GetInt(cfg, "UseImopseEvaluate", 1) != 0);
-    P.ablationMode = GetInt(cfg, "AblationMode", 0);
-
-    P.logGenerations = (GetInt(cfg, "LogGenerations", 0) != 0);
-    P.generationLogFile = GetString(cfg, "GenerationLogFile", "gphh_generation_log.csv");
 
 
     P.popSize = (size_t)GetInt(cfg, "PopulationSize", (int)P.popSize);
@@ -113,8 +106,6 @@ void CGPHH::RunOptimization()
 
     P.useNormalization = (GetInt(cfg, "UseNormalization", (int)P.useNormalization) != 0);
 
-    g_trace = (GetInt(cfg, "Trace", 0) != 0);
-
     if (m_HasSeedOverride) {
         P.seed = m_SeedOverride;
     }
@@ -122,7 +113,7 @@ void CGPHH::RunOptimization()
         P.seed = (uint64_t)CRandom::GetSeed();
     }
 
-    Instance inst = GPHHAdapter::FromScheduler(*sch);
+    Instance inst = GPBNTGAAdapter::FromScheduler(*sch);
     gp::initFeatureScaling(inst);
 
     const bool useBaseline = (GetInt(cfg, "UseBaseline", 1) != 0);
@@ -132,13 +123,12 @@ void CGPHH::RunOptimization()
     std::mt19937 rng((unsigned)P.seed);
 
     GPTree startTreeTask;
-    if (startRule == "random")                  startTreeTask = GPTree::RandomTreeMS(rng, seedDepth);
-    else if (startRule == "avail-gap")          startTreeTask = GPTree::Make_AVAIL_minus_REQ();
-    else if (startRule == "work")               startTreeTask = GPTree::Make_REQ_times_DUR();
-    else if (startRule == "est+dur")            startTreeTask = GPTree::Make_EST_plus_DUR();
-    else if (startRule == "cheapxdur")          startTreeTask = GPTree::Make_CHEAPxDUR();
-    else if (startRule == "cheap-per-skill+est")startTreeTask = GPTree::Make_CHEAP_PER_SKILL_plus_EST();
-    else                                        startTreeTask = GPTree::Make_AVAIL_minus_REQ();
+    if (startRule == "random")                   startTreeTask = GPTree::RandomTreeMS(rng, seedDepth);
+    else if (startRule == "avail-gap")           startTreeTask = GPTree::Make_AVAIL_minus_REQ();
+    else if (startRule == "work")                startTreeTask = GPTree::Make_REQ_times_DUR();
+    else if (startRule == "cheapxdur")           startTreeTask = GPTree::Make_CHEAPxDUR();
+    else if (startRule == "cheap-per-skill+dur") startTreeTask = GPTree::Make_CHEAP_PER_SKILL_plus_DUR();
+    else                                         startTreeTask = GPTree::Make_AVAIL_minus_REQ();
 
     GPTree startTreeRes = GPTree::RandomTreeRES(rng, seedDepth);
 

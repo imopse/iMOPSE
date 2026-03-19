@@ -7,9 +7,7 @@
 
 class ResourceAllocator {
 public:
-    static std::vector<int> availableResourceIds(const Instance& I, int now);
     static int availableSkillSum(const Instance& I, int now, const std::string& skill);
-    static double subsetCost(const Instance& I, const std::vector<int>& subsetIds);
 
     static int waitUntilFeasible(const Instance& I, int now,
         const std::string& skill, int reqLevel);

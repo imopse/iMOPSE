@@ -29,13 +29,8 @@ struct GPEA_Params {
     bool     useNormalization = true;
     int    tournamentK = 3;
     size_t eliteCount = 1;
-    bool useNSGA2 = false;
     bool useBNTGA = false;
     bool useImopseEvaluate = false;
-    int ablationMode = 0;
-
-    bool        logGenerations = false;
-    std::string generationLogFile = "gphh_generation_log.csv";
 };
 
 struct GP_Individual {
@@ -46,8 +41,6 @@ struct GP_Individual {
     double cost = 0.0;
     double msNorm = 0.0;
     double costNorm = 0.0;
-    int    rank = 0;
-    double crowding = 0.0;
     size_t selectedCount = 0;
 };
 
@@ -71,16 +64,6 @@ public:
     const GP_Individual& getBestGen0() const { return bestGen0_; }
     const std::vector<GP_ParetoPoint>& getPareto() const { return pareto_; }
     bool hasBestGen0() const { return hasBestGen0_; }
-    size_t getClampCallsTask() const { return clampCallsTask_; }
-    size_t getClampCallsRes()  const { return clampCallsRes_; }
-    size_t getClampAppliedTask() const { return clampAppliedTask_; }
-    size_t getClampAppliedRes()  const { return clampAppliedRes_; }
-    size_t getMacroSubtreeAppliedTask() const { return macroSubtreeAppliedTask_; }
-    size_t getMacroSubtreeAppliedRes()  const { return macroSubtreeAppliedRes_; }
-    size_t getClampPrevDepthSumTask() const { return clampPrevDepthSumTask_; }
-    size_t getClampPrevDepthSumRes()  const { return clampPrevDepthSumRes_; }
-    size_t getClampPrevNodesSumTask() const { return clampPrevNodesSumTask_; }
-    size_t getClampPrevNodesSumRes()  const { return clampPrevNodesSumRes_; }
 private:
     Instance& inst;
     mutable Instance workInst_;
@@ -90,7 +73,7 @@ private:
     ImopseBounds   bounds{};
     CScheduler* imopseSch_ = nullptr;
     bool imopseIsTA_ = false;
-    Instance& resetWorkingInstance() const;
+    Instance& resetWorkingInstance(bool clearAssignedResources) const;
     double rand01();
     int    randInt(int lo, int hi);
     GP_Individual evaluate(const GP_Individual& ind) const;
@@ -105,16 +88,6 @@ private:
     std::vector<double> histBest_;
     std::vector<double> histAvg_;
     std::vector<double> histWorst_;
-    size_t clampCallsTask_ = 0;
-    size_t macroSubtreeAppliedTask_ = 0;
-    size_t macroSubtreeAppliedRes_ = 0;
-    size_t clampCallsRes_ = 0;
-    size_t clampAppliedTask_ = 0;
-    size_t clampAppliedRes_ = 0;
-    size_t clampPrevDepthSumTask_ = 0;
-    size_t clampPrevDepthSumRes_ = 0;
-    size_t clampPrevNodesSumTask_ = 0;
-    size_t clampPrevNodesSumRes_ = 0;
     std::vector<GP_ParetoPoint> pareto_;
     std::vector<GP_Individual> archive_;
     void updatePareto(const GP_Individual& ind);
@@ -124,10 +97,6 @@ private:
     bool hasBestGen0_ = false;
     GP_Individual bestGen0_{};
     bool dominatesMO(const GP_Individual& a, const GP_Individual& b) const;
-    std::vector<std::vector<int>> nonDominatedSort(std::vector<GP_Individual>& pop) const;
-    void calcCrowdingDistance(std::vector<GP_Individual>& pop, const std::vector<int>& front) const;
-    const GP_Individual& tournamentMO(const std::vector<GP_Individual>& pop, int k);
-    std::vector<GP_Individual> selectNextPopulationNSGA2(std::vector<GP_Individual>& combined);
     void copyToArchiveWithFiltering(const std::vector<GP_Individual>& individuals);
     double objNorm(const GP_Individual& x, int objId) const;
     std::vector<std::pair<int, int>> selectParentsBNTGA(int objectiveNumber, int populationSize);

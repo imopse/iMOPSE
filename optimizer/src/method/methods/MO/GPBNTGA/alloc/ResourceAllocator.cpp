@@ -22,33 +22,6 @@ void ResourceAllocator::setPrecomputed(
     g_skillLevelsMap = skillLevelsBySkillIndex;
 }
 
-
-std::vector<int> ResourceAllocator::availableResourceIds(const Instance& I, int now) {
-    std::vector<int> ids;
-    ids.reserve(I.resources.size());
-    for (const auto& r : I.resources)
-        if (r.busyUntil <= now) ids.push_back(r.id);
-    return ids;
-}
-
-double ResourceAllocator::subsetCost(const Instance& I, const std::vector<int>& subsetIds) {
-    double s = 0.0;
-    for (int id : subsetIds) {
-        if (g_resIndexById) {
-            auto itIdx = g_resIndexById->find(id);
-            if (itIdx != g_resIndexById->end()) {
-                s += I.resources[itIdx->second].salary;
-                continue;
-            }
-        }
-
-        auto it = std::find_if(I.resources.begin(), I.resources.end(),
-            [&](const Resource& r) { return r.id == id; });
-        if (it != I.resources.end()) s += it->salary;
-    }
-    return s;
-}
-
 int ResourceAllocator::availableSkillSum(const Instance& I, int now,
     const std::string& skill)
 {

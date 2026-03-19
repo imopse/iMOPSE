@@ -4,7 +4,7 @@
 #include "problem/AProblem.h"
 #include "method/operators/initialization/AInitialization.h"
 
-class CGPHHFactory {
+class CGPBNTGAFactory {
 public:
-    static AMethod* CreateGPHH(SConfigMap* cfg, AProblem& problem, AInitialization* init);
+    static AMethod* CreateGPBNTGA(SConfigMap* cfg, AProblem& problem, AInitialization* init);
 };

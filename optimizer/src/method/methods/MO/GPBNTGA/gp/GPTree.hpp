@@ -12,23 +12,11 @@ enum class FeatureId {
     DURATION,
     REQ_LEVEL,
     AVAIL_SKILL,
-    EST_PREC,
-    SUCC_COUNT,
-    DESC_COUNT,
     CRITLEN,
     SLACK,
-    CRITICAL_PRESSURE,
     AVAIL_GAP,
-    WAIT_RES,
-    TOT_PRED,
     CHEAPEST_COST_NOW,
     COST_PER_SKILL_NOW,
-    MIN_WAGE_AVAIL,
-    AVG_WAGE_AVAIL,
-    TEAM_SIZE_MIN_NOW,
-    NUM_TASKS,
-    NUM_RESOURCES,
-    NUM_SKILLS,
     TASK_RES_COUNT,
     AVG_RES_COST,
     UNSCHED_TASKS,
@@ -38,19 +26,14 @@ enum class FeatureId {
 
     RES_WAGE,
     RES_SKILL_LEVEL,
-    RES_WAIT_TIME,
     RES_IDLE_TIME,
     RES_CAN_START_NOW,
     RES_UTILIZATION,
     RES_WAGE_PER_LEVEL,
     RES_ASSIGN_COST,
     RES_ASSIGN_PREMIUM_ALL,
-    RES_HASTE_VALUE,
     RES_RESERVE_PRESSURE,
-    RES_CRITICAL_RESERVE,
-    RES_STRATEGIC_MISMATCH,
     RES_FAMILY_MISMATCH,
-    RES_SURPLUS_LEVEL,
     RES_RELATIVE_WAGE
 };
 
@@ -89,9 +72,8 @@ public:
     static GPTree RandomTreeRES(std::mt19937& rng, int maxDepth);
     static GPTree Make_AVAIL_minus_REQ();
     static GPTree Make_REQ_times_DUR();
-    static GPTree Make_EST_plus_DUR();
     static GPTree Make_CHEAPxDUR();
-    static GPTree Make_CHEAP_PER_SKILL_plus_EST();
+    static GPTree Make_CHEAP_PER_SKILL_plus_DUR();
     static int add(std::vector<GPNode>& v, const GPNode& n) {
         v.push_back(n); return (int)v.size() - 1;
     }
@@ -103,43 +85,9 @@ public:
 
     int subtreeHeight(int index) const;
 
-    bool isConst(int nodeId)   const { return validIndex(nodeId) && nodes[nodeId].kind == NodeKind::CONST; }
-    bool isFeature(int nodeId) const { return validIndex(nodeId) && nodes[nodeId].kind == NodeKind::FEATURE; }
-    bool isUnary(int nodeId)   const { return validIndex(nodeId) && nodes[nodeId].kind == NodeKind::UNARY; }
-    bool isBinary(int nodeId)  const { return validIndex(nodeId) && nodes[nodeId].kind == NodeKind::BINARY; }
-
-    FeatureId featureOf(int nodeId) const {
-        return validIndex(nodeId) ? nodes[nodeId].feat : FeatureId::DURATION;
-    }
-    void setFeature(int nodeId, FeatureId f) {
-        if (!validIndex(nodeId)) return;
-        nodes[nodeId].kind = NodeKind::FEATURE; nodes[nodeId].feat = f;
-    }
-
-    UnaryOp unaryOp(int nodeId) const {
-        return validIndex(nodeId) ? nodes[nodeId].uop : UnaryOp::ABS;
-    }
-    void setUnaryOp(int nodeId, UnaryOp u) {
-        if (!validIndex(nodeId)) return;
-        nodes[nodeId].kind = NodeKind::UNARY; nodes[nodeId].uop = u;
-    }
-
-    BinaryOp binaryOp(int nodeId) const {
-        return validIndex(nodeId) ? nodes[nodeId].bop : BinaryOp::ADD;
-    }
-    void setBinaryOp(int nodeId, BinaryOp b) {
-        if (!validIndex(nodeId)) return;
-        nodes[nodeId].kind = NodeKind::BINARY; nodes[nodeId].bop = b;
-    }
-
-    void setConst(int nodeId, double v) {
-        if (!validIndex(nodeId)) return;
-        nodes[nodeId].kind = NodeKind::CONST; nodes[nodeId].constant = v;
-    }
-
-    static std::vector<FeatureId> allFeatures();
-    static std::vector<UnaryOp>   allUnaryOps();
-    static std::vector<BinaryOp>  allBinaryOps();
+    static std::vector<FeatureId> allTaskFeatures();
+    static std::vector<FeatureId> allResFeatures();
+    static std::vector<FeatureId> allFeatures() { return allTaskFeatures(); }
 
     GPTree extractSubtree(int nodeId) const;
     void   replaceSubtree(int nodeId, const GPTree& sub);

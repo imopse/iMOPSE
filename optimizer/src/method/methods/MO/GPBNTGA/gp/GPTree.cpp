@@ -11,128 +11,31 @@
 
 double GPTree::featureValue(FeatureId id, const Features& f) const {
     switch (id) {
-    case FeatureId::DURATION:
-        return f.duration;
+    case FeatureId::DURATION:              return f.duration;
+    case FeatureId::REQ_LEVEL:             return f.reqLevel;
+    case FeatureId::AVAIL_SKILL:           return f.availSkill;
+    case FeatureId::CRITLEN:               return f.critLen;
+    case FeatureId::SLACK:                 return f.slack;
+    case FeatureId::AVAIL_GAP:             return f.availGap;
+    case FeatureId::CHEAPEST_COST_NOW:     return f.cheapestCostNow;
+    case FeatureId::COST_PER_SKILL_NOW:    return f.costPerSkillNow;
+    case FeatureId::TASK_RES_COUNT:        return f.taskResCount;
+    case FeatureId::AVG_RES_COST:          return f.avgResCostForSkill;
+    case FeatureId::UNSCHED_TASKS:         return f.unschedTasks;
+    case FeatureId::MIN_FEASIBLE_COST_NOW: return f.minFeasibleCostNow;
+    case FeatureId::COST_REGRET_NOW:       return f.costRegretNow;
 
-    case FeatureId::REQ_LEVEL:
-        return f.reqLevel;
-
-    case FeatureId::AVAIL_SKILL:
-        return f.availSkill;
-
-    case FeatureId::EST_PREC:
-        return f.estPrec;
-
-    case FeatureId::SUCC_COUNT:
-        return f.succCount;
-
-    case FeatureId::DESC_COUNT:
-        return f.descCount;
-
-    case FeatureId::CRITLEN:
-        return f.critLen;
-
-    case FeatureId::SLACK:
-        return f.slack;
-
-    case FeatureId::CRITICAL_PRESSURE:
-        return f.criticalPressure;
-
-    case FeatureId::AVAIL_GAP:
-        return f.availGap;
-
-    case FeatureId::WAIT_RES:
-        return f.waitRes;
-
-    case FeatureId::TOT_PRED:
-        return f.totPred;
-
-    case FeatureId::CHEAPEST_COST_NOW:
-        return f.cheapestCostNow;
-
-    case FeatureId::COST_PER_SKILL_NOW:
-        return f.costPerSkillNow;
-
-    case FeatureId::MIN_WAGE_AVAIL:
-        return f.minWageAvail;
-
-    case FeatureId::AVG_WAGE_AVAIL:
-        return f.avgWageAvail;
-
-    case FeatureId::TEAM_SIZE_MIN_NOW:
-        return f.teamSizeMinNow;
-
-    case FeatureId::NUM_TASKS:
-        return f.numTasks;
-
-    case FeatureId::NUM_RESOURCES:
-        return f.numResources;
-
-    case FeatureId::NUM_SKILLS:
-        return f.numSkills;
-
-    case FeatureId::TASK_RES_COUNT:
-        return f.taskResCount;
-
-    case FeatureId::AVG_RES_COST:
-        return f.avgResCostForSkill;
-
-    case FeatureId::UNSCHED_TASKS:
-        return f.unschedTasks;
-
-    case FeatureId::MIN_FEASIBLE_COST_NOW:
-        return f.minFeasibleCostNow;
-
-    case FeatureId::COST_REGRET_NOW:
-        return f.costRegretNow;
-
-    case FeatureId::RES_WAGE:
-        return f.resWage;
-
-    case FeatureId::RES_SKILL_LEVEL:
-        return f.resSkillLevel;
-
-    case FeatureId::RES_WAIT_TIME:
-        return f.resWaitTime;
-
-    case FeatureId::RES_IDLE_TIME:
-        return f.resIdleTime;
-
-    case FeatureId::RES_CAN_START_NOW:
-        return f.resCanStartNow;
-
-    case FeatureId::RES_UTILIZATION:
-        return f.resUtilization;
-
-    case FeatureId::RES_WAGE_PER_LEVEL:
-        return f.resWagePerLevel;
-
-    case FeatureId::RES_ASSIGN_COST:
-        return f.resAssignCost;
-
-    case FeatureId::RES_ASSIGN_PREMIUM_ALL:
-        return f.resAssignPremiumAll;
-
-    case FeatureId::RES_HASTE_VALUE:
-        return f.resHasteValue;
-
-    case FeatureId::RES_RESERVE_PRESSURE:
-        return f.resReservePressure;
-
-    case FeatureId::RES_CRITICAL_RESERVE:
-        return f.resCriticalReserve;
-
-    case FeatureId::RES_STRATEGIC_MISMATCH:
-        return f.resStrategicMismatch;
-
-    case FeatureId::RES_FAMILY_MISMATCH:
-        return f.resFamilyMismatch;
-
-    case FeatureId::RES_SURPLUS_LEVEL:
-        return f.resSurplusLevel;
-
-    case FeatureId::RES_RELATIVE_WAGE:
-        return f.resRelativeWage;
+    case FeatureId::RES_WAGE:              return f.resWage;
+    case FeatureId::RES_SKILL_LEVEL:       return f.resSkillLevel;
+    case FeatureId::RES_IDLE_TIME:         return f.resIdleTime;
+    case FeatureId::RES_CAN_START_NOW:     return f.resCanStartNow;
+    case FeatureId::RES_UTILIZATION:       return f.resUtilization;
+    case FeatureId::RES_WAGE_PER_LEVEL:    return f.resWagePerLevel;
+    case FeatureId::RES_ASSIGN_COST:       return f.resAssignCost;
+    case FeatureId::RES_ASSIGN_PREMIUM_ALL:return f.resAssignPremiumAll;
+    case FeatureId::RES_RESERVE_PRESSURE:  return f.resReservePressure;
+    case FeatureId::RES_FAMILY_MISMATCH:   return f.resFamilyMismatch;
+    case FeatureId::RES_RELATIVE_WAGE:     return f.resRelativeWage;
 
     default:
         return 0.0;
@@ -190,48 +93,31 @@ std::string GPTree::nodeLabel(int idx) const {
     case NodeKind::FEATURE: {
         const char* nm = "?";
         switch (n.feat) {
-        case FeatureId::DURATION:             nm = "DUR";          break;
-        case FeatureId::REQ_LEVEL:            nm = "REQ";          break;
-        case FeatureId::AVAIL_SKILL:          nm = "AVAIL";        break;
-        case FeatureId::EST_PREC:             nm = "EST";          break;
-        case FeatureId::SUCC_COUNT:           nm = "SUCC";         break;
-        case FeatureId::DESC_COUNT:           nm = "DESC";         break;
-        case FeatureId::CRITLEN:              nm = "CRITLEN";      break;
-        case FeatureId::SLACK:                nm = "SLACK";        break;
-        case FeatureId::CRITICAL_PRESSURE:    nm = "CRIT_PRESS";   break;
-        case FeatureId::AVAIL_GAP:            nm = "GAP";          break;
-        case FeatureId::WAIT_RES:             nm = "WAIT";         break;
-        case FeatureId::TOT_PRED:             nm = "TPRED";        break;
-        case FeatureId::CHEAPEST_COST_NOW:    nm = "CHEAP";        break;
-        case FeatureId::COST_PER_SKILL_NOW:   nm = "CHEAP_PER_SK"; break;
-        case FeatureId::MIN_WAGE_AVAIL:       nm = "MIN_WAGE";     break;
-        case FeatureId::AVG_WAGE_AVAIL:       nm = "AVG_WAGE";     break;
-        case FeatureId::TEAM_SIZE_MIN_NOW:    nm = "TEAM_SIZE";    break;
-        case FeatureId::NUM_TASKS:            nm = "N_TASKS";      break;
-        case FeatureId::NUM_RESOURCES:        nm = "N_RES";        break;
-        case FeatureId::NUM_SKILLS:           nm = "N_SKILLS";     break;
-        case FeatureId::TASK_RES_COUNT:       nm = "TASK_RES";     break;
-        case FeatureId::AVG_RES_COST:         nm = "RES_COST";     break;
-        case FeatureId::UNSCHED_TASKS:        nm = "UNSCHED";      break;
-        case FeatureId::MIN_FEASIBLE_COST_NOW:nm = "MIN_COST_NOW"; break;
-        case FeatureId::COST_REGRET_NOW:      nm = "REGRET_NOW";   break;
+        case FeatureId::DURATION:              nm = "DUR";          break;
+        case FeatureId::REQ_LEVEL:             nm = "REQ";          break;
+        case FeatureId::AVAIL_SKILL:           nm = "AVAIL";        break;
+        case FeatureId::CRITLEN:               nm = "CRITLEN";      break;
+        case FeatureId::SLACK:                 nm = "SLACK";        break;
+        case FeatureId::AVAIL_GAP:             nm = "GAP";          break;
+        case FeatureId::CHEAPEST_COST_NOW:     nm = "CHEAP";        break;
+        case FeatureId::COST_PER_SKILL_NOW:    nm = "CHEAP_PER_SK"; break;
+        case FeatureId::TASK_RES_COUNT:        nm = "TASK_RES";     break;
+        case FeatureId::AVG_RES_COST:          nm = "RES_COST";     break;
+        case FeatureId::UNSCHED_TASKS:         nm = "UNSCHED";      break;
+        case FeatureId::MIN_FEASIBLE_COST_NOW: nm = "MIN_COST_NOW"; break;
+        case FeatureId::COST_REGRET_NOW:       nm = "REGRET_NOW";   break;
 
-        case FeatureId::RES_WAGE:             nm = "RES_WAGE";     break;
-        case FeatureId::RES_SKILL_LEVEL:      nm = "RES_SKILL";    break;
-        case FeatureId::RES_WAIT_TIME:        nm = "RES_WAIT";     break;
-        case FeatureId::RES_IDLE_TIME:        nm = "RES_IDLE";     break;
-        case FeatureId::RES_CAN_START_NOW:    nm = "RES_CAN_NOW";  break;
-        case FeatureId::RES_UTILIZATION:      nm = "RES_UTIL";       break;
-        case FeatureId::RES_WAGE_PER_LEVEL:   nm = "RES_W_PER_L";    break;
-        case FeatureId::RES_ASSIGN_COST:      nm = "RES_COST";       break;
-        case FeatureId::RES_ASSIGN_PREMIUM_ALL:nm = "RES_PREMIUM";   break;
-        case FeatureId::RES_HASTE_VALUE:      nm = "RES_HASTE";      break;
-        case FeatureId::RES_RESERVE_PRESSURE: nm = "RES_RESERVE";    break;
-        case FeatureId::RES_CRITICAL_RESERVE: nm = "RES_CRIT_RES";   break;
-        case FeatureId::RES_STRATEGIC_MISMATCH: nm = "RES_STR_MIS";  break;
-        case FeatureId::RES_FAMILY_MISMATCH:    nm = "RES_FAM_MIS";     break;
-        case FeatureId::RES_SURPLUS_LEVEL:      nm = "RES_SURPLUS";     break;
-        case FeatureId::RES_RELATIVE_WAGE:    nm = "RES_REL_WAGE"; break;
+        case FeatureId::RES_WAGE:              nm = "RES_WAGE";     break;
+        case FeatureId::RES_SKILL_LEVEL:       nm = "RES_SKILL";    break;
+        case FeatureId::RES_IDLE_TIME:         nm = "RES_IDLE";     break;
+        case FeatureId::RES_CAN_START_NOW:     nm = "RES_CAN_NOW";  break;
+        case FeatureId::RES_UTILIZATION:       nm = "RES_UTIL";     break;
+        case FeatureId::RES_WAGE_PER_LEVEL:    nm = "RES_W_PER_L";  break;
+        case FeatureId::RES_ASSIGN_COST:       nm = "RES_COST";     break;
+        case FeatureId::RES_ASSIGN_PREMIUM_ALL:nm = "RES_PREMIUM";  break;
+        case FeatureId::RES_RESERVE_PRESSURE:  nm = "RES_RESERVE";  break;
+        case FeatureId::RES_FAMILY_MISMATCH:   nm = "RES_FAM_MIS";  break;
+        case FeatureId::RES_RELATIVE_WAGE:     nm = "RES_REL_WAGE"; break;
         }
         oss << "FEAT:" << nm;
         break;
@@ -266,51 +152,35 @@ std::string GPTree::toString() const {
 namespace {
     const char* featToString(FeatureId f) {
         switch (f) {
-        case FeatureId::DURATION:             return "DUR";
-        case FeatureId::REQ_LEVEL:            return "REQ";
-        case FeatureId::AVAIL_SKILL:          return "AVAIL";
-        case FeatureId::EST_PREC:             return "EST";
-        case FeatureId::SUCC_COUNT:           return "SUCC";
-        case FeatureId::DESC_COUNT:           return "DESC";
-        case FeatureId::CRITLEN:              return "CRITLEN";
-        case FeatureId::SLACK:                return "SLACK";
-        case FeatureId::CRITICAL_PRESSURE:    return "CRIT_PRESS";
-        case FeatureId::AVAIL_GAP:            return "GAP";
-        case FeatureId::WAIT_RES:             return "WAIT";
-        case FeatureId::TOT_PRED:             return "TPRED";
-        case FeatureId::CHEAPEST_COST_NOW:    return "CHEAP";
-        case FeatureId::COST_PER_SKILL_NOW:   return "CHEAP_PER_SK";
-        case FeatureId::MIN_WAGE_AVAIL:       return "MIN_WAGE";
-        case FeatureId::AVG_WAGE_AVAIL:       return "AVG_WAGE";
-        case FeatureId::TEAM_SIZE_MIN_NOW:    return "TEAM_SIZE";
-        case FeatureId::NUM_TASKS:            return "N_TASKS";
-        case FeatureId::NUM_RESOURCES:        return "N_RES";
-        case FeatureId::NUM_SKILLS:           return "N_SKILLS";
-        case FeatureId::TASK_RES_COUNT:       return "TASK_RES";
-        case FeatureId::AVG_RES_COST:         return "RES_COST";
-        case FeatureId::UNSCHED_TASKS:        return "UNSCHED";
-        case FeatureId::MIN_FEASIBLE_COST_NOW:return "MIN_COST_NOW";
-        case FeatureId::COST_REGRET_NOW:      return "REGRET_NOW";
+        case FeatureId::DURATION:              return "DUR";
+        case FeatureId::REQ_LEVEL:             return "REQ";
+        case FeatureId::AVAIL_SKILL:           return "AVAIL";
+        case FeatureId::CRITLEN:               return "CRITLEN";
+        case FeatureId::SLACK:                 return "SLACK";
+        case FeatureId::AVAIL_GAP:             return "GAP";
+        case FeatureId::CHEAPEST_COST_NOW:     return "CHEAP";
+        case FeatureId::COST_PER_SKILL_NOW:    return "CHEAP_PER_SK";
+        case FeatureId::TASK_RES_COUNT:        return "TASK_RES";
+        case FeatureId::AVG_RES_COST:          return "RES_COST";
+        case FeatureId::UNSCHED_TASKS:         return "UNSCHED";
+        case FeatureId::MIN_FEASIBLE_COST_NOW: return "MIN_COST_NOW";
+        case FeatureId::COST_REGRET_NOW:       return "REGRET_NOW";
 
-        case FeatureId::RES_WAGE:             return "RES_WAGE";
-        case FeatureId::RES_SKILL_LEVEL:      return "RES_SKILL";
-        case FeatureId::RES_WAIT_TIME:        return "RES_WAIT";
-        case FeatureId::RES_IDLE_TIME:        return "RES_IDLE";
-        case FeatureId::RES_CAN_START_NOW:    return "RES_CAN_NOW";
+        case FeatureId::RES_WAGE:              return "RES_WAGE";
+        case FeatureId::RES_SKILL_LEVEL:       return "RES_SKILL";
+        case FeatureId::RES_IDLE_TIME:         return "RES_IDLE";
+        case FeatureId::RES_CAN_START_NOW:     return "RES_CAN_NOW";
         case FeatureId::RES_UTILIZATION:       return "RES_UTIL";
         case FeatureId::RES_WAGE_PER_LEVEL:    return "RES_W_PER_L";
         case FeatureId::RES_ASSIGN_COST:       return "RES_COST";
         case FeatureId::RES_ASSIGN_PREMIUM_ALL:return "RES_PREMIUM";
-        case FeatureId::RES_HASTE_VALUE:      return "RES_HASTE";
-        case FeatureId::RES_RESERVE_PRESSURE: return "RES_RESERVE";
-        case FeatureId::RES_CRITICAL_RESERVE: return "RES_CRIT_RES";
-        case FeatureId::RES_STRATEGIC_MISMATCH: return "RES_STR_MIS";
-        case FeatureId::RES_FAMILY_MISMATCH:    return "RES_FAM_MIS";
-        case FeatureId::RES_SURPLUS_LEVEL:      return "RES_SURPLUS";
-        case FeatureId::RES_RELATIVE_WAGE:    return "RES_REL_WAGE";
+        case FeatureId::RES_RESERVE_PRESSURE:  return "RES_RESERVE";
+        case FeatureId::RES_FAMILY_MISMATCH:   return "RES_FAM_MIS";
+        case FeatureId::RES_RELATIVE_WAGE:     return "RES_REL_WAGE";
         }
         return "?";
     }
+
     const char* bopToString(BinaryOp b) {
         switch (b) {
         case BinaryOp::ADD: return "ADD";
@@ -383,51 +253,7 @@ std::string GPTree::toStringAt(int idx) const {
         break;
     }
     case NodeKind::FEATURE: {
-        const char* nm = "?";
-        switch (n.feat) {
-        case FeatureId::DURATION:             nm = "DUR";          break;
-        case FeatureId::REQ_LEVEL:            nm = "REQ";          break;
-        case FeatureId::AVAIL_SKILL:          nm = "AVAIL";        break;
-        case FeatureId::EST_PREC:             nm = "EST";          break;
-        case FeatureId::SUCC_COUNT:           nm = "SUCC";         break;
-        case FeatureId::DESC_COUNT:           nm = "DESC";         break;
-        case FeatureId::CRITLEN:              nm = "CRITLEN";      break;
-        case FeatureId::SLACK:                nm = "SLACK";        break;
-        case FeatureId::CRITICAL_PRESSURE:    nm = "CRIT_PRESS";   break;
-        case FeatureId::AVAIL_GAP:            nm = "GAP";          break;
-        case FeatureId::WAIT_RES:             nm = "WAIT";         break;
-        case FeatureId::TOT_PRED:             nm = "TPRED";        break;
-        case FeatureId::CHEAPEST_COST_NOW:    nm = "CHEAP";        break;
-        case FeatureId::COST_PER_SKILL_NOW:   nm = "CHEAP_PER_SK"; break;
-        case FeatureId::MIN_WAGE_AVAIL:       nm = "MIN_WAGE";     break;
-        case FeatureId::AVG_WAGE_AVAIL:       nm = "AVG_WAGE";     break;
-        case FeatureId::TEAM_SIZE_MIN_NOW:    nm = "TEAM_SIZE";    break;
-        case FeatureId::NUM_TASKS:            nm = "N_TASKS";      break;
-        case FeatureId::NUM_RESOURCES:        nm = "N_RES";        break;
-        case FeatureId::NUM_SKILLS:           nm = "N_SKILLS";     break;
-        case FeatureId::TASK_RES_COUNT:       nm = "TASK_RES";     break;
-        case FeatureId::AVG_RES_COST:         nm = "RES_COST";     break;
-        case FeatureId::UNSCHED_TASKS:        nm = "UNSCHED";      break;
-        case FeatureId::MIN_FEASIBLE_COST_NOW:nm = "MIN_COST_NOW"; break;
-        case FeatureId::COST_REGRET_NOW:      nm = "REGRET_NOW";   break;
-        case FeatureId::RES_WAGE:             nm = "RES_WAGE";     break;
-        case FeatureId::RES_SKILL_LEVEL:      nm = "RES_SKILL";    break;
-        case FeatureId::RES_WAIT_TIME:        nm = "RES_WAIT";     break;
-        case FeatureId::RES_IDLE_TIME:        nm = "RES_IDLE";     break;
-        case FeatureId::RES_CAN_START_NOW:    nm = "RES_CAN_NOW";  break;
-        case FeatureId::RES_UTILIZATION:       nm = "RES_UTIL";     break;
-        case FeatureId::RES_WAGE_PER_LEVEL:    nm = "RES_W_PER_L";  break;
-        case FeatureId::RES_ASSIGN_COST:       nm = "RES_COST";     break;
-        case FeatureId::RES_ASSIGN_PREMIUM_ALL:nm = "RES_PREMIUM";  break;
-        case FeatureId::RES_HASTE_VALUE:      nm = "RES_HASTE";      break;
-        case FeatureId::RES_RESERVE_PRESSURE: nm = "RES_RESERVE";    break;
-        case FeatureId::RES_CRITICAL_RESERVE: nm = "RES_CRIT_RES";   break;
-        case FeatureId::RES_STRATEGIC_MISMATCH: nm = "RES_STR_MIS";  break;
-        case FeatureId::RES_FAMILY_MISMATCH:    nm = "RES_FAM_MIS";   break;
-        case FeatureId::RES_SURPLUS_LEVEL:      nm = "RES_SURPLUS";   break;
-        case FeatureId::RES_RELATIVE_WAGE:    nm = "RES_REL_WAGE"; break;
-        }
-        oss << nm;
+        oss << featToString(n.feat);
         break;
     }
     case NodeKind::UNARY: {
@@ -438,10 +264,10 @@ std::string GPTree::toStringAt(int idx) const {
     case NodeKind::BINARY: {
         const char* op = nullptr;
         switch (n.bop) {
-        case BinaryOp::ADD: op = "+";  break;
-        case BinaryOp::SUB: op = "-";  break;
-        case BinaryOp::MUL: op = "*";  break;
-        case BinaryOp::DIV: op = "/";  break;
+        case BinaryOp::ADD: op = "+";   break;
+        case BinaryOp::SUB: op = "-";   break;
+        case BinaryOp::MUL: op = "*";   break;
+        case BinaryOp::DIV: op = "/";   break;
         case BinaryOp::MIN: op = "min"; break;
         case BinaryOp::MAX: op = "max"; break;
         }
@@ -454,7 +280,6 @@ std::string GPTree::toStringAt(int idx) const {
         break;
     }
     }
-
     return oss.str();
 }
 
@@ -480,39 +305,15 @@ static BinaryOp sampleB(std::mt19937& rng) {
 }
 
 static FeatureId sampleFeatMS(std::mt19937& rng) {
-    std::uniform_int_distribution<int> U(0, 10);
-    switch (U(rng)) {
-    case 0:  return FeatureId::DURATION;
-    case 1:  return FeatureId::REQ_LEVEL;
-    case 2:  return FeatureId::EST_PREC;
-    case 3:  return FeatureId::SUCC_COUNT;
-    case 4:  return FeatureId::DESC_COUNT;
-    case 5:  return FeatureId::CRITLEN;
-    case 6:  return FeatureId::SLACK;
-    case 7:  return FeatureId::CRITICAL_PRESSURE;
-    case 8:  return FeatureId::AVAIL_GAP;
-    case 9:  return FeatureId::MIN_FEASIBLE_COST_NOW;
-    default: return FeatureId::COST_REGRET_NOW;
-    }
+    const auto pool = GPTree::allTaskFeatures();
+    std::uniform_int_distribution<int> U(0, (int)pool.size() - 1);
+    return pool[U(rng)];
 }
 
 static FeatureId sampleFeatRES(std::mt19937& rng) {
-    std::uniform_int_distribution<int> U(0, 12);
-    switch (U(rng)) {
-    case 0:  return FeatureId::RES_WAGE;
-    case 1:  return FeatureId::RES_SKILL_LEVEL;
-    case 2:  return FeatureId::RES_WAIT_TIME;
-    case 3:  return FeatureId::RES_CAN_START_NOW;
-    case 4:  return FeatureId::RES_WAGE_PER_LEVEL;
-    case 5:  return FeatureId::RES_ASSIGN_COST;
-    case 6:  return FeatureId::RES_ASSIGN_PREMIUM_ALL;
-    case 7:  return FeatureId::RES_HASTE_VALUE;
-    case 8:  return FeatureId::RES_RESERVE_PRESSURE;
-    case 9:  return FeatureId::RES_STRATEGIC_MISMATCH;
-    case 10: return FeatureId::RES_FAMILY_MISMATCH;
-    case 11: return FeatureId::RES_SURPLUS_LEVEL;
-    default: return FeatureId::RES_RELATIVE_WAGE;
-    }
+    const auto pool = GPTree::allResFeatures();
+    std::uniform_int_distribution<int> U(0, (int)pool.size() - 1);
+    return pool[U(rng)];
 }
 
 static int growMS(std::mt19937& rng, std::vector<GPNode>& v, int depth, int maxDepth) {
@@ -609,16 +410,6 @@ GPTree GPTree::Make_REQ_times_DUR() {
     return t;
 }
 
-GPTree GPTree::Make_EST_plus_DUR() {
-    GPTree t;
-    GPNode es; es.kind = NodeKind::FEATURE; es.feat = FeatureId::EST_PREC;    int ex = GPTree::add(t.nodes, es);
-    GPNode du; du.kind = NodeKind::FEATURE; du.feat = FeatureId::DURATION;    int dx = GPTree::add(t.nodes, du);
-    GPNode add; add.kind = NodeKind::BINARY; add.bop = BinaryOp::ADD; add.left = ex; add.right = dx;
-    t.root = GPTree::add(t.nodes, add);
-    return t;
-}
-
-
 GPTree GPTree::Make_CHEAPxDUR() {
     GPTree t;
     GPNode l; l.kind = NodeKind::FEATURE; l.feat = FeatureId::CHEAPEST_COST_NOW;
@@ -630,11 +421,11 @@ GPTree GPTree::Make_CHEAPxDUR() {
     return t;
 }
 
-GPTree GPTree::Make_CHEAP_PER_SKILL_plus_EST() {
+GPTree GPTree::Make_CHEAP_PER_SKILL_plus_DUR() {
     GPTree t;
     GPNode a; a.kind = NodeKind::FEATURE; a.feat = FeatureId::COST_PER_SKILL_NOW;
     int ax = (int)t.nodes.size(); t.nodes.push_back(a);
-    GPNode b; b.kind = NodeKind::FEATURE; b.feat = FeatureId::EST_PREC;
+    GPNode b; b.kind = NodeKind::FEATURE; b.feat = FeatureId::DURATION;
     int bx = (int)t.nodes.size(); t.nodes.push_back(b);
     GPNode add; add.kind = NodeKind::BINARY; add.bop = BinaryOp::ADD; add.left = ax; add.right = bx;
     t.root = (int)t.nodes.size(); t.nodes.push_back(add);
@@ -686,35 +477,38 @@ int GPTree::subtreeHeight(int index) const {
 }
 
 
-std::vector<FeatureId> GPTree::allFeatures() {
+std::vector<FeatureId> GPTree::allTaskFeatures() {
     return {
         FeatureId::DURATION,
         FeatureId::REQ_LEVEL,
-        FeatureId::EST_PREC,
-        FeatureId::SUCC_COUNT,
-        FeatureId::DESC_COUNT,
+        FeatureId::AVAIL_SKILL,
         FeatureId::CRITLEN,
         FeatureId::SLACK,
-        FeatureId::CRITICAL_PRESSURE,
         FeatureId::AVAIL_GAP,
         FeatureId::CHEAPEST_COST_NOW,
         FeatureId::COST_PER_SKILL_NOW,
-        FeatureId::MIN_WAGE_AVAIL,
-        FeatureId::AVG_WAGE_AVAIL,
-        FeatureId::TEAM_SIZE_MIN_NOW,
         FeatureId::TASK_RES_COUNT,
         FeatureId::AVG_RES_COST,
+        FeatureId::UNSCHED_TASKS,
         FeatureId::MIN_FEASIBLE_COST_NOW,
         FeatureId::COST_REGRET_NOW
     };
 }
 
-std::vector<UnaryOp> GPTree::allUnaryOps() {
-    return { UnaryOp::NEG, UnaryOp::ABS };
-}
-
-std::vector<BinaryOp> GPTree::allBinaryOps() {
-    return { BinaryOp::ADD, BinaryOp::SUB, BinaryOp::MUL, BinaryOp::MIN, BinaryOp::MAX };
+std::vector<FeatureId> GPTree::allResFeatures() {
+    return {
+        FeatureId::RES_WAGE,
+        FeatureId::RES_SKILL_LEVEL,
+        FeatureId::RES_IDLE_TIME,
+        FeatureId::RES_CAN_START_NOW,
+        FeatureId::RES_UTILIZATION,
+        FeatureId::RES_WAGE_PER_LEVEL,
+        FeatureId::RES_ASSIGN_COST,
+        FeatureId::RES_ASSIGN_PREMIUM_ALL,
+        FeatureId::RES_RESERVE_PRESSURE,
+        FeatureId::RES_FAMILY_MISMATCH,
+        FeatureId::RES_RELATIVE_WAGE
+    };
 }
 
 int GPTree::cloneSubtreeDFS(int nodeId, std::vector<int>& order) const {
