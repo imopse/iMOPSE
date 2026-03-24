@@ -98,23 +98,42 @@ void CExperimentLogger::OpenFileForWriting(const char* filePath, std::ofstream& 
 
 bool CExperimentLogger::WriteSchedulerToFile(const CScheduler& schedule, const AIndividual& solution)
 {
-    // TODO - generic logger should not contain Scheduler logic
-    char archive_filename[256];
-    std::string outputDataPath = m_OutputDataPathPrefix + "/best_solution.sol";
-    snprintf(archive_filename, 256, "%s",outputDataPath.c_str());
-    std::ofstream arch_file(archive_filename);
+    // Nazwa pliku unikalna po instancji + makespan + cost
+    const int makespan = solution.m_Evaluation.size() > 0 ? (int)solution.m_Evaluation[0] : -1;
+    const int cost = solution.m_Evaluation.size() > 1 ? (int)solution.m_Evaluation[1] : -1;
 
-    arch_file << "Instance name;Duration;Cost;AvgCashFlowDev;AvgSkillOverUse;AvgUseOfResTime " << std::endl;
-    
-    arch_file << schedule.GetInstanceName() << ';' << solution.m_Evaluation[0] << ';' << solution.m_Evaluation[1] << ';' << solution.m_Evaluation[2] << ';' << solution.m_Evaluation[3] << ';' << solution.m_Evaluation[4] << ';' << std::endl;
+    std::string instanceName = schedule.GetInstanceName();
+    for (char& c : instanceName)
+    {
+        if (c == '/' || c == '\\' || c == ' ' || c == ';' || c == ':')
+            c = '_';
+    }
 
-    arch_file << "Hour;Resource assignments (resource ID - task ID - Duration-predecessors) " << std::endl;
+    std::string outputDataPath =
+        m_OutputDataPathPrefix + "/sol_" + instanceName +
+        "_m" + std::to_string(makespan) +
+        "_c" + std::to_string(cost) + ".sol";
 
-    std::vector<int> startTimes = std::vector<int>();
-    for (CTask task : schedule.GetTasks())
+    std::ofstream arch_file(outputDataPath);
+    if (!arch_file.is_open())
+    {
+        std::cerr << "Unable to open file: " << outputDataPath << std::endl;
+        return false;
+    }
+
+    // Linia meta - skrypt j¹ zignoruje, bo nie zaczyna siê od inta
+    arch_file << "Meta Instance=" << schedule.GetInstanceName()
+        << " Makespan=" << makespan
+        << " Cost=" << cost << std::endl;
+
+    // Linia nag³ówka - te¿ bêdzie zignorowana przez parser
+    arch_file << "Hour Resource-Task" << std::endl;
+
+    std::vector<int> startTimes;
+    for (const CTask& task : schedule.GetTasks())
     {
         int startTime = task.GetStart();
-        if (!std::count(startTimes.begin(), startTimes.end(), startTime))
+        if (std::find(startTimes.begin(), startTimes.end(), startTime) == startTimes.end())
             startTimes.push_back(startTime);
     }
 
@@ -122,29 +141,17 @@ bool CExperimentLogger::WriteSchedulerToFile(const CScheduler& schedule, const A
 
     for (int startTime : startTimes)
     {
-        arch_file << startTime + 1;
-        arch_file << ";";
+        arch_file << (startTime + 1);
 
-        int taskId = 1;
-
-        for (CTask task : schedule.GetTasks())
+        for (const CTask& task : schedule.GetTasks())
         {
             if (task.GetStart() == startTime)
             {
                 TResourceID resourceID = task.GetResourceID();
-                TTime duration = task.GetDuration();
+                TTaskID taskID = task.GetTaskID();   // wa¿ne: bierzemy prawdziwe ID zadania
 
-                arch_file << resourceID << "-" << taskId << "-" << duration << "-";
-                
-                for (TTaskID id: task.GetPredecessors()) {
-                    arch_file << id << ",";
-                }
-
-                arch_file << ";";
-                    
+                arch_file << " " << resourceID << "-" << taskID;
             }
-
-            taskId++;
         }
 
         arch_file << std::endl;

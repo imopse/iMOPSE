@@ -22,6 +22,7 @@ namespace gp {
         double maxCriticalPressure = 1.0;
         double maxSuccCount = 1.0;
         double maxDescCount = 1.0;
+        double maxTaskReleasePressure = 1.0;
         double maxTotPred = 1.0;
         double maxCheapestCostNow = 1.0;
         double maxCostPerSkillNow = 1.0;
@@ -37,6 +38,8 @@ namespace gp {
         double maxResRelativeWage = 1.0;
         double maxResReservePressure = 1.0;
         double maxResCriticalReserve = 1.0;
+        double maxResBottleneckPreservation = 1.0;
+        double maxResSpecialistMisuse = 1.0;
     };
 
     void initFeatureScaling(const Instance& I);

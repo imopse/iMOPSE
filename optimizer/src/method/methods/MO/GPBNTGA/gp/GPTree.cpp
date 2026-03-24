@@ -16,6 +16,9 @@ double GPTree::featureValue(FeatureId id, const Features& f) const {
     case FeatureId::AVAIL_SKILL:           return f.availSkill;
     case FeatureId::CRITLEN:               return f.critLen;
     case FeatureId::SLACK:                 return f.slack;
+    case FeatureId::DESC_COUNT:            return f.descCount;
+    case FeatureId::TASK_RELEASE_PRESSURE: return f.taskReleasePressure;
+    case FeatureId::TASK_CRITICAL_PRESSURE:return f.taskCriticalPressure;
     case FeatureId::AVAIL_GAP:             return f.availGap;
     case FeatureId::CHEAPEST_COST_NOW:     return f.cheapestCostNow;
     case FeatureId::COST_PER_SKILL_NOW:    return f.costPerSkillNow;
@@ -35,6 +38,9 @@ double GPTree::featureValue(FeatureId id, const Features& f) const {
     case FeatureId::RES_ASSIGN_PREMIUM_ALL:return f.resAssignPremiumAll;
     case FeatureId::RES_RESERVE_PRESSURE:  return f.resReservePressure;
     case FeatureId::RES_FAMILY_MISMATCH:   return f.resFamilyMismatch;
+    case FeatureId::RES_FUTURE_BRANCH_FIT: return f.resFutureBranchFit;
+    case FeatureId::RES_BOTTLENECK_PRESERVATION: return f.resBottleneckPreservation;
+    case FeatureId::RES_SPECIALIST_MISUSE: return f.resSpecialistMisuse;
     case FeatureId::RES_RELATIVE_WAGE:     return f.resRelativeWage;
 
     default:
@@ -81,6 +87,75 @@ double GPTree::eval(const Features& f) const {
     return val;
 }
 
+double GPTree::evalAtCollect(int idx, const Features& f, std::vector<double>& vals) const {
+    if (idx < 0 || idx >= (int)nodes.size()) return 0.0;
+
+    const GPNode& n = nodes[idx];
+    double out = 0.0;
+
+    switch (n.kind) {
+    case NodeKind::CONST:
+        out = n.constant;
+        break;
+
+    case NodeKind::FEATURE:
+        out = featureValue(n.feat, f);
+        break;
+
+    case NodeKind::UNARY: {
+        double a = evalAtCollect(n.left, f, vals);
+        switch (n.uop) {
+        case UnaryOp::NEG: out = pneg(a); break;
+        case UnaryOp::ABS: out = pabs(a); break;
+        default: out = a; break;
+        }
+        break;
+    }
+
+    case NodeKind::BINARY: {
+        double a = evalAtCollect(n.left, f, vals);
+        double b = evalAtCollect(n.right, f, vals);
+        switch (n.bop) {
+        case BinaryOp::ADD: out = a + b; break;
+        case BinaryOp::SUB: out = a - b; break;
+        case BinaryOp::MUL: out = a * b; break;
+        case BinaryOp::DIV: out = pdiv(a, b); break;
+        case BinaryOp::MIN: out = pmin(a, b); break;
+        case BinaryOp::MAX: out = pmax(a, b); break;
+        default: out = 0.0; break;
+        }
+        break;
+    }
+    }
+
+    if (!std::isfinite(out)) out = 0.0;
+
+    if ((size_t)idx >= vals.size()) {
+        vals.resize(nodes.size(), 0.0);
+    }
+    vals[idx] = out;
+
+    return out;
+}
+
+double GPTree::evalWithNodeValues(const Features& f, std::vector<double>* nodeValues) const {
+    if (isEmpty()) {
+        if (nodeValues) nodeValues->clear();
+        return 0.0;
+    }
+
+    if (!nodeValues) {
+        return eval(f);
+    }
+
+    nodeValues->assign(nodes.size(), 0.0);
+
+    double val = evalAtCollect(root, f, *nodeValues);
+    if (!std::isfinite(val)) val = 0.0;
+
+    return val;
+}
+
 std::string GPTree::nodeLabel(int idx) const {
     if (idx < 0 || idx >= (int)nodes.size()) return "<?>";
     const GPNode& n = nodes[idx];
@@ -98,11 +173,14 @@ std::string GPTree::nodeLabel(int idx) const {
         case FeatureId::AVAIL_SKILL:           nm = "AVAIL";        break;
         case FeatureId::CRITLEN:               nm = "CRITLEN";      break;
         case FeatureId::SLACK:                 nm = "SLACK";        break;
+        case FeatureId::DESC_COUNT:            nm = "DESC_COUNT";   break;
+        case FeatureId::TASK_RELEASE_PRESSURE: nm = "REL_PRESS";    break;
+        case FeatureId::TASK_CRITICAL_PRESSURE:nm = "TASK_CRIT";    break;
         case FeatureId::AVAIL_GAP:             nm = "GAP";          break;
         case FeatureId::CHEAPEST_COST_NOW:     nm = "CHEAP";        break;
         case FeatureId::COST_PER_SKILL_NOW:    nm = "CHEAP_PER_SK"; break;
         case FeatureId::TASK_RES_COUNT:        nm = "TASK_RES";     break;
-        case FeatureId::AVG_RES_COST:          nm = "RES_COST";     break;
+        case FeatureId::AVG_RES_COST:          nm = "AVG_RES_COST";     break;
         case FeatureId::UNSCHED_TASKS:         nm = "UNSCHED";      break;
         case FeatureId::MIN_FEASIBLE_COST_NOW: nm = "MIN_COST_NOW"; break;
         case FeatureId::COST_REGRET_NOW:       nm = "REGRET_NOW";   break;
@@ -113,11 +191,14 @@ std::string GPTree::nodeLabel(int idx) const {
         case FeatureId::RES_CAN_START_NOW:     nm = "RES_CAN_NOW";  break;
         case FeatureId::RES_UTILIZATION:       nm = "RES_UTIL";     break;
         case FeatureId::RES_WAGE_PER_LEVEL:    nm = "RES_W_PER_L";  break;
-        case FeatureId::RES_ASSIGN_COST:       nm = "RES_COST";     break;
-        case FeatureId::RES_ASSIGN_PREMIUM_ALL:nm = "RES_PREMIUM";  break;
-        case FeatureId::RES_RESERVE_PRESSURE:  nm = "RES_RESERVE";  break;
-        case FeatureId::RES_FAMILY_MISMATCH:   nm = "RES_FAM_MIS";  break;
-        case FeatureId::RES_RELATIVE_WAGE:     nm = "RES_REL_WAGE"; break;
+        case FeatureId::RES_ASSIGN_COST:       nm = "RES_ASSIGN_COST";  break;
+        case FeatureId::RES_ASSIGN_PREMIUM_ALL:nm = "RES_PREMIUM";   break;
+        case FeatureId::RES_RESERVE_PRESSURE:  nm = "RES_RESERVE";    break;
+        case FeatureId::RES_FAMILY_MISMATCH:   nm = "RES_FAM_MIS";    break;
+        case FeatureId::RES_FUTURE_BRANCH_FIT: nm = "RES_FUT_BRANCH"; break;
+        case FeatureId::RES_BOTTLENECK_PRESERVATION: nm = "RES_BOTTLENECK"; break;
+        case FeatureId::RES_SPECIALIST_MISUSE: nm = "RES_SPEC_MIS";  break;
+        case FeatureId::RES_RELATIVE_WAGE:     nm = "RES_REL_WAGE";  break;
         }
         oss << "FEAT:" << nm;
         break;
@@ -157,11 +238,14 @@ namespace {
         case FeatureId::AVAIL_SKILL:           return "AVAIL";
         case FeatureId::CRITLEN:               return "CRITLEN";
         case FeatureId::SLACK:                 return "SLACK";
+        case FeatureId::DESC_COUNT:            return "DESC_COUNT";
+        case FeatureId::TASK_RELEASE_PRESSURE: return "REL_PRESS";
+        case FeatureId::TASK_CRITICAL_PRESSURE:return "TASK_CRIT";
         case FeatureId::AVAIL_GAP:             return "GAP";
         case FeatureId::CHEAPEST_COST_NOW:     return "CHEAP";
         case FeatureId::COST_PER_SKILL_NOW:    return "CHEAP_PER_SK";
         case FeatureId::TASK_RES_COUNT:        return "TASK_RES";
-        case FeatureId::AVG_RES_COST:          return "RES_COST";
+        case FeatureId::AVG_RES_COST:          return "AVG_RES_COST";
         case FeatureId::UNSCHED_TASKS:         return "UNSCHED";
         case FeatureId::MIN_FEASIBLE_COST_NOW: return "MIN_COST_NOW";
         case FeatureId::COST_REGRET_NOW:       return "REGRET_NOW";
@@ -172,10 +256,13 @@ namespace {
         case FeatureId::RES_CAN_START_NOW:     return "RES_CAN_NOW";
         case FeatureId::RES_UTILIZATION:       return "RES_UTIL";
         case FeatureId::RES_WAGE_PER_LEVEL:    return "RES_W_PER_L";
-        case FeatureId::RES_ASSIGN_COST:       return "RES_COST";
+        case FeatureId::RES_ASSIGN_COST:       return "RES_ASSIGN_COST";
         case FeatureId::RES_ASSIGN_PREMIUM_ALL:return "RES_PREMIUM";
         case FeatureId::RES_RESERVE_PRESSURE:  return "RES_RESERVE";
         case FeatureId::RES_FAMILY_MISMATCH:   return "RES_FAM_MIS";
+        case FeatureId::RES_FUTURE_BRANCH_FIT: return "RES_FUT_BRANCH";
+        case FeatureId::RES_BOTTLENECK_PRESERVATION: return "RES_BOTTLENECK";
+        case FeatureId::RES_SPECIALIST_MISUSE: return "RES_SPEC_MIS";
         case FeatureId::RES_RELATIVE_WAGE:     return "RES_REL_WAGE";
         }
         return "?";
@@ -297,10 +384,11 @@ static BinaryOp sampleB(std::mt19937& rng) {
         BinaryOp::ADD,
         BinaryOp::SUB,
         BinaryOp::MUL,
+        BinaryOp::DIV,
         BinaryOp::MIN,
         BinaryOp::MAX
     };
-    std::uniform_int_distribution<int> U(0, 4);
+    std::uniform_int_distribution<int> U(0, 5);
     return ops[U(rng)];
 }
 
@@ -316,6 +404,12 @@ static FeatureId sampleFeatRES(std::mt19937& rng) {
     return pool[U(rng)];
 }
 
+static FeatureId sampleFeatPAIR(std::mt19937& rng) {
+    const auto pool = GPTree::allPairFeatures();
+    std::uniform_int_distribution<int> U(0, (int)pool.size() - 1);
+    return pool[U(rng)];
+}
+
 static int growMS(std::mt19937& rng, std::vector<GPNode>& v, int depth, int maxDepth) {
     std::uniform_real_distribution<double> U01(0.0, 1.0);
 
@@ -327,15 +421,6 @@ static int growMS(std::mt19937& rng, std::vector<GPNode>& v, int depth, int maxD
         GPNode c; c.kind = NodeKind::CONST;
         c.constant = (U01(rng) * 2.0 - 1.0);
         return GPTree::add(v, c);
-    }
-
-    double r = U01(rng);
-    if (r < 0.20) {
-        GPNode u; u.kind = NodeKind::UNARY;
-        u.uop = sampleU(rng);
-        u.left = growMS(rng, v, depth + 1, maxDepth);
-        u.right = -1;
-        return GPTree::add(v, u);
     }
 
     GPNode b; b.kind = NodeKind::BINARY;
@@ -358,19 +443,30 @@ static int growRES(std::mt19937& rng, std::vector<GPNode>& v, int depth, int max
         return GPTree::add(v, c);
     }
 
-    double r = U01(rng);
-    if (r < 0.20) {
-        GPNode u; u.kind = NodeKind::UNARY;
-        u.uop = sampleU(rng);
-        u.left = growRES(rng, v, depth + 1, maxDepth);
-        u.right = -1;
-        return GPTree::add(v, u);
-    }
-
     GPNode b; b.kind = NodeKind::BINARY;
     b.bop = sampleB(rng);
     b.left = growRES(rng, v, depth + 1, maxDepth);
     b.right = growRES(rng, v, depth + 1, maxDepth);
+    return GPTree::add(v, b);
+}
+
+static int growPAIR(std::mt19937& rng, std::vector<GPNode>& v, int depth, int maxDepth) {
+    std::uniform_real_distribution<double> U01(0.0, 1.0);
+
+    if (depth == maxDepth || U01(rng) < 0.25) {
+        if (U01(rng) < 0.7) {
+            GPNode f; f.kind = NodeKind::FEATURE; f.feat = sampleFeatPAIR(rng);
+            return GPTree::add(v, f);
+        }
+        GPNode c; c.kind = NodeKind::CONST;
+        c.constant = (U01(rng) * 2.0 - 1.0);
+        return GPTree::add(v, c);
+    }
+
+    GPNode b; b.kind = NodeKind::BINARY;
+    b.bop = sampleB(rng);
+    b.left = growPAIR(rng, v, depth + 1, maxDepth);
+    b.right = growPAIR(rng, v, depth + 1, maxDepth);
     return GPTree::add(v, b);
 }
 
@@ -388,6 +484,15 @@ GPTree GPTree::RandomTreeRES(std::mt19937& rng, int maxDepth) {
     do {
         t.nodes.clear();
         t.root = growRES(rng, t.nodes, 0, maxDepth);
+    } while (!t.hasAnyFeature());
+    return t;
+}
+
+GPTree GPTree::RandomTreePAIR(std::mt19937& rng, int maxDepth) {
+    GPTree t;
+    do {
+        t.nodes.clear();
+        t.root = growPAIR(rng, t.nodes, 0, maxDepth);
     } while (!t.hasAnyFeature());
     return t;
 }
@@ -429,6 +534,108 @@ GPTree GPTree::Make_CHEAP_PER_SKILL_plus_DUR() {
     int bx = (int)t.nodes.size(); t.nodes.push_back(b);
     GPNode add; add.kind = NodeKind::BINARY; add.bop = BinaryOp::ADD; add.left = ax; add.right = bx;
     t.root = (int)t.nodes.size(); t.nodes.push_back(add);
+    return t;
+}
+
+GPTree GPTree::Make_BNTGA_BridgeRatioPair() {
+    GPTree t;
+
+    auto feat = [&](FeatureId f) -> int {
+        GPNode n{};
+        n.kind = NodeKind::FEATURE;
+        n.feat = f;
+        return GPTree::add(t.nodes, n);
+        };
+
+    auto cst = [&](double v) -> int {
+        GPNode n{};
+        n.kind = NodeKind::CONST;
+        n.constant = v;
+        return GPTree::add(t.nodes, n);
+        };
+
+    auto bin = [&](BinaryOp op, int l, int r) -> int {
+        GPNode n{};
+        n.kind = NodeKind::BINARY;
+        n.bop = op;
+        n.left = l;
+        n.right = r;
+        return GPTree::add(t.nodes, n);
+        };
+
+    auto un = [&](UnaryOp op, int child) -> int {
+        GPNode n{};
+        n.kind = NodeKind::UNARY;
+        n.uop = op;
+        n.left = child;
+        return GPTree::add(t.nodes, n);
+        };
+
+    // Features
+    int dur = feat(FeatureId::DURATION);
+    int slack = feat(FeatureId::SLACK);
+    int critLen = feat(FeatureId::CRITLEN);
+    int descCount = feat(FeatureId::DESC_COUNT);
+
+    int req = feat(FeatureId::REQ_LEVEL);
+    int resSkill = feat(FeatureId::RES_SKILL_LEVEL);
+    int resRelWage = feat(FeatureId::RES_RELATIVE_WAGE);
+    int famMis = feat(FeatureId::RES_FAMILY_MISMATCH);
+    int futBranch = feat(FeatureId::RES_FUTURE_BRANCH_FIT);
+
+    int taskCrit = feat(FeatureId::TASK_CRITICAL_PRESSURE);
+    int relPress = feat(FeatureId::TASK_RELEASE_PRESSURE);
+    int regretNow = feat(FeatureId::COST_REGRET_NOW);
+    int resCanNow = feat(FeatureId::RES_CAN_START_NOW);
+
+    // Constants
+    int c015 = cst(0.15);
+    int c003 = cst(0.03);
+    int c018 = cst(0.18);
+
+    int c300 = cst(3.00);
+    int c010 = cst(0.10);
+    int c050 = cst(0.50);
+    int c012 = cst(0.12);
+    int c120 = cst(1.20);
+    int c110 = cst(1.10);
+    int c095 = cst(0.95);
+
+    // Left side: lekkie kary lokalne
+    int skillGap = bin(BinaryOp::SUB, resSkill, req);
+    int absSkillGap = un(UnaryOp::ABS, skillGap);
+    int fitPenalty = bin(BinaryOp::MUL, c015, absSkillGap);
+
+    int wagePenalty = bin(BinaryOp::MUL, c003, resRelWage);
+    int famPenalty = bin(BinaryOp::MUL, c018, famMis);
+
+    int leftA = bin(BinaryOp::ADD, fitPenalty, wagePenalty);
+    int leftPart = bin(BinaryOp::ADD, leftA, famPenalty);
+
+    // Right side: time core + gate + future corridor
+    int criticalCore = bin(BinaryOp::MAX, taskCrit, relPress);
+    int durationBias = bin(BinaryOp::ADD, dur, c050);
+    int bridgeRaw = bin(BinaryOp::MUL, criticalCore, durationBias);
+    int bridgeScaled = bin(BinaryOp::MUL, c300, bridgeRaw);
+
+    int denomA = bin(BinaryOp::ADD, c010, slack);
+    int denom = bin(BinaryOp::ADD, denomA, critLen);
+
+    int bridgeUrgency = bin(BinaryOp::DIV, bridgeScaled, denom);
+
+    int gateBonus = bin(BinaryOp::MUL, c012, descCount);
+    int regretBoost = bin(BinaryOp::MUL, c120, regretNow);
+    int futureBoost = bin(BinaryOp::MUL, c110, futBranch);
+    int canNowBoost = bin(BinaryOp::MUL, c095, resCanNow);
+
+    int rewardA = bin(BinaryOp::ADD, bridgeUrgency, gateBonus);
+    int rewardB = bin(BinaryOp::ADD, rewardA, regretBoost);
+    int rewardC = bin(BinaryOp::ADD, rewardB, futureBoost);
+    int reward = bin(BinaryOp::ADD, rewardC, canNowBoost);
+
+    int rootExpr = bin(BinaryOp::SUB, leftPart, reward);
+
+    t.root = rootExpr;
     return t;
 }
 
@@ -479,19 +686,22 @@ int GPTree::subtreeHeight(int index) const {
 
 std::vector<FeatureId> GPTree::allTaskFeatures() {
     return {
-        FeatureId::DURATION,
-        FeatureId::REQ_LEVEL,
-        FeatureId::AVAIL_SKILL,
-        FeatureId::CRITLEN,
-        FeatureId::SLACK,
-        FeatureId::AVAIL_GAP,
-        FeatureId::CHEAPEST_COST_NOW,
-        FeatureId::COST_PER_SKILL_NOW,
-        FeatureId::TASK_RES_COUNT,
-        FeatureId::AVG_RES_COST,
-        FeatureId::UNSCHED_TASKS,
-        FeatureId::MIN_FEASIBLE_COST_NOW,
-        FeatureId::COST_REGRET_NOW
+         FeatureId::DURATION,
+         FeatureId::REQ_LEVEL,
+         FeatureId::AVAIL_SKILL,
+         FeatureId::CRITLEN,
+         FeatureId::SLACK,
+         FeatureId::DESC_COUNT,
+         FeatureId::TASK_CRITICAL_PRESSURE,
+         FeatureId::TASK_RELEASE_PRESSURE,
+         FeatureId::AVAIL_GAP,
+         FeatureId::CHEAPEST_COST_NOW,
+         FeatureId::COST_PER_SKILL_NOW,
+         FeatureId::TASK_RES_COUNT,
+         FeatureId::AVG_RES_COST,
+         FeatureId::UNSCHED_TASKS,
+         FeatureId::MIN_FEASIBLE_COST_NOW,
+         FeatureId::COST_REGRET_NOW
     };
 }
 
@@ -507,8 +717,19 @@ std::vector<FeatureId> GPTree::allResFeatures() {
         FeatureId::RES_ASSIGN_PREMIUM_ALL,
         FeatureId::RES_RESERVE_PRESSURE,
         FeatureId::RES_FAMILY_MISMATCH,
+        FeatureId::RES_FUTURE_BRANCH_FIT,
+        FeatureId::RES_BOTTLENECK_PRESERVATION,
+        FeatureId::RES_SPECIALIST_MISUSE,
         FeatureId::RES_RELATIVE_WAGE
     };
+}
+
+std::vector<FeatureId> GPTree::allPairFeatures() {
+    std::vector<FeatureId> v = allTaskFeatures();
+    auto r = allResFeatures();
+    v.insert(v.end(), r.begin(), r.end());
+
+    return v;
 }
 
 int GPTree::cloneSubtreeDFS(int nodeId, std::vector<int>& order) const {

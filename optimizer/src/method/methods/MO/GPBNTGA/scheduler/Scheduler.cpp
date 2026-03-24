@@ -4,11 +4,14 @@
 #include <algorithm>
 #include <cmath>
 #include <string>
+#include <sstream>
+#include <iomanip>
 #include "../alloc/ResourceAllocator.hpp"
 #include "../rules/GPTreeRule.hpp"
 #include "../rules/GPTreeResRule.hpp"
 #include "../gp/FeatureScaling.hpp"
 #include "../gp/Precompute.hpp"
+#include "../gp/Features.hpp"
 #include <iostream>
 #include <unordered_map>
 
@@ -18,6 +21,25 @@ static const std::unordered_map<int, int>* g_resIndex = nullptr;
 static const std::unordered_map<std::string, std::vector<int>>* g_skillLevels = nullptr;
 
 namespace {
+
+    static void dumpTraceFeatures(std::ostream& os, const Features& f) {
+        os << std::fixed << std::setprecision(6)
+            << "REL_PRESS=" << f.taskReleasePressure
+            << " TASK_CRIT=" << f.taskCriticalPressure
+            << " REGRET_NOW=" << f.costRegretNow
+            << " SLACK=" << f.slack
+            << " CRITLEN=" << f.critLen
+            << " DESC_COUNT=" << f.descCount
+            << " CHEAP_NOW=" << f.cheapestCostNow
+            << " MIN_COST_NOW=" << f.minFeasibleCostNow
+            << " RES_BOTTLENECK=" << f.resBottleneckPreservation
+            << " RES_REL_WAGE=" << f.resRelativeWage
+            << " RES_RESERVE=" << f.resReservePressure
+            << " RES_FAM_MIS=" << f.resFamilyMismatch
+            << " RES_FUT_BRANCH=" << f.resFutureBranchFit
+            << "\n";
+    }
+
     struct ResourceLookupCache {
         std::size_t signature = 0;
         bool ready = false;
@@ -39,6 +61,7 @@ namespace {
         std::vector<double> staticAvgResCost;
 
         std::vector<std::vector<int>> demandCapableResIdxPerTask;
+        std::vector<int> matchedLevelByTaskRes;
         std::vector<double> reservePressureWeightPerTask;
         std::vector<double> criticalReserveWeightPerTask;
         std::vector<int> familyIdByTask;
@@ -125,6 +148,7 @@ namespace {
         g_staticCache.staticTaskResCount.assign(n, 0.0);
         g_staticCache.staticAvgResCost.assign(n, std::numeric_limits<double>::infinity());
         g_staticCache.demandCapableResIdxPerTask.assign(n, {});
+        g_staticCache.matchedLevelByTaskRes.assign((size_t)n * I.resources.size(), 0);
         g_staticCache.reservePressureWeightPerTask.assign(n, 0.0);
         g_staticCache.criticalReserveWeightPerTask.assign(n, 0.0);
         g_staticCache.familyIdByTask.assign(n, -1);
@@ -132,6 +156,7 @@ namespace {
         g_staticCache.reservePressureByResInit.assign(I.resources.size(), 0.0);
         g_staticCache.criticalReserveByResInit.assign(I.resources.size(), 0.0);
         g_staticCache.familyPressureByResFamilyInit.clear();
+
 
         for (int i = 0; i < n; ++i) {
             for (int pid : I.tasks[i].predecessors) {
@@ -146,6 +171,36 @@ namespace {
                 auto it = I.idToIndex.find(pid);
                 if (it != I.idToIndex.end()) {
                     g_staticCache.succ[it->second].push_back(j);
+                }
+            }
+        }
+        {
+            const int resCount = (int)I.resources.size();
+
+            for (int ti = 0; ti < n; ++ti) {
+                const Task& t = I.tasks[ti];
+                const size_t base = (size_t)ti * (size_t)resCount;
+
+                for (int ri = 0; ri < resCount; ++ri) {
+                    const Resource& r = I.resources[ri];
+                    int matched = 0;
+
+                    if (t.requiredSkills.empty()) {
+                        auto it = r.skills.find(t.reqSkill);
+                        if (it != r.skills.end()) {
+                            matched = it->second;
+                        }
+                    }
+                    else {
+                        for (const auto& rs : t.requiredSkills) {
+                            auto it = r.skills.find(rs.skill);
+                            if (it != r.skills.end()) {
+                                matched += it->second;
+                            }
+                        }
+                    }
+
+                    g_staticCache.matchedLevelByTaskRes[base + (size_t)ri] = matched;
                 }
             }
         }
@@ -291,6 +346,15 @@ namespace {
 
             g_staticCache.reservePressureWeightPerTask[ui] = reserveW;
             g_staticCache.criticalReserveWeightPerTask[ui] = criticalReserveW;
+
+            const double scarcityFuture = (reqU > 0)
+                ? ((double)reqU / (double)std::max(1, feasibleCount))
+                : 0.0;
+
+            const double structuralFuture =
+                (1.0 + critNorm + 0.5 * descNorm) / (1.0 + slackNorm);
+
+            const double futureBase = (double)u.duration * scarcityFuture * structuralFuture;
 
             auto& caps = g_staticCache.demandCapableResIdxPerTask[ui];
 
@@ -642,7 +706,8 @@ ScheduleResult Scheduler::precedenceOnly(Instance& I, const IDispatchingRule& ru
 ScheduleResult Scheduler::withResources(Instance& I,
     const IDispatchingRule& ruleT,
     const GPTreeResRule* ruleR,
-    const ScheduleOptions& options)
+    const ScheduleOptions& options,
+    const GPTree* pairTree)
 {
     const int n = (int)I.tasks.size();
 
@@ -663,6 +728,8 @@ ScheduleResult Scheduler::withResources(Instance& I,
         g_staticCache.signature != staticSig ||
         g_staticCache.baseIndeg.size() != (size_t)n ||
         g_staticCache.reservePressureByResInit.size() != I.resources.size() ||
+        g_staticCache.matchedLevelByTaskRes.size() !=
+        (size_t)n * I.resources.size() ||
         g_staticCache.familyPressureByResFamilyInit.size() !=
         I.resources.size() * (size_t)std::max(1, g_staticCache.familyCount)) {
         rebuildSchedulerStaticCache(I);
@@ -725,10 +792,11 @@ ScheduleResult Scheduler::withResources(Instance& I,
     std::vector<Running> running; running.reserve(n);
 
     auto processFinishedAtNow = [&]() {
-        std::vector<Running> still;
-        still.reserve(running.size());
+        size_t write = 0;
 
-        for (auto& rt : running) {
+        for (size_t i = 0; i < running.size(); ++i) {
+            const auto& rt = running[i];
+
             if (rt.finish == now) {
                 for (int j : succ[rt.ix]) {
                     if (I.tasks[j].start == -1) {
@@ -745,10 +813,14 @@ ScheduleResult Scheduler::withResources(Instance& I,
                 }
             }
             else {
-                still.push_back(rt);
+                if (write != i) {
+                    running[write] = running[i];
+                }
+                ++write;
             }
         }
-        running.swap(still);
+
+        running.resize(write);
         freeResources(now);
         };
 
@@ -770,6 +842,7 @@ ScheduleResult Scheduler::withResources(Instance& I,
         }
         };
     const GPTreeRule* gpRule = dynamic_cast<const GPTreeRule*>(&ruleT);
+    const bool usePairTree = (pairTree != nullptr);
 
     std::unordered_map<std::string, SkillStepInfo> skillStepCache;
     skillStepCache.reserve(g_lookupCache.skillLevels.size());
@@ -788,11 +861,30 @@ ScheduleResult Scheduler::withResources(Instance& I,
             &unschedCount,
             &indeg,
             &latestPredFinishByTask,
-            &skillStepCache
+            &skillStepCache,
+            &g_staticCache.matchedLevelByTaskRes,
+            (int)I.resources.size()
         );
 
         while (!ready.empty()) {
             const_cast<IDispatchingRule&>(ruleT).setContext(&I, now);
+
+            buildTaskEvalStepPrecomputed(
+                I,
+                now,
+                ready
+            );
+
+            if (usePairTree) {
+                buildPairEvalStepPrecomputed(
+                    I,
+                    now,
+                    ready
+                );
+            }
+            else {
+                clearPairEvalStepPrecomputed();
+            }
 
             constexpr double kPairResourceWeight = 0.5;
 
@@ -809,6 +901,9 @@ ScheduleResult Scheduler::withResources(Instance& I,
                 double taskScore = std::numeric_limits<double>::infinity();
                 double resScore = std::numeric_limits<double>::infinity();
                 double pairScore = std::numeric_limits<double>::infinity();
+
+                Features traceFeatures{};
+                bool hasTrace = false;
             };
 
             auto norm01 = [](double v, double lo, double hi) -> double {
@@ -867,6 +962,9 @@ ScheduleResult Scheduler::withResources(Instance& I,
 
                 int localBestResId = -1;
                 double localBestResScore = 0.0;
+                double localBestPairScore = std::numeric_limits<double>::infinity();
+                Features localBestTraceFeatures{};
+                bool localHasTrace = false;
 
                 int forcedId = -1;
                 if (g_forcedResource && (size_t)ix < g_forcedResource->size())
@@ -886,6 +984,7 @@ ScheduleResult Scheduler::withResources(Instance& I,
                         else {
                             localBestResId = allocResId;
                             localBestResScore = 0.0;
+                            localBestPairScore = 0.0;
                         }
                     }
                     else {
@@ -902,11 +1001,207 @@ ScheduleResult Scheduler::withResources(Instance& I,
                         if (allocResId >= 0) {
                             localBestResId = allocResId;
                             localBestResScore = 0.0;
+                            localBestPairScore = 0.0;
                         }
                     }
                 }
                 else {
-                    if (ruleR == nullptr) {
+                    if (usePairTree) {
+                        double cheapestNow = std::numeric_limits<double>::infinity();
+                        double cheapestCapableOverall = std::numeric_limits<double>::infinity();
+                        double waitOfCheapestCapableOverall = std::numeric_limits<double>::infinity();
+
+                        {
+                            const int req0 = std::max(0, t.reqLevel);
+
+                            if (!t.capableResourceIndices.empty()) {
+                                for (int ri : t.capableResourceIndices) {
+                                    if (ri < 0 || ri >= (int)I.resources.size()) continue;
+
+                                    const auto& rr = I.resources[ri];
+                                    const double waitRR =
+                                        (rr.busyUntil > now) ? double(rr.busyUntil - now) : 0.0;
+
+                                    if (rr.salary < cheapestCapableOverall) {
+                                        cheapestCapableOverall = rr.salary;
+                                        waitOfCheapestCapableOverall = waitRR;
+                                    }
+                                    else if (rr.salary == cheapestCapableOverall &&
+                                        waitRR < waitOfCheapestCapableOverall) {
+                                        waitOfCheapestCapableOverall = waitRR;
+                                    }
+
+                                    if (rr.busyUntil <= now) {
+                                        cheapestNow = std::min(cheapestNow, rr.salary);
+                                    }
+                                }
+                            }
+                            else {
+                                for (const auto& rr : I.resources) {
+                                    int lvl = 0;
+                                    auto it = rr.skills.find(t.reqSkill);
+                                    if (it != rr.skills.end()) lvl = it->second;
+
+                                    if (req0 > 0 && lvl < req0) continue;
+
+                                    const double waitRR =
+                                        (rr.busyUntil > now) ? double(rr.busyUntil - now) : 0.0;
+
+                                    if (rr.salary < cheapestCapableOverall) {
+                                        cheapestCapableOverall = rr.salary;
+                                        waitOfCheapestCapableOverall = waitRR;
+                                    }
+                                    else if (rr.salary == cheapestCapableOverall &&
+                                        waitRR < waitOfCheapestCapableOverall) {
+                                        waitOfCheapestCapableOverall = waitRR;
+                                    }
+
+                                    if (rr.busyUntil <= now) {
+                                        cheapestNow = std::min(cheapestNow, rr.salary);
+                                    }
+                                }
+                            }
+                        }
+
+                        localBestResId = -1;
+                        localBestPairScore = std::numeric_limits<double>::infinity();
+
+                        if (!t.capableResourceIndices.empty()) {
+                            for (int ri : t.capableResourceIndices) {
+                                if (ri < 0 || ri >= (int)I.resources.size()) continue;
+
+                                const Resource& r = I.resources[ri];
+
+                                double reservePressureExcludingTask =
+                                    reservePressureByRes[ri] - reservePressureWeightPerTask[ix];
+                                if (reservePressureExcludingTask < 0.0)
+                                    reservePressureExcludingTask = 0.0;
+
+                                double criticalReserveExcludingTask =
+                                    criticalReserveByRes[ri] - criticalReserveWeightPerTask[ix];
+                                if (criticalReserveExcludingTask < 0.0)
+                                    criticalReserveExcludingTask = 0.0;
+
+                                double familyMismatchExcludingTask = 0.0;
+                                if (familyCount > 0) {
+                                    const int famId = familyIdByTask[ix];
+                                    const size_t base = (size_t)ri * (size_t)familyCount;
+
+                                    double currentFamilyPressure =
+                                        familyPressureByResFamily[base + (size_t)famId]
+                                        - reservePressureWeightPerTask[ix];
+                                    if (currentFamilyPressure < 0.0)
+                                        currentFamilyPressure = 0.0;
+
+                                    const double bestOtherFamilyPressure =
+                                        (familyBestFamByRes[ri] == famId)
+                                        ? familySecondBestPressureByRes[ri]
+                                        : familyBestPressureByRes[ri];
+
+                                        familyMismatchExcludingTask =
+                                            bestOtherFamilyPressure / (1.0 + currentFamilyPressure);
+                                }
+
+                                    Features f = computePairFeaturesFast(
+                                        I,
+                                        ix,
+                                        t,
+                                        r,
+                                        now,
+                                        cheapestNow,
+                                        cheapestCapableOverall,
+                                        waitOfCheapestCapableOverall,
+                                        reservePressureExcludingTask,
+                                        criticalReserveExcludingTask,
+                                        familyMismatchExcludingTask
+                                    );
+
+                                    double s = pairTree->eval(f);
+
+                                    if (s < localBestPairScore) {
+                                        localBestPairScore = s;
+                                        localBestResId = r.id;
+                                        localBestTraceFeatures = f;
+                                        localHasTrace = true;
+                                    }
+                            }
+                        }
+                        else {
+                            for (const auto& r : I.resources) {
+                                if (req > 0) {
+                                    int lvl = skillLevelOf(I, r.id, t.reqSkill);
+                                    if (lvl < req) continue;
+                                }
+
+                                const int ri = (int)(&r - &I.resources[0]);
+
+                                double reservePressureExcludingTask =
+                                    reservePressureByRes[ri] - reservePressureWeightPerTask[ix];
+                                if (reservePressureExcludingTask < 0.0)
+                                    reservePressureExcludingTask = 0.0;
+
+                                double criticalReserveExcludingTask =
+                                    criticalReserveByRes[ri] - criticalReserveWeightPerTask[ix];
+                                if (criticalReserveExcludingTask < 0.0)
+                                    criticalReserveExcludingTask = 0.0;
+
+                                double familyMismatchExcludingTask = 0.0;
+                                if (familyCount > 0) {
+                                    const int famId = familyIdByTask[ix];
+                                    const size_t base = (size_t)ri * (size_t)familyCount;
+
+                                    double currentFamilyPressure =
+                                        familyPressureByResFamily[base + (size_t)famId]
+                                        - reservePressureWeightPerTask[ix];
+                                    if (currentFamilyPressure < 0.0)
+                                        currentFamilyPressure = 0.0;
+
+                                    const double bestOtherFamilyPressure =
+                                        (familyBestFamByRes[ri] == famId)
+                                        ? familySecondBestPressureByRes[ri]
+                                        : familyBestPressureByRes[ri];
+
+                                        familyMismatchExcludingTask =
+                                            bestOtherFamilyPressure / (1.0 + currentFamilyPressure);
+                                }
+
+                                    Features f = computePairFeaturesFast(
+                                        I,
+                                        ix,
+                                        t,
+                                        r,
+                                        now,
+                                        cheapestNow,
+                                        cheapestCapableOverall,
+                                        waitOfCheapestCapableOverall,
+                                        reservePressureExcludingTask,
+                                        criticalReserveExcludingTask,
+                                        familyMismatchExcludingTask
+                                    );
+
+                                    double s = pairTree->eval(f);
+
+                                    if (s < localBestPairScore) {
+                                        localBestPairScore = s;
+                                        localBestResId = r.id;
+                                        localBestTraceFeatures = f;
+                                        localHasTrace = true;
+                                    }
+                            }
+                        }
+
+                        if (localBestResId < 0) {
+                            int wait = (!t.capableResources.empty())
+                                ? waitUntilAnyCapableFree(I, t, now)
+                                : ResourceAllocator::waitUntilFeasible(I, now, t.reqSkill, req);
+
+                            minWaitFeasible = std::min(minWaitFeasible, wait);
+                        }
+                        else {
+                            allocResId = localBestResId;
+                        }
+                    }
+                    else if (ruleR == nullptr) {
                         if (!t.capableResources.empty()) {
                             allocResId = cheapestSingleCapableNowId(I, t);
                             if (allocResId < 0) {
@@ -1027,19 +1322,19 @@ ScheduleResult Scheduler::withResources(Instance& I,
                                             bestOtherFamilyPressure / (1.0 + currentFamilyPressure);
                                 }
 
-                                Features f = computeResourceFeaturesFast(
-                                    I,
-                                    ix,
-                                    t,
-                                    r,
-                                    now,
-                                    cheapestNow,
-                                    cheapestCapableOverall,
-                                    waitOfCheapestCapableOverall,
-                                    reservePressureExcludingTask,
-                                    criticalReserveExcludingTask,
-                                    familyMismatchExcludingTask
-                                );
+                                    Features f = computeResourceFeaturesFast(
+                                        I,
+                                        ix,
+                                        t,
+                                        r,
+                                        now,
+                                        cheapestNow,
+                                        cheapestCapableOverall,
+                                        waitOfCheapestCapableOverall,
+                                        reservePressureExcludingTask,
+                                        criticalReserveExcludingTask,
+                                        familyMismatchExcludingTask
+                                    );
 
                                 double s = ruleR->tree ? ruleR->tree->eval(f) : 0.0;
 
@@ -1128,79 +1423,118 @@ ScheduleResult Scheduler::withResources(Instance& I,
                     continue;
                 }
 
-                double sc;
-                if (gpRule) {
-                    sc = gpRule->scoreFast(ix, t);
-                }
-                else {
-                    sc = ruleT.score(t);
-                }
-
                 TaskCandidate cand;
                 cand.ix = ix;
                 cand.allocResId = allocResId;
-                cand.taskScore = sc;
-                cand.resScore = std::isfinite(localBestResScore) ? localBestResScore : 0.0;
+
+                if (usePairTree) {
+                    cand.taskScore = localBestPairScore;
+                    cand.resScore = 0.0;
+                    cand.pairScore = localBestPairScore;
+                    cand.traceFeatures = localBestTraceFeatures;
+                    cand.hasTrace = localHasTrace;
+                }
+                else {
+                    double sc;
+                    if (gpRule) {
+                        sc = gpRule->scoreFast(ix, t);
+                    }
+                    else {
+                        sc = ruleT.score(t);
+                    }
+
+                    cand.taskScore = sc;
+                    cand.resScore = std::isfinite(localBestResScore) ? localBestResScore : 0.0;
+                }
 
                 pairCandidates.push_back(std::move(cand));
             }
 
             if (!pairCandidates.empty()) {
-                double minTask = std::numeric_limits<double>::infinity();
-                double maxTask = -std::numeric_limits<double>::infinity();
-                double minRes = std::numeric_limits<double>::infinity();
-                double maxRes = -std::numeric_limits<double>::infinity();
+                if (usePairTree) {
+                    for (const auto& cand : pairCandidates) {
+                        bool take = false;
 
-                for (const auto& cand : pairCandidates) {
-                    if (std::isfinite(cand.taskScore)) {
-                        minTask = std::min(minTask, cand.taskScore);
-                        maxTask = std::max(maxTask, cand.taskScore);
-                    }
-                    if (std::isfinite(cand.resScore)) {
-                        minRes = std::min(minRes, cand.resScore);
-                        maxRes = std::max(maxRes, cand.resScore);
-                    }
-                }
-
-                for (auto& cand : pairCandidates) {
-                    const double taskNorm = norm01(cand.taskScore, minTask, maxTask);
-                    const double resNorm = (ruleR != nullptr)
-                        ? norm01(cand.resScore, minRes, maxRes)
-                        : 0.0;
-
-                    cand.pairScore =
-                        (1.0 - kPairResourceWeight) * taskNorm +
-                        kPairResourceWeight * resNorm;
-
-                    bool take = false;
-
-                    if (cand.pairScore < bestScore) {
-                        take = true;
-                    }
-                    else if (best != -1 && std::abs(cand.pairScore - bestScore) < 1e-12) {
-                        if (cand.taskScore < bestTaskScore - 1e-12) {
+                        if (cand.pairScore < bestScore) {
                             take = true;
                         }
-                        else if (std::abs(cand.taskScore - bestTaskScore) < 1e-12 &&
-                            cand.resScore < bestResScore - 1e-12) {
-                            take = true;
-                        }
-                        else if (g_priorityKeys) {
-                            const auto& K = *g_priorityKeys;
-                            if ((size_t)best < K.size() &&
-                                (size_t)cand.ix < K.size() &&
-                                K[cand.ix] < K[best]) {
-                                take = true;
+                        else if (best != -1 && std::abs(cand.pairScore - bestScore) < 1e-12) {
+                            if (g_priorityKeys) {
+                                const auto& K = *g_priorityKeys;
+                                if ((size_t)best < K.size() &&
+                                    (size_t)cand.ix < K.size() &&
+                                    K[cand.ix] < K[best]) {
+                                    take = true;
+                                }
                             }
                         }
+
+                        if (take) {
+                            best = cand.ix;
+                            bestResId = cand.allocResId;
+                            bestScore = cand.pairScore;
+                            bestTaskScore = cand.taskScore;
+                            bestResScore = cand.resScore;
+                        }
+                    }
+                }
+                else {
+                    double minTask = std::numeric_limits<double>::infinity();
+                    double maxTask = -std::numeric_limits<double>::infinity();
+                    double minRes = std::numeric_limits<double>::infinity();
+                    double maxRes = -std::numeric_limits<double>::infinity();
+
+                    for (const auto& cand : pairCandidates) {
+                        if (std::isfinite(cand.taskScore)) {
+                            minTask = std::min(minTask, cand.taskScore);
+                            maxTask = std::max(maxTask, cand.taskScore);
+                        }
+                        if (std::isfinite(cand.resScore)) {
+                            minRes = std::min(minRes, cand.resScore);
+                            maxRes = std::max(maxRes, cand.resScore);
+                        }
                     }
 
-                    if (take) {
-                        best = cand.ix;
-                        bestResId = cand.allocResId;
-                        bestScore = cand.pairScore;
-                        bestTaskScore = cand.taskScore;
-                        bestResScore = cand.resScore;
+                    for (auto& cand : pairCandidates) {
+                        const double taskNorm = norm01(cand.taskScore, minTask, maxTask);
+                        const double resNorm = (ruleR != nullptr)
+                            ? norm01(cand.resScore, minRes, maxRes)
+                            : 0.0;
+
+                        cand.pairScore =
+                            (1.0 - kPairResourceWeight) * taskNorm +
+                            kPairResourceWeight * resNorm;
+
+                        bool take = false;
+
+                        if (cand.pairScore < bestScore) {
+                            take = true;
+                        }
+                        else if (best != -1 && std::abs(cand.pairScore - bestScore) < 1e-12) {
+                            if (cand.taskScore < bestTaskScore - 1e-12) {
+                                take = true;
+                            }
+                            else if (std::abs(cand.taskScore - bestTaskScore) < 1e-12 &&
+                                cand.resScore < bestResScore - 1e-12) {
+                                take = true;
+                            }
+                            else if (g_priorityKeys) {
+                                const auto& K = *g_priorityKeys;
+                                if ((size_t)best < K.size() &&
+                                    (size_t)cand.ix < K.size() &&
+                                    K[cand.ix] < K[best]) {
+                                    take = true;
+                                }
+                            }
+                        }
+
+                        if (take) {
+                            best = cand.ix;
+                            bestResId = cand.allocResId;
+                            bestScore = cand.pairScore;
+                            bestTaskScore = cand.taskScore;
+                            bestResScore = cand.resScore;
+                        }
                     }
                 }
             }
@@ -1215,6 +1549,54 @@ ScheduleResult Scheduler::withResources(Instance& I,
                     continue;
                 }
                 break;
+            }
+            if (options.decisionTrace) {
+                auto& os = *options.decisionTrace;
+
+                os << "\n============================================================\n";
+                os << "DECISION_STEP now=" << now
+                    << " scheduled=" << scheduled
+                    << " readyCount=" << ready.size()
+                    << " bestTaskIx=" << best
+                    << " bestTaskId=" << I.tasks[best].id
+                    << " bestResId=" << bestResId
+                    << " bestScore=" << bestScore
+                    << "\n";
+
+                std::vector<TaskCandidate> ranked = pairCandidates;
+                std::sort(ranked.begin(), ranked.end(),
+                    [](const TaskCandidate& a, const TaskCandidate& b) {
+                        if (a.pairScore != b.pairScore) return a.pairScore < b.pairScore;
+                        return a.ix < b.ix;
+                    });
+
+                int limit = (options.traceTopCandidates > 0)
+                    ? std::min((int)ranked.size(), options.traceTopCandidates)
+                    : (int)ranked.size();
+
+                for (int k = 0; k < limit; ++k) {
+                    const auto& cand = ranked[k];
+                    const Task& tt = I.tasks[cand.ix];
+                    const bool chosen = (cand.ix == best && cand.allocResId == bestResId);
+
+                    os << (chosen ? ">> " : "   ")
+                        << "rank=" << k
+                        << " taskId=" << tt.id
+                        << " req=" << tt.reqSkill << ":" << tt.reqLevel
+                        << " dur=" << tt.duration
+                        << " resId=" << cand.allocResId
+                        << " pairScore=" << std::fixed << std::setprecision(6) << cand.pairScore
+                        << " taskScore=" << cand.taskScore
+                        << " resScore=" << cand.resScore
+                        << "\n";
+
+                    if (cand.hasTrace) {
+                        os << "    FEATURES: ";
+                        dumpTraceFeatures(os, cand.traceFeatures);
+                    }
+                }
+
+                os << "============================================================\n";
             }
 
 
@@ -1320,6 +1702,8 @@ ScheduleResult Scheduler::withResources(Instance& I,
         }
     }
     clearFeaturePrecomputed();
+    clearTaskEvalStepPrecomputed();
+    clearPairEvalStepPrecomputed();
     ResourceAllocator::setPrecomputed(nullptr, nullptr, nullptr);
     g_skillLevels = nullptr;
     g_resIndex = nullptr;

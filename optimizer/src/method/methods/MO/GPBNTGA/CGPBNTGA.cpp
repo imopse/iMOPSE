@@ -82,6 +82,7 @@ void CGPBNTGA::RunOptimization()
     P.eliteCount = 0;
     P.useBNTGA = (GetInt(cfg, "UseBNTGA", 0) != 0);
     P.useImopseEvaluate = (GetInt(cfg, "UseImopseEvaluate", 1) != 0);
+    P.useSinglePairTree = (GetInt(cfg, "UseSinglePairTree", 0) != 0);
 
 
     P.popSize = (size_t)GetInt(cfg, "PopulationSize", (int)P.popSize);
@@ -123,14 +124,28 @@ void CGPBNTGA::RunOptimization()
     std::mt19937 rng((unsigned)P.seed);
 
     GPTree startTreeTask;
-    if (startRule == "random")                   startTreeTask = GPTree::RandomTreeMS(rng, seedDepth);
-    else if (startRule == "avail-gap")           startTreeTask = GPTree::Make_AVAIL_minus_REQ();
-    else if (startRule == "work")                startTreeTask = GPTree::Make_REQ_times_DUR();
-    else if (startRule == "cheapxdur")           startTreeTask = GPTree::Make_CHEAPxDUR();
-    else if (startRule == "cheap-per-skill+dur") startTreeTask = GPTree::Make_CHEAP_PER_SKILL_plus_DUR();
-    else                                         startTreeTask = GPTree::Make_AVAIL_minus_REQ();
+    if (P.useSinglePairTree) {
+        if (startRule == "random")                        startTreeTask = GPTree::RandomTreePAIR(rng, seedDepth);
+        else if (startRule == "avail-gap")                startTreeTask = GPTree::Make_AVAIL_minus_REQ();
+        else if (startRule == "work")                     startTreeTask = GPTree::Make_REQ_times_DUR();
+        else if (startRule == "cheapxdur")                startTreeTask = GPTree::Make_CHEAPxDUR();
+        else if (startRule == "cheap-per-skill+dur")      startTreeTask = GPTree::Make_CHEAP_PER_SKILL_plus_DUR();
+        else if (startRule == "bntga-bridge-ratio")       startTreeTask = GPTree::Make_BNTGA_BridgeRatioPair();
+        else                                              startTreeTask = GPTree::RandomTreePAIR(rng, seedDepth);
+    }
+    else {
+        if (startRule == "random")                        startTreeTask = GPTree::RandomTreeMS(rng, seedDepth);
+        else if (startRule == "avail-gap")                startTreeTask = GPTree::Make_AVAIL_minus_REQ();
+        else if (startRule == "work")                     startTreeTask = GPTree::Make_REQ_times_DUR();
+        else if (startRule == "cheapxdur")                startTreeTask = GPTree::Make_CHEAPxDUR();
+        else if (startRule == "cheap-per-skill+dur")      startTreeTask = GPTree::Make_CHEAP_PER_SKILL_plus_DUR();
+        else if (startRule == "bntga-bridge-ratio")       startTreeTask = GPTree::Make_BNTGA_BridgeRatioPair();
+        else                                              startTreeTask = GPTree::Make_AVAIL_minus_REQ();
+    }
 
-    GPTree startTreeRes = GPTree::RandomTreeRES(rng, seedDepth);
+    GPTree startTreeRes = P.useSinglePairTree
+        ? GPTree{}
+    : GPTree::RandomTreeRES(rng, seedDepth);
 
     TreeEA ea(inst, P, sch, isTAProblem);
     if (useBaseline) ea.setSeedTrees(startTreeTask, startTreeRes);
@@ -166,6 +181,22 @@ void CGPBNTGA::RunOptimization()
     }
 
     ArchiveUtils::LogParetoFront(archive);
+
+    const auto& gpArchive = ea.getArchive();
+    if (!gpArchive.empty()) {
+        auto bestLeft = std::min_element(
+            gpArchive.begin(),
+            gpArchive.end(),
+            [](const GP_Individual& a, const GP_Individual& b)
+            {
+                if (a.makespan != b.makespan)
+                    return a.makespan < b.makespan;
+                return a.cost < b.cost;
+            }
+        );
+
+        ea.exportSolutionAndTrees(*bestLeft, "leftmost_pareto_tree.txt");
+    }
 
     for (auto* ind : archive) delete ind;
     archive.clear();

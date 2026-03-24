@@ -20,6 +20,9 @@ struct Features {
 
     double critLen = 0.0;
     double slack = 0.0;
+    double descCount = 0.0;
+    double taskReleasePressure = 0.0;
+    double taskCriticalPressure = 0.0;
     double availGap = 0.0;
 
     double cheapestCostNow = std::numeric_limits<double>::infinity();
@@ -43,6 +46,9 @@ struct Features {
     double resAssignPremiumAll = 0.0;
     double resReservePressure = 0.0;
     double resFamilyMismatch = 0.0;
+    double resFutureBranchFit = 0.0;
+    double resBottleneckPreservation = 0.0;
+    double resSpecialistMisuse = 0.0;
     double resRelativeWage = 0.0;
 
     double taskResCount = 0.0;
@@ -64,14 +70,44 @@ void setFeaturePrecomputed(
     const int* unschedCountPtr,
     const std::vector<int>* remainingPredCountByTask,
     const std::vector<int>* latestPredFinishByTask,
-    const std::unordered_map<std::string, SkillStepInfo>* skillStepCache
+    const std::unordered_map<std::string, SkillStepInfo>* skillStepCache,
+    const std::vector<int>* matchedLevelByTaskRes,
+    int matchedLevelResCount
 );
 
 void clearFeaturePrecomputed();
+void buildPairEvalStepPrecomputed(
+    const Instance& I,
+    int now,
+    const std::vector<int>& readyTaskIdx
+);
+void buildTaskEvalStepPrecomputed(
+    const Instance& I,
+    int now,
+    const std::vector<int>& readyTaskIdx
+);
+
+void clearTaskEvalStepPrecomputed();
+Features computeFeaturesFast(const PriorityContext& ctx, int taskIx);
+void clearPairEvalStepPrecomputed();
 
 Features computeFeatures(const PriorityContext& ctx, int taskIx);
 Features computeResourceFeatures(const Instance& I, const Task& t, const Resource& r, int now);
 Features computeResourceFeaturesFast(
+    const Instance& I,
+    int taskIx,
+    const Task& t,
+    const Resource& r,
+    int now,
+    double cheapestNow,
+    double cheapestCapableOverall,
+    double waitOfCheapestCapableOverall,
+    double reservePressureExcludingTask,
+    double criticalReserveExcludingTask,
+    double familyMismatchExcludingTask
+);
+
+Features computePairFeaturesFast(
     const Instance& I,
     int taskIx,
     const Task& t,

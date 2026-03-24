@@ -50,6 +50,22 @@ void CBNTGA::RunOptimization()
     }
     
     ArchiveUtils::LogParetoFront(m_Archive);
+
+    if (!m_Archive.empty())
+    {
+        auto bestLeft = std::min_element(
+            m_Archive.begin(),
+            m_Archive.end(),
+            [](const SMOIndividual* a, const SMOIndividual* b)
+            {
+                if (a->m_Evaluation[0] != b->m_Evaluation[0])
+                    return a->m_Evaluation[0] < b->m_Evaluation[0];
+                return a->m_Evaluation[1] < b->m_Evaluation[1];
+            }
+        );
+
+        m_Problem.LogSolution(**bestLeft);
+    }
 }
 
 void CBNTGA::EvolveToNextGeneration()

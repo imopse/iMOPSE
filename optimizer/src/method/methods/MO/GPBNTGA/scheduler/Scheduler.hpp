@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <vector>
 #include <string>
+#include <ostream>
 #include "../domain/Instance.hpp"
 #include "../rules/IDispatchingRule.hpp"
 #include "../rules/GPTreeRule.hpp"
@@ -16,6 +17,9 @@ struct ScheduleOptions {
     bool computeObjectiveStats = true;
     bool keepTaskAssignedResources = true;
     bool captureAssignedResByImopse = true;
+
+    std::ostream* decisionTrace = nullptr;
+    int traceTopCandidates = 10;
 };
 
 class Scheduler {
@@ -24,7 +28,8 @@ public:
     static ScheduleResult withResources(Instance& I,
         const IDispatchingRule& ruleT,
         const GPTreeResRule* ruleR = nullptr,
-        const ScheduleOptions& options = {});
+        const ScheduleOptions& options = {},
+        const GPTree* pairTree = nullptr);
 
     static void setPriorityKeys(const std::vector<float>* keys);
     static void setForcedResources(const std::vector<int>* forcedByTaskIndex);

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <limits>
 #include <cmath>
+#include <cstdint>
 #include "Precompute.hpp"
 #include "../alloc/ResourceAllocator.hpp"
 
@@ -15,8 +16,48 @@ namespace {
     const std::vector<int>* g_remainingPredCountByTask = nullptr;
     const std::vector<int>* g_latestPredFinishByTask = nullptr;
     const std::unordered_map<std::string, SkillStepInfo>* g_skillStepCache = nullptr;
+    const std::vector<int>* g_matchedLevelByTaskRes = nullptr;
+    int g_matchedLevelResCount = 0;
+
+    struct ResourceStepBase {
+        double resWage = 0.0;
+        double resIdleTime = 0.0;
+        double resCanStartNow = 0.0;
+        double resUtilization = 0.0;
+    };
+
+    std::vector<Features> g_taskStepFeatures;
+    std::vector<std::uint64_t> g_taskStepStamp;
+    std::uint64_t g_taskStepCurrentStamp = 1;
+    bool g_taskEvalStepReady = false;
+
+    std::vector<Features> g_pairBaseTaskFeatures;
+    std::vector<std::uint64_t> g_pairBaseTaskStamp;
+    std::vector<ResourceStepBase> g_pairBaseResourceFeatures;
+
+    std::vector<double> g_pairFutureBranchFitCache;
+    std::vector<std::uint64_t> g_pairFutureBranchFitStamp;
+    std::uint64_t g_pairCurrentStamp = 1;
+    int g_pairFutureBranchFitResCount = 0;
+
+    bool g_pairEvalStepReady = false;
+
+    std::size_t g_descCacheTaskSig = 0;
+    int g_descCacheTaskCount = -1;
+    std::vector<std::vector<int>> g_descendantsByTask;
+
+    std::size_t g_nearDescCacheTaskSig = 0;
+    int g_nearDescCacheTaskCount = -1;
+    std::vector<std::vector<int>> g_nearDescendantsByTask;
 
     inline double inf() { return std::numeric_limits<double>::infinity(); }
+
+    inline double clamp01(double x) {
+        if (!std::isfinite(x)) return 0.0;
+        if (x < 0.0) return 0.0;
+        if (x > 1.0) return 1.0;
+        return x;
+    }
 
     inline double normalize(double val, double maxVal) {
         if (!std::isfinite(val)) return 1.0;
@@ -25,6 +66,16 @@ namespace {
         if (x < 0.0) x = 0.0;
         if (x > 1.0) x = 1.0;
         return x;
+    }
+
+    inline std::uint64_t nextStamp(std::uint64_t& current) {
+        ++current;
+
+        if (current == 0) {
+            current = 1;
+        }
+
+        return current;
     }
 
     inline bool predecessorsDoneNow(const Instance& I, const Task& t, int now) {
@@ -65,8 +116,107 @@ namespace {
     inline int totalReq(const Task& t) {
         return std::max(0, t.totalRequiredLevel());
     }
+    inline int matchedLevelCached(
+        const Instance& I,
+        int taskIx,
+        const Task& t,
+        const Resource& r)
+    {
+        if (g_matchedLevelByTaskRes &&
+            g_matchedLevelResCount > 0 &&
+            g_resIndexById &&
+            taskIx >= 0) {
+            auto it = g_resIndexById->find(r.id);
+            if (it != g_resIndexById->end()) {
+                const int ri = it->second;
+                const size_t idx =
+                    (size_t)taskIx * (size_t)g_matchedLevelResCount + (size_t)ri;
 
-    inline double bestFreeMatchedLevel(const Instance& I, const Task& t, int now) {
+                if (idx < g_matchedLevelByTaskRes->size()) {
+                    return (*g_matchedLevelByTaskRes)[idx];
+                }
+            }
+        }
+
+        return t.matchedLevelOn(r);
+    }
+
+    inline int resourceIndexCached(const Resource& r) {
+        if (!g_resIndexById) return -1;
+
+        auto it = g_resIndexById->find(r.id);
+        if (it == g_resIndexById->end()) return -1;
+
+        return it->second;
+    }
+
+    inline ResourceStepBase computeResourceStepBaseRaw(
+        const Resource& r,
+        int now)
+    {
+        ResourceStepBase base{};
+
+        base.resWage = r.salary;
+        base.resIdleTime = (r.busyUntil < now) ? (double)(now - r.busyUntil) : 0.0;
+        base.resCanStartNow = (r.busyUntil <= now) ? 1.0 : 0.0;
+
+        double busySoFar = (double)r.totalBusy;
+        if (r.busy && now > r.busyStart) {
+            busySoFar += (double)(now - r.busyStart);
+        }
+
+        base.resUtilization = (now > 0) ? (busySoFar / (double)now) : 0.0;
+        return base;
+    }
+
+    inline bool tryGetResourceStepBaseCached(
+        const Resource& r,
+        ResourceStepBase& outBase)
+    {
+        if (!g_pairEvalStepReady) return false;
+
+        const int resIx = resourceIndexCached(r);
+        if (resIx < 0) return false;
+        if (resIx >= (int)g_pairBaseResourceFeatures.size()) return false;
+
+        outBase = g_pairBaseResourceFeatures[resIx];
+        return true;
+    }
+
+    inline void assignResourceStepBaseToFeatures(
+        const ResourceStepBase& base,
+        Features& f)
+    {
+        f.resWage = base.resWage;
+        f.resIdleTime = base.resIdleTime;
+        f.resCanStartNow = base.resCanStartNow;
+        f.resUtilization = base.resUtilization;
+    }
+
+    inline bool tryGetFutureBranchFitStepCached(
+        int taskIx,
+        const Resource& r,
+        double& outValue
+    ) {
+        if (!g_pairEvalStepReady) return false;
+        if (taskIx < 0) return false;
+        if (g_pairFutureBranchFitResCount <= 0) return false;
+
+        const int resIx = resourceIndexCached(r);
+        if (resIx < 0 || resIx >= g_pairFutureBranchFitResCount) return false;
+
+        const size_t flatIx =
+            (size_t)taskIx * (size_t)g_pairFutureBranchFitResCount + (size_t)resIx;
+
+        if (flatIx >= g_pairFutureBranchFitStamp.size()) return false;
+        if (g_pairFutureBranchFitStamp[flatIx] != g_pairCurrentStamp) return false;
+
+        outValue = g_pairFutureBranchFitCache[flatIx];
+        return true;
+    }
+
+
+    inline double bestFreeMatchedLevel(const Instance& I, int taskIx, const Task& t, int now) {
         double best = 0.0;
 
         if (!t.capableResourceIndices.empty()) {
@@ -74,7 +224,7 @@ namespace {
                 if (ri < 0 || ri >= (int)I.resources.size()) continue;
                 const auto& r = I.resources[ri];
                 if (r.busyUntil > now) continue;
-                best = std::max(best, (double)t.matchedLevelOn(r));
+                best = std::max(best, (double)matchedLevelCached(I, taskIx, t, r));
             }
             return best;
         }
@@ -82,7 +232,7 @@ namespace {
         for (const auto& r : I.resources) {
             if (r.busyUntil > now) continue;
             if (!t.canBeDoneBy(r)) continue;
-            best = std::max(best, (double)t.matchedLevelOn(r));
+            best = std::max(best, (double)matchedLevelCached(I, taskIx, t, r));
         }
 
         return best;
@@ -264,6 +414,167 @@ namespace {
         f.costRegretNow = (second - first) * (double)t.duration;
     }
 
+    inline double bottleneckPreservationRaw(
+        const Instance& I,
+        int taskIx,
+        const Task& t,
+        double criticalReserveExcludingTask)
+    {
+        if (criticalReserveExcludingTask <= 0.0) return 0.0;
+
+        const auto& S = gp::getFeatureScaling();
+        const int req = std::max(0, totalReq(t));
+        const double feasibleCount = taskResCountFeature(I, taskIx, t, req);
+
+        double critNorm = 0.0;
+        double slackNorm = 0.0;
+
+        if (auto cpm = gp::getCPMPrecalc()) {
+            if (taskIx >= 0 && taskIx < (int)cpm->critLen.size() && S.maxCritLen > 0.0) {
+                critNorm = std::min(1.0, (double)cpm->critLen[taskIx] / S.maxCritLen);
+            }
+            if (taskIx >= 0 && taskIx < (int)cpm->slack.size() && S.maxSlackPos > 0.0) {
+                slackNorm = std::min(
+                    1.0,
+                    std::max(0.0, (double)cpm->slack[taskIx]) / S.maxSlackPos
+                );
+            }
+        }
+
+        const double reqSafe = (double)std::max(1, req);
+        const double replaceability = feasibleCount / reqSafe;
+
+        const double easyFactor =
+            replaceability * (1.0 + slackNorm) / (1.0 + critNorm);
+
+        return criticalReserveExcludingTask * easyFactor;
+    }
+
+    inline double specialistMisuseRaw(
+        const Instance& I,
+        int taskIx,
+        const Task& t,
+        const Resource& r,
+        double criticalReserveExcludingTask)
+    {
+        if (criticalReserveExcludingTask <= 0.0) return 0.0;
+
+        const auto& S = gp::getFeatureScaling();
+        const int req = std::max(0, totalReq(t));
+        const double reqSafe = (double)std::max(1, req);
+        const double feasibleCount = taskResCountFeature(I, taskIx, t, req);
+
+        const double matched = (double)std::max(0, matchedLevelCached(I, taskIx, t, r));
+        const double overkill =
+            std::max(0.0, matched - reqSafe) / reqSafe;
+
+        double critNorm = 0.0;
+        double slackNorm = 0.0;
+
+        if (auto cpm = gp::getCPMPrecalc()) {
+            if (taskIx >= 0 && taskIx < (int)cpm->critLen.size() && S.maxCritLen > 0.0) {
+                critNorm = std::min(1.0, (double)cpm->critLen[taskIx] / S.maxCritLen);
+            }
+            if (taskIx >= 0 && taskIx < (int)cpm->slack.size() && S.maxSlackPos > 0.0) {
+                slackNorm = std::min(
+                    1.0,
+                    std::max(0.0, (double)cpm->slack[taskIx]) / S.maxSlackPos
+                );
+            }
+        }
+
+        const double replaceability = feasibleCount / reqSafe;
+        const double easyFactor = (1.0 + slackNorm) / (1.0 + critNorm);
+
+        return criticalReserveExcludingTask
+            * replaceability
+            * easyFactor
+            * (1.0 + overkill);
+    }
+
+    inline double taskReleasePressureRaw(
+        const Task& t,
+        double taskResCountRaw,
+        double critLenRaw,
+        double slackRaw,
+        double descCountRaw)
+    {
+        const double reqRaw = (double)std::max(1, totalReq(t));
+        const double scarcity = reqRaw / std::max(1.0, taskResCountRaw);
+        const double urgency = (1.0 + std::max(0.0, critLenRaw))
+            / (1.0 + std::max(0.0, slackRaw));
+        const double branching = 1.0 + std::max(0.0, descCountRaw);
+
+        return branching * urgency * scarcity;
+    }
+
+    inline double fitGapRatioRaw(
+        const Instance& I,
+        int taskIx,
+        const Task& t,
+        const Resource& r)
+    {
+        const int req = totalReq(t);
+        if (req <= 0) return 0.0;
+
+        const int lvl = std::max(0, matchedLevelCached(I, taskIx, t, r));
+        if (lvl < req) return inf();
+
+        return (double)std::max(0, lvl - req) / (double)std::max(1, req);
+    }
+
+    inline double feasibleCheapnessRankRaw(
+        const Instance& I,
+        const Task& t,
+        const Resource& r)
+    {
+        if (!t.canBeDoneBy(r)) return 0.0;
+
+        int feasibleCount = 0;
+        int cheaperCount = 0;
+        int equalCount = 0;
+
+        auto scanRes = [&](const Resource& rr) {
+            if (!t.canBeDoneBy(rr)) return;
+
+            ++feasibleCount;
+
+            if (rr.salary < r.salary) {
+                ++cheaperCount;
+            }
+            else if (rr.salary == r.salary) {
+                ++equalCount;
+            }
+            };
+
+        if (!t.capableResourceIndices.empty()) {
+            for (int ri : t.capableResourceIndices) {
+                if (ri < 0 || ri >= (int)I.resources.size()) continue;
+                scanRes(I.resources[ri]);
+            }
+        }
+        else {
+            for (const auto& rr : I.resources) {
+                scanRes(rr);
+            }
+        }
+
+        if (feasibleCount <= 1) return 1.0;
+
+        const double avgRankZeroBased =
+            (double)cheaperCount + 0.5 * (double)std::max(0, equalCount - 1);
+
+        return clamp01(
+            1.0 - avgRankZeroBased / (double)(feasibleCount - 1)
+        );
+    }
+
+
+    inline bool usedResourceOnTask(const Task& t, int resId) {
+        return std::find(t.assignedResources.begin(), t.assignedResources.end(), resId)
+            != t.assignedResources.end();
+    }
+
     inline void normalizeTaskFeatures(Features& f, const gp::FeatureScaling& S) {
         f.duration = normalize(f.duration, S.maxDuration);
         f.reqLevel = normalize(f.reqLevel, S.maxReqLevel);
@@ -286,6 +597,8 @@ namespace {
 
         f.critLen = normalize(f.critLen, S.maxCritLen);
         f.slack = normalize(f.slack, S.maxSlackPos);
+        f.descCount = normalize(f.descCount, S.maxDescCount);
+        f.taskReleasePressure = normalize(f.taskReleasePressure, S.maxTaskReleasePressure);
 
         f.cheapestCostNow = normalize(f.cheapestCostNow, S.maxCheapestCostNow);
         f.costPerSkillNow = normalize(f.costPerSkillNow, S.maxCostPerSkillNow);
@@ -328,6 +641,222 @@ namespace {
         return std::max(softened, floorPenalty);
     }
 
+    inline void ensureDescendantCache(const Instance& I) {
+        const int N = (int)I.tasks.size();
+        const std::size_t sig = I.taskStructureSignatureReady ? I.taskStructureSignature : 0;
+
+        if ((int)g_descendantsByTask.size() == N) {
+            if ((sig != 0 && g_descCacheTaskSig == sig) ||
+                (sig == 0 && g_descCacheTaskCount == N)) {
+                return;
+            }
+        }
+
+        std::vector<std::vector<int>> succ(N);
+        for (int u = 0; u < N; ++u) {
+            for (int pid : I.tasks[u].predecessors) {
+                auto it = I.idToIndex.find(pid);
+                if (it != I.idToIndex.end()) {
+                    succ[it->second].push_back(u);
+                }
+            }
+        }
+
+        g_descendantsByTask.assign(N, {});
+
+        for (int v = 0; v < N; ++v) {
+            std::vector<unsigned char> seen(N, 0);
+            std::vector<int> stack;
+
+            for (int s : succ[v]) {
+                stack.push_back(s);
+            }
+
+            while (!stack.empty()) {
+                int u = stack.back();
+                stack.pop_back();
+
+                if (u < 0 || u >= N) continue;
+                if (seen[u]) continue;
+
+                seen[u] = 1;
+                g_descendantsByTask[v].push_back(u);
+
+                for (int s : succ[u]) {
+                    stack.push_back(s);
+                }
+            }
+        }
+
+        g_descCacheTaskSig = sig;
+        g_descCacheTaskCount = N;
+    }
+
+    inline void ensureNearDescendantCache(const Instance& I) {
+        const int N = (int)I.tasks.size();
+        const std::size_t sig = I.taskStructureSignatureReady ? I.taskStructureSignature : 0;
+
+        if ((int)g_nearDescendantsByTask.size() == N) {
+            if ((sig != 0 && g_nearDescCacheTaskSig == sig) ||
+                (sig == 0 && g_nearDescCacheTaskCount == N)) {
+                return;
+            }
+        }
+
+        std::vector<std::vector<int>> succ(N);
+        for (int u = 0; u < N; ++u) {
+            for (int pid : I.tasks[u].predecessors) {
+                auto it = I.idToIndex.find(pid);
+                if (it != I.idToIndex.end()) {
+                    succ[it->second].push_back(u);
+                }
+            }
+        }
+
+        g_nearDescendantsByTask.assign(N, {});
+
+        struct NodeDepth {
+            int node;
+            int depth;
+        };
+
+        constexpr int MAX_DEPTH = 3;
+
+        for (int v = 0; v < N; ++v) {
+            std::vector<unsigned char> seen(N, 0);
+            std::vector<NodeDepth> stack;
+
+            for (int s : succ[v]) {
+                stack.push_back({ s, 1 });
+            }
+
+            while (!stack.empty()) {
+                NodeDepth cur = stack.back();
+                stack.pop_back();
+
+                if (cur.node < 0 || cur.node >= N) continue;
+                if (cur.depth > MAX_DEPTH) continue;
+                if (seen[cur.node]) continue;
+
+                seen[cur.node] = 1;
+                g_nearDescendantsByTask[v].push_back(cur.node);
+
+                if (cur.depth == MAX_DEPTH) continue;
+
+                for (int s : succ[cur.node]) {
+                    stack.push_back({ s, cur.depth + 1 });
+                }
+            }
+        }
+
+        g_nearDescCacheTaskSig = sig;
+        g_nearDescCacheTaskCount = N;
+    }
+
+    inline double futureBranchFitRaw(
+        const Instance& I,
+        int taskIx,
+        const Task& t,
+        const Resource& r)
+    {
+        if (taskIx < 0) {
+            auto it = I.idToIndex.find(t.id);
+            if (it == I.idToIndex.end()) return 0.0;
+            taskIx = it->second;
+        }
+
+        ensureNearDescendantCache(I);
+
+        if (taskIx < 0 || taskIx >= (int)g_nearDescendantsByTask.size()) {
+            return 0.0;
+        }
+
+        const auto& desc = g_nearDescendantsByTask[taskIx];
+        if (desc.empty()) {
+            return 0.0;
+        }
+
+        const auto& S = gp::getFeatureScaling();
+
+        double totalWeight = 0.0;
+        double coveredWeight = 0.0;
+
+        for (int uIx : desc) {
+            if (uIx < 0 || uIx >= (int)I.tasks.size()) continue;
+
+            const Task& u = I.tasks[uIx];
+            if (u.start != -1) continue; // tylko przyszłe / nieschedulowane
+
+            double critNorm = 0.0;
+            double slackNorm = 0.0;
+            double descNorm = 0.0;
+            double durNorm = normalize((double)u.duration, S.maxDuration);
+
+            if (auto cpm = gp::getCPMPrecalc()) {
+                if (uIx < (int)cpm->critLen.size() && S.maxCritLen > 0.0) {
+                    critNorm = std::min(1.0, (double)cpm->critLen[uIx] / S.maxCritLen);
+                }
+                if (uIx < (int)cpm->slack.size() && S.maxSlackPos > 0.0) {
+                    slackNorm = std::min(
+                        1.0,
+                        std::max(0.0, (double)cpm->slack[uIx]) / S.maxSlackPos
+                    );
+                }
+                if (uIx < (int)cpm->descCount.size() && S.maxDescCount > 0.0) {
+                    descNorm = std::min(1.0, (double)cpm->descCount[uIx] / S.maxDescCount);
+                }
+            }
+
+            // Bliska, krytyczna gałąź:
+            // preferuj potomków krytycznych, dłuższych i z małym slackiem.
+            const double weight =
+                (1.0 + 1.60 * critNorm + 0.55 * durNorm + 0.20 * descNorm)
+                / (1.0 + 2.00 * slackNorm);
+
+            totalWeight += weight;
+
+            if (!u.canBeDoneBy(r)) continue;
+
+            const int reqU = std::max(1, totalReq(u));
+            const int lvlU = std::max(0, matchedLevelCached(I, uIx, u, r));
+            const double overkill =
+                std::max(0.0, (double)(lvlU - reqU) / (double)reqU);
+
+            const double fitQuality = 1.0 / (1.0 + overkill);
+
+            coveredWeight += weight * fitQuality;
+        }
+
+        if (totalWeight <= 1e-12) return 0.0;
+
+        double branchFit = coveredWeight / totalWeight;
+
+        // lekkie dociążenie dopasowania do aktualnego taska,
+        // ale bez kar za koszt / reserve / bottleneck w środku cechy
+        const double currentGap = fitGapRatioRaw(I, taskIx, t, r);
+        const double currentFit =
+            std::isfinite(currentGap) ? (1.0 / (1.0 + currentGap)) : 0.0;
+
+        const double finalValue =
+            branchFit * (0.75 + 0.25 * currentFit);
+
+        return clamp01(finalValue);
+    }
+
+    inline double futureBranchFitCached(
+        const Instance& I,
+        int taskIx,
+        const Task& t,
+        const Resource& r
+    ) {
+        double cachedValue = 0.0;
+        if (tryGetFutureBranchFitStepCached(taskIx, r, cachedValue)) {
+            return cachedValue;
+        }
+
+        return futureBranchFitRaw(I, taskIx, t, r);
+    }
+
 } // namespace
 
 void setFeaturePrecomputed(
@@ -337,7 +866,9 @@ void setFeaturePrecomputed(
     const int* unschedCountPtr,
     const std::vector<int>* remainingPredCountByTask,
     const std::vector<int>* latestPredFinishByTask,
-    const std::unordered_map<std::string, SkillStepInfo>* skillStepCache)
+    const std::unordered_map<std::string, SkillStepInfo>* skillStepCache,
+    const std::vector<int>* matchedLevelByTaskRes,
+    int matchedLevelResCount)
 {
     g_taskResCountByTask = taskResCountByTask;
     g_avgResCostByTask = avgResCostByTask;
@@ -346,6 +877,8 @@ void setFeaturePrecomputed(
     g_remainingPredCountByTask = remainingPredCountByTask;
     g_latestPredFinishByTask = latestPredFinishByTask;
     g_skillStepCache = skillStepCache;
+    g_matchedLevelByTaskRes = matchedLevelByTaskRes;
+    g_matchedLevelResCount = matchedLevelResCount;
 }
 
 
@@ -357,8 +890,140 @@ void clearFeaturePrecomputed() {
     g_remainingPredCountByTask = nullptr;
     g_latestPredFinishByTask = nullptr;
     g_skillStepCache = nullptr;
+    g_matchedLevelByTaskRes = nullptr;
+    g_matchedLevelResCount = 0;
 }
 
+void buildTaskEvalStepPrecomputed(
+    const Instance& I,
+    int now,
+    const std::vector<int>& readyTaskIdx)
+{
+    const size_t taskCount = I.tasks.size();
+
+    if (g_taskStepFeatures.size() != taskCount) {
+        g_taskStepFeatures.resize(taskCount);
+    }
+
+    if (g_taskStepStamp.size() != taskCount) {
+        g_taskStepStamp.assign(taskCount, 0);
+    }
+
+    nextStamp(g_taskStepCurrentStamp);
+    g_taskEvalStepReady = true;
+
+    PriorityContext ctx;
+    ctx.inst = &I;
+    ctx.now = now;
+
+    for (int ix : readyTaskIdx) {
+        if (ix < 0 || ix >= (int)I.tasks.size()) continue;
+        g_taskStepFeatures[ix] = computeFeatures(ctx, ix);
+        g_taskStepStamp[ix] = g_taskStepCurrentStamp;
+    }
+}
+
+void clearTaskEvalStepPrecomputed() {
+    g_taskEvalStepReady = false;
+}
+
+Features computeFeaturesFast(const PriorityContext& ctx, int taskIx) {
+    if (g_taskEvalStepReady &&
+        taskIx >= 0 &&
+        taskIx < (int)g_taskStepFeatures.size() &&
+        taskIx < (int)g_taskStepStamp.size() &&
+        g_taskStepStamp[taskIx] == g_taskStepCurrentStamp) {
+        return g_taskStepFeatures[taskIx];
+    }
+
+    return computeFeatures(ctx, taskIx);
+}
+
+void buildPairEvalStepPrecomputed(
+    const Instance& I,
+    int now,
+    const std::vector<int>& readyTaskIdx
+) {
+    const size_t taskCount = I.tasks.size();
+    const size_t resCount = I.resources.size();
+
+    if (g_pairBaseTaskFeatures.size() != taskCount) {
+        g_pairBaseTaskFeatures.resize(taskCount);
+    }
+
+    if (g_pairBaseTaskStamp.size() != taskCount) {
+        g_pairBaseTaskStamp.assign(taskCount, 0);
+    }
+
+    if (g_pairBaseResourceFeatures.size() != resCount) {
+        g_pairBaseResourceFeatures.resize(resCount);
+    }
+
+    for (int ri = 0; ri < (int)resCount; ++ri) {
+        g_pairBaseResourceFeatures[ri] =
+            computeResourceStepBaseRaw(I.resources[ri], now);
+    }
+
+    g_pairFutureBranchFitResCount = (int)resCount;
+
+    const size_t pairCount = taskCount * resCount;
+
+    if (g_pairFutureBranchFitCache.size() != pairCount) {
+        g_pairFutureBranchFitCache.resize(pairCount);
+    }
+    if (g_pairFutureBranchFitStamp.size() != pairCount) {
+        g_pairFutureBranchFitStamp.assign(pairCount, 0);
+    }
+
+    nextStamp(g_pairCurrentStamp);
+    g_pairEvalStepReady = true;
+
+    PriorityContext ctx;
+    ctx.inst = &I;
+    ctx.now = now;
+
+    for (int ix : readyTaskIdx) {
+        if (ix < 0 || ix >= (int)I.tasks.size()) continue;
+
+        const Task& t = I.tasks[ix];
+        g_pairBaseTaskFeatures[ix] = computeFeaturesFast(ctx, ix);
+        g_pairBaseTaskStamp[ix] = g_pairCurrentStamp;
+
+        auto cacheForResIndex = [&](int ri) {
+            if (ri < 0 || ri >= (int)I.resources.size()) return;
+
+            const Resource& rr = I.resources[ri];
+            const size_t flatIx =
+                (size_t)ix * (size_t)g_pairFutureBranchFitResCount + (size_t)ri;
+
+            g_pairFutureBranchFitCache[flatIx] =
+                futureBranchFitRaw(I, ix, t, rr);
+
+            g_pairFutureBranchFitStamp[flatIx] = g_pairCurrentStamp;
+            };
+
+        if (!t.capableResourceIndices.empty()) {
+            for (int ri : t.capableResourceIndices) {
+                cacheForResIndex(ri);
+            }
+        }
+        else {
+            for (int ri = 0; ri < (int)I.resources.size(); ++ri) {
+                cacheForResIndex(ri);
+            }
+        }
+    }
+}
+
+void clearPairEvalStepPrecomputed() {
+    g_pairBaseTaskFeatures.clear();
+    g_pairBaseTaskStamp.clear();
+    g_pairBaseResourceFeatures.clear();
+    g_pairFutureBranchFitCache.clear();
+    g_pairFutureBranchFitStamp.clear();
+    g_pairFutureBranchFitResCount = 0;
+    g_pairEvalStepReady = false;
+}
 
 Features computeFeatures(const PriorityContext& ctx, int taskIx) {
     Features f{};
@@ -393,18 +1058,51 @@ Features computeFeatures(const PriorityContext& ctx, int taskIx) {
 
     f.availSkill = (availCached >= 0.0)
         ? availCached
-        : bestFreeMatchedLevel(I, t, ctx.now);
+        : bestFreeMatchedLevel(I, taskIx, t, ctx.now);
 
     f.availGap = f.availSkill - (double)req;
     f.feasibleNow = predsDone && (f.availSkill >= (double)req);
 
     if (auto cpm = gp::getCPMPrecalc()) {
-        f.critLen = cpm->critLen[taskIx];
-        f.slack = cpm->slack[taskIx];
+        if (taskIx >= 0 && taskIx < (int)cpm->critLen.size()) {
+            f.critLen = cpm->critLen[taskIx];
+        }
+        if (taskIx >= 0 && taskIx < (int)cpm->slack.size()) {
+            f.slack = cpm->slack[taskIx];
+        }
+        if (taskIx >= 0 && taskIx < (int)cpm->descCount.size()) {
+            f.descCount = cpm->descCount[taskIx];
+        }
     }
+
+    f.taskReleasePressure = taskReleasePressureRaw(
+        t,
+        f.taskResCount,
+        f.critLen,
+        f.slack,
+        f.descCount
+    );
 
     fillCostNowFeatures(f, I, t, req, ctx.now);
     normalizeTaskFeatures(f, S);
+
+    {
+        const double structuralUrgency = clamp01(
+            0.55 * f.critLen +
+            0.30 * (1.0 - f.slack) +
+            0.15 * f.descCount
+        );
+
+        const double scarcityPressure = clamp01(
+            0.55 * (1.0 - f.taskResCount) +
+            0.45 * f.reqLevel
+        );
+
+        f.taskCriticalPressure = clamp01(
+            0.72 * structuralUrgency +
+            0.28 * scarcityPressure
+        );
+    }
 
     return f;
 }
@@ -413,22 +1111,24 @@ Features computeFeatures(const PriorityContext& ctx, int taskIx) {
 Features computeResourceFeatures(const Instance& I, const Task& t, const Resource& r, int now) {
     Features f{};
 
-    f.resWage = r.salary;
-
-    int req = totalReq(t);
-    int lvlNow = t.matchedLevelOn(r);
-    f.resSkillLevel = (double)lvlNow;
-
-    const bool canStartNowRaw = (r.busyUntil <= now);
-    f.resIdleTime = (r.busyUntil < now) ? (double)(now - r.busyUntil) : 0.0;
-    f.resCanStartNow = canStartNowRaw ? 1.0 : 0.0;
-
-    double busySoFar = (double)r.totalBusy;
-    if (r.busy && now > r.busyStart) {
-        busySoFar += (double)(now - r.busyStart);
+    ResourceStepBase base{};
+    if (tryGetResourceStepBaseCached(r, base)) {
+        assignResourceStepBaseToFeatures(base, f);
     }
-    f.resUtilization = (now > 0) ? (busySoFar / (double)now) : 0.0;
+    else {
+        base = computeResourceStepBaseRaw(r, now);
+        assignResourceStepBaseToFeatures(base, f);
+    }
 
+    const bool canStartNowRaw = (f.resCanStartNow > 0.5);
+
+    const int taskIx =
+        (I.idToIndex.count(t.id) ? I.idToIndex.at(t.id) : -1);
+
+    const int req = totalReq(t);
+    const int lvlNow = matchedLevelCached(I, taskIx, t, r);
+
+    f.resSkillLevel = (double)lvlNow;
     f.resWagePerLevel = r.salary / (double)std::max(1, lvlNow);
     f.resAssignCost = r.salary * (double)t.duration;
 
@@ -451,20 +1151,21 @@ Features computeResourceFeatures(const Instance& I, const Task& t, const Resourc
         }
     }
 
-    f.resRelativeWage = std::isfinite(cheapestNow) ? (r.salary - cheapestNow) : 0.0;
+    f.resRelativeWage =
+        std::isfinite(cheapestNow) ? (r.salary - cheapestNow) : 0.0;
 
-    const double premiumCost =
+    f.resAssignPremiumAll =
         std::isfinite(cheapestCapableOverall)
         ? std::max(0.0, r.salary - cheapestCapableOverall) * (double)t.duration
         : 0.0;
 
-    f.resAssignPremiumAll = premiumCost;
-
     const auto& S = gp::getFeatureScaling();
     double reservePressure = 0.0;
+    double criticalReserve = 0.0;
     std::unordered_map<std::string, double> familyPressure;
 
-    for (const auto& u : I.tasks) {
+    for (int uIx = 0; uIx < (int)I.tasks.size(); ++uIx) {
+        const auto& u = I.tasks[uIx];
         if (u.start != -1) continue;
         if (u.id == t.id) continue;
 
@@ -497,11 +1198,36 @@ Features computeResourceFeatures(const Instance& I, const Task& t, const Resourc
 
         reservePressure += reserveContribution;
 
+        double critRaw = 0.0;
+        double slackRaw = 0.0;
+        double descRaw = 0.0;
+
+        if (auto cpm = gp::getCPMPrecalc()) {
+            if (uIx >= 0 && uIx < (int)cpm->critLen.size())   critRaw = cpm->critLen[uIx];
+            if (uIx >= 0 && uIx < (int)cpm->slack.size())     slackRaw = cpm->slack[uIx];
+            if (uIx >= 0 && uIx < (int)cpm->descCount.size()) descRaw = cpm->descCount[uIx];
+        }
+
+        const double critNorm =
+            (S.maxCritLen > 0.0) ? (critRaw / S.maxCritLen) : 0.0;
+        const double slackNorm =
+            (S.maxSlackPos > 0.0) ? (std::max(0.0, slackRaw) / S.maxSlackPos) : 0.0;
+        const double descNorm =
+            (S.maxNumTasks > 0.0) ? (descRaw / S.maxNumTasks) : 0.0;
+
+        const double structuralPressure =
+            (1.0 + critNorm + descNorm) / (1.0 + slackNorm);
+
+        criticalReserve += reserveContribution * structuralPressure;
+
         const std::string famKey = u.requirementKey();
         familyPressure[famKey] += reserveContribution;
     }
 
     f.resReservePressure = reservePressure;
+    f.resFutureBranchFit = futureBranchFitCached(I, taskIx, t, r);
+    f.resBottleneckPreservation = bottleneckPreservationRaw(I, taskIx, t, criticalReserve);
+    f.resSpecialistMisuse = specialistMisuseRaw(I, taskIx, t, r, criticalReserve);
 
     const std::string currentFamKey = t.requirementKey();
 
@@ -531,6 +1257,15 @@ Features computeResourceFeatures(const Instance& I, const Task& t, const Resourc
     f.resAssignCost = normalize(f.resAssignCost, S.maxMinWageAvail * S.maxDuration);
     f.resAssignPremiumAll = normalize(f.resAssignPremiumAll, S.maxMinWageAvail * S.maxDuration);
     f.resFamilyMismatch = normalize(f.resFamilyMismatch, S.maxResReservePressure);
+    f.resFutureBranchFit = clamp01(f.resFutureBranchFit);
+    f.resBottleneckPreservation = normalize(
+        f.resBottleneckPreservation,
+        S.maxResBottleneckPreservation
+    );
+    f.resSpecialistMisuse = normalize(
+        f.resSpecialistMisuse,
+        S.maxResSpecialistMisuse
+    );
     f.resRelativeWage = normalize(f.resRelativeWage, S.maxResRelativeWage);
     f.resReservePressure = normalize(f.resReservePressure, S.maxResReservePressure);
 
@@ -551,32 +1286,31 @@ Features computeResourceFeaturesFast(
     double criticalReserveExcludingTask,
     double familyMismatchExcludingTask
 ) {
-    (void)I;
-    (void)taskIx;
     (void)waitOfCheapestCapableOverall;
-    (void)criticalReserveExcludingTask;
 
     Features f{};
 
-    f.resWage = r.salary;
+    ResourceStepBase base{};
+    if (tryGetResourceStepBaseCached(r, base)) {
+        assignResourceStepBaseToFeatures(base, f);
+    }
+    else {
+        base = computeResourceStepBaseRaw(r, now);
+        assignResourceStepBaseToFeatures(base, f);
+    }
+
+    const bool canStartNowRaw = (f.resCanStartNow > 0.5);
 
     const int req = totalReq(t);
+    const int lvlNow = matchedLevelCached(I, taskIx, t, r);
 
-    int lvlNow = t.matchedLevelOn(r);
     f.resSkillLevel = (double)lvlNow;
-
-    const bool canStartNowRaw = (r.busyUntil <= now);
-    f.resIdleTime = (r.busyUntil < now) ? (double)(now - r.busyUntil) : 0.0;
-    f.resCanStartNow = canStartNowRaw ? 1.0 : 0.0;
-
-    double busySoFar = (double)r.totalBusy;
-    if (r.busy && now > r.busyStart) busySoFar += (double)(now - r.busyStart);
-    f.resUtilization = (now > 0) ? (busySoFar / (double)now) : 0.0;
-
     f.resWagePerLevel = r.salary / (double)std::max(1, lvlNow);
     f.resAssignCost = r.salary * (double)t.duration;
 
-    f.resRelativeWage = std::isfinite(cheapestNow) ? (r.salary - cheapestNow) : 0.0;
+    f.resRelativeWage =
+        std::isfinite(cheapestNow) ? (r.salary - cheapestNow) : 0.0;
+
     f.resAssignPremiumAll =
         std::isfinite(cheapestCapableOverall)
         ? std::max(0.0, r.salary - cheapestCapableOverall) * (double)t.duration
@@ -584,6 +1318,14 @@ Features computeResourceFeaturesFast(
 
     f.resReservePressure = reservePressureExcludingTask;
     f.resFamilyMismatch = familyMismatchExcludingTask;
+
+    f.resFutureBranchFit = futureBranchFitCached(I, taskIx, t, r);
+
+    f.resBottleneckPreservation =
+        bottleneckPreservationRaw(I, taskIx, t, criticalReserveExcludingTask);
+
+    f.resSpecialistMisuse =
+        specialistMisuseRaw(I, taskIx, t, r, criticalReserveExcludingTask);
 
     const auto& S = gp::getFeatureScaling();
 
@@ -596,8 +1338,78 @@ Features computeResourceFeaturesFast(
     f.resAssignCost = normalize(f.resAssignCost, S.maxMinWageAvail * S.maxDuration);
     f.resAssignPremiumAll = normalize(f.resAssignPremiumAll, S.maxMinWageAvail * S.maxDuration);
     f.resFamilyMismatch = normalize(f.resFamilyMismatch, S.maxResReservePressure);
+    f.resFutureBranchFit = clamp01(f.resFutureBranchFit);
+    f.resBottleneckPreservation = normalize(
+        f.resBottleneckPreservation,
+        S.maxResBottleneckPreservation
+    );
+    f.resSpecialistMisuse = normalize(
+        f.resSpecialistMisuse,
+        S.maxResSpecialistMisuse
+    );
     f.resRelativeWage = normalize(f.resRelativeWage, S.maxResRelativeWage);
     f.resReservePressure = normalize(f.resReservePressure, S.maxResReservePressure);
+
+    return f;
+}
+
+Features computePairFeaturesFast(
+    const Instance& I,
+    int taskIx,
+    const Task& t,
+    const Resource& r,
+    int now,
+    double cheapestNow,
+    double cheapestCapableOverall,
+    double waitOfCheapestCapableOverall,
+    double reservePressureExcludingTask,
+    double criticalReserveExcludingTask,
+    double familyMismatchExcludingTask
+) {
+    Features f{};
+
+    if (g_pairEvalStepReady &&
+        taskIx >= 0 &&
+        taskIx < (int)g_pairBaseTaskFeatures.size() &&
+        taskIx < (int)g_pairBaseTaskStamp.size() &&
+        g_pairBaseTaskStamp[taskIx] == g_pairCurrentStamp) {
+        f = g_pairBaseTaskFeatures[taskIx];
+    }
+    else {
+        PriorityContext ctx;
+        ctx.inst = &I;
+        ctx.now = now;
+        f = computeFeatures(ctx, taskIx);
+    }
+
+    Features rf = computeResourceFeaturesFast(
+        I,
+        taskIx,
+        t,
+        r,
+        now,
+        cheapestNow,
+        cheapestCapableOverall,
+        waitOfCheapestCapableOverall,
+        reservePressureExcludingTask,
+        criticalReserveExcludingTask,
+        familyMismatchExcludingTask
+    );
+
+    f.resWage = rf.resWage;
+    f.resSkillLevel = rf.resSkillLevel;
+    f.resIdleTime = rf.resIdleTime;
+    f.resCanStartNow = rf.resCanStartNow;
+    f.resUtilization = rf.resUtilization;
+    f.resWagePerLevel = rf.resWagePerLevel;
+    f.resAssignCost = rf.resAssignCost;
+    f.resAssignPremiumAll = rf.resAssignPremiumAll;
+    f.resReservePressure = rf.resReservePressure;
+    f.resFamilyMismatch = rf.resFamilyMismatch;
+    f.resFutureBranchFit = rf.resFutureBranchFit;
+    f.resBottleneckPreservation = rf.resBottleneckPreservation;
+    f.resSpecialistMisuse = rf.resSpecialistMisuse;
+    f.resRelativeWage = rf.resRelativeWage;
 
     return f;
 }

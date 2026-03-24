@@ -14,6 +14,9 @@ enum class FeatureId {
     AVAIL_SKILL,
     CRITLEN,
     SLACK,
+    DESC_COUNT,
+    TASK_RELEASE_PRESSURE,
+    TASK_CRITICAL_PRESSURE,
     AVAIL_GAP,
     CHEAPEST_COST_NOW,
     COST_PER_SKILL_NOW,
@@ -34,6 +37,9 @@ enum class FeatureId {
     RES_ASSIGN_PREMIUM_ALL,
     RES_RESERVE_PRESSURE,
     RES_FAMILY_MISMATCH,
+    RES_FUTURE_BRANCH_FIT,
+    RES_BOTTLENECK_PRESERVATION,
+    RES_SPECIALIST_MISUSE,
     RES_RELATIVE_WAGE
 };
 
@@ -60,8 +66,10 @@ public:
     bool validIndex(int nodeId) const { return nodeId >= 0 && nodeId < (int)nodes.size(); }
 
     double      eval(const Features& f) const;
+    double      evalWithNodeValues(const Features& f, std::vector<double>* nodeValues) const;
     std::string toString() const;
     std::string toJson() const;
+    std::string debugNodeLabel(int idx) const { return nodeLabel(idx); }
 
     bool hasAnyFeature() const {
         for (const auto& n : nodes) if (n.kind == NodeKind::FEATURE) return true;
@@ -70,10 +78,12 @@ public:
 
     static GPTree RandomTreeMS(std::mt19937& rng, int maxDepth);
     static GPTree RandomTreeRES(std::mt19937& rng, int maxDepth);
+    static GPTree RandomTreePAIR(std::mt19937& rng, int maxDepth);
     static GPTree Make_AVAIL_minus_REQ();
     static GPTree Make_REQ_times_DUR();
     static GPTree Make_CHEAPxDUR();
     static GPTree Make_CHEAP_PER_SKILL_plus_DUR();
+    static GPTree Make_BNTGA_BridgeRatioPair();
     static int add(std::vector<GPNode>& v, const GPNode& n) {
         v.push_back(n); return (int)v.size() - 1;
     }
@@ -87,7 +97,8 @@ public:
 
     static std::vector<FeatureId> allTaskFeatures();
     static std::vector<FeatureId> allResFeatures();
-    static std::vector<FeatureId> allFeatures() { return allTaskFeatures(); }
+    static std::vector<FeatureId> allPairFeatures();
+    static std::vector<FeatureId> allFeatures() { return allPairFeatures(); }
 
     GPTree extractSubtree(int nodeId) const;
     void   replaceSubtree(int nodeId, const GPTree& sub);
@@ -99,6 +110,7 @@ public:
 private:
     double      featureValue(FeatureId id, const Features& f) const;
     double      evalAt(int idx, const Features& f) const;
+    double      evalAtCollect(int idx, const Features& f, std::vector<double>& vals) const;
     std::string toStringAt(int idx) const;
 
     std::string nodeLabel(int idx) const;

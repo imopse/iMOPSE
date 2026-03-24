@@ -31,6 +31,7 @@ struct GPEA_Params {
     size_t eliteCount = 1;
     bool useBNTGA = false;
     bool useImopseEvaluate = false;
+    bool useSinglePairTree = false;
 };
 
 struct GP_Individual {
@@ -63,7 +64,13 @@ public:
     const std::vector<double>& getHistory()   const { return histBest_; }
     const GP_Individual& getBestGen0() const { return bestGen0_; }
     const std::vector<GP_ParetoPoint>& getPareto() const { return pareto_; }
+    const std::vector<GP_Individual>& getArchive() const { return archive_; }
     bool hasBestGen0() const { return hasBestGen0_; }
+
+    bool exportSolutionAndTrees(
+        const GP_Individual& ind,
+        const std::string& treeFileName = "leftmost_pareto_tree.txt",
+        const std::string& traceFileName = "leftmost_pareto_decisions.txt") const;
 private:
     Instance& inst;
     mutable Instance workInst_;

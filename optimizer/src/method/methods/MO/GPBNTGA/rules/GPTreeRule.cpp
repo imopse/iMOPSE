@@ -15,7 +15,7 @@ ScoreTrace GPTreeRule::scoreWithTraceFast(int taskIx, const Task& t) const {
     ctx.inst = m_inst;
     ctx.now = m_now;
 
-    Features f = computeFeatures(ctx, taskIx);
+    Features f = computeFeaturesFast(ctx, taskIx);
 
     out.feasible = f.feasibleNow;
     out.feat = f;
@@ -54,7 +54,7 @@ double GPTreeRule::scoreFast(int taskIx, const Task& t) const {
     ctx.inst = m_inst;
     ctx.now = m_now;
 
-    Features f = computeFeatures(ctx, taskIx);
+    Features f = computeFeaturesFast(ctx, taskIx);
 
     if (!f.feasibleNow) {
         return std::numeric_limits<double>::infinity();
