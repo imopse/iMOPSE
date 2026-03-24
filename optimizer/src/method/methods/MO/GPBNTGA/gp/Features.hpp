@@ -76,6 +76,21 @@ void setFeaturePrecomputed(
 );
 
 void clearFeaturePrecomputed();
+void setOptionalTaskFeatureUsage(
+    bool needTaskStructureFeatures,
+    bool needTaskResCount,
+    bool needTaskAvgResCost,
+    bool needTaskUnschedTasks,
+    bool needTaskAvailabilityFeatures,
+    bool needTaskCostNowFeatures,
+    bool needTaskReleasePressure,
+    bool needTaskCriticalPressure
+);
+void setOptionalResourceFeatureUsage(
+    bool needFutureBranchFit,
+    bool needBottleneckPreservation,
+    bool needSpecialistMisuse
+);
 void buildPairEvalStepPrecomputed(
     const Instance& I,
     int now,

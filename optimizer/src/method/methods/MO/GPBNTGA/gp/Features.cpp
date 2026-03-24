@@ -41,6 +41,17 @@ namespace {
     int g_pairFutureBranchFitResCount = 0;
 
     bool g_pairEvalStepReady = false;
+    bool g_needResFutureBranchFit = true;
+    bool g_needResBottleneckPreservation = true;
+    bool g_needResSpecialistMisuse = true;
+    bool g_needTaskStructureFeatures = true;
+    bool g_needTaskResCount = true;
+    bool g_needTaskAvgResCost = true;
+    bool g_needTaskUnschedTasks = true;
+    bool g_needTaskAvailabilityFeatures = true;
+    bool g_needTaskCostNowFeatures = true;
+    bool g_needTaskReleasePressure = true;
+    bool g_needTaskCriticalPressure = true;
 
     std::size_t g_descCacheTaskSig = 0;
     int g_descCacheTaskCount = -1;
@@ -785,7 +796,7 @@ namespace {
             if (uIx < 0 || uIx >= (int)I.tasks.size()) continue;
 
             const Task& u = I.tasks[uIx];
-            if (u.start != -1) continue; // tylko przyszłe / nieschedulowane
+            if (u.start != -1) continue;
 
             double critNorm = 0.0;
             double slackNorm = 0.0;
@@ -807,8 +818,6 @@ namespace {
                 }
             }
 
-            // Bliska, krytyczna gałąź:
-            // preferuj potomków krytycznych, dłuższych i z małym slackiem.
             const double weight =
                 (1.0 + 1.60 * critNorm + 0.55 * durNorm + 0.20 * descNorm)
                 / (1.0 + 2.00 * slackNorm);
@@ -831,8 +840,6 @@ namespace {
 
         double branchFit = coveredWeight / totalWeight;
 
-        // lekkie dociążenie dopasowania do aktualnego taska,
-        // ale bez kar za koszt / reserve / bottleneck w środku cechy
         const double currentGap = fitGapRatioRaw(I, taskIx, t, r);
         const double currentFit =
             std::isfinite(currentGap) ? (1.0 / (1.0 + currentGap)) : 0.0;
@@ -849,6 +856,10 @@ namespace {
         const Task& t,
         const Resource& r
     ) {
+        if (!g_needResFutureBranchFit) {
+            return 0.0;
+        }
+
         double cachedValue = 0.0;
         if (tryGetFutureBranchFitStepCached(taskIx, r, cachedValue)) {
             return cachedValue;
@@ -858,6 +869,36 @@ namespace {
     }
 
 } // namespace
+
+void setOptionalTaskFeatureUsage(
+    bool needTaskStructureFeatures,
+    bool needTaskResCount,
+    bool needTaskAvgResCost,
+    bool needTaskUnschedTasks,
+    bool needTaskAvailabilityFeatures,
+    bool needTaskCostNowFeatures,
+    bool needTaskReleasePressure,
+    bool needTaskCriticalPressure)
+{
+    g_needTaskStructureFeatures = needTaskStructureFeatures;
+    g_needTaskResCount = needTaskResCount;
+    g_needTaskAvgResCost = needTaskAvgResCost;
+    g_needTaskUnschedTasks = needTaskUnschedTasks;
+    g_needTaskAvailabilityFeatures = needTaskAvailabilityFeatures;
+    g_needTaskCostNowFeatures = needTaskCostNowFeatures;
+    g_needTaskReleasePressure = needTaskReleasePressure;
+    g_needTaskCriticalPressure = needTaskCriticalPressure;
+}
+
+void setOptionalResourceFeatureUsage(
+    bool needFutureBranchFit,
+    bool needBottleneckPreservation,
+    bool needSpecialistMisuse)
+{
+    g_needResFutureBranchFit = needFutureBranchFit;
+    g_needResBottleneckPreservation = needBottleneckPreservation;
+    g_needResSpecialistMisuse = needSpecialistMisuse;
+}
 
 void setFeaturePrecomputed(
     const std::vector<double>* taskResCountByTask,
@@ -964,15 +1005,20 @@ void buildPairEvalStepPrecomputed(
             computeResourceStepBaseRaw(I.resources[ri], now);
     }
 
-    g_pairFutureBranchFitResCount = (int)resCount;
+    if (g_needResFutureBranchFit) {
+        g_pairFutureBranchFitResCount = (int)resCount;
 
-    const size_t pairCount = taskCount * resCount;
+        const size_t pairCount = taskCount * resCount;
 
-    if (g_pairFutureBranchFitCache.size() != pairCount) {
-        g_pairFutureBranchFitCache.resize(pairCount);
+        if (g_pairFutureBranchFitCache.size() != pairCount) {
+            g_pairFutureBranchFitCache.resize(pairCount);
+        }
+        if (g_pairFutureBranchFitStamp.size() != pairCount) {
+            g_pairFutureBranchFitStamp.assign(pairCount, 0);
+        }
     }
-    if (g_pairFutureBranchFitStamp.size() != pairCount) {
-        g_pairFutureBranchFitStamp.assign(pairCount, 0);
+    else {
+        g_pairFutureBranchFitResCount = 0;
     }
 
     nextStamp(g_pairCurrentStamp);
@@ -989,38 +1035,35 @@ void buildPairEvalStepPrecomputed(
         g_pairBaseTaskFeatures[ix] = computeFeaturesFast(ctx, ix);
         g_pairBaseTaskStamp[ix] = g_pairCurrentStamp;
 
-        auto cacheForResIndex = [&](int ri) {
-            if (ri < 0 || ri >= (int)I.resources.size()) return;
+        if (g_needResFutureBranchFit) {
+            auto cacheForResIndex = [&](int ri) {
+                if (ri < 0 || ri >= (int)I.resources.size()) return;
 
-            const Resource& rr = I.resources[ri];
-            const size_t flatIx =
-                (size_t)ix * (size_t)g_pairFutureBranchFitResCount + (size_t)ri;
+                const Resource& rr = I.resources[ri];
+                const size_t flatIx =
+                    (size_t)ix * (size_t)g_pairFutureBranchFitResCount + (size_t)ri;
 
-            g_pairFutureBranchFitCache[flatIx] =
-                futureBranchFitRaw(I, ix, t, rr);
+                g_pairFutureBranchFitCache[flatIx] =
+                    futureBranchFitRaw(I, ix, t, rr);
 
-            g_pairFutureBranchFitStamp[flatIx] = g_pairCurrentStamp;
-            };
+                g_pairFutureBranchFitStamp[flatIx] = g_pairCurrentStamp;
+                };
 
-        if (!t.capableResourceIndices.empty()) {
-            for (int ri : t.capableResourceIndices) {
-                cacheForResIndex(ri);
+            if (!t.capableResourceIndices.empty()) {
+                for (int ri : t.capableResourceIndices) {
+                    cacheForResIndex(ri);
+                }
             }
-        }
-        else {
-            for (int ri = 0; ri < (int)I.resources.size(); ++ri) {
-                cacheForResIndex(ri);
+            else {
+                for (int ri = 0; ri < (int)I.resources.size(); ++ri) {
+                    cacheForResIndex(ri);
+                }
             }
         }
     }
 }
 
 void clearPairEvalStepPrecomputed() {
-    g_pairBaseTaskFeatures.clear();
-    g_pairBaseTaskStamp.clear();
-    g_pairBaseResourceFeatures.clear();
-    g_pairFutureBranchFitCache.clear();
-    g_pairFutureBranchFitStamp.clear();
     g_pairFutureBranchFitResCount = 0;
     g_pairEvalStepReady = false;
 }
@@ -1036,57 +1079,88 @@ Features computeFeatures(const PriorityContext& ctx, int taskIx) {
 
     const auto& S = gp::getFeatureScaling();
 
-    f.taskResCount = taskResCountFeature(I, taskIx, t, req);
-    f.avgResCostForSkill = avgSalaryForSkill(I, taskIx, t, req);
-    f.unschedTasks = (double)countUnschedTasks(I);
+    const bool needStructure =
+        g_needTaskStructureFeatures ||
+        g_needTaskReleasePressure ||
+        g_needTaskCriticalPressure;
 
-    bool predsDone = false;
-    if (g_remainingPredCountByTask &&
-        taskIx >= 0 &&
-        taskIx < (int)g_remainingPredCountByTask->size()) {
-        predsDone = ((*g_remainingPredCountByTask)[taskIx] == 0);
-    }
-    else {
-        predsDone = predecessorsDoneNow(I, t, ctx.now);
-    }
+    const bool needResCount =
+        g_needTaskResCount ||
+        g_needTaskReleasePressure ||
+        g_needTaskCriticalPressure;
 
-    double availCached = -1.0;
+    const bool needAvailability =
+        g_needTaskAvailabilityFeatures ||
+        g_needTaskCostNowFeatures;
 
-    if (req > 0 && canUseSingleSkillCache(t) && !t.reqSkill.empty()) {
-        availCached = cachedAvailSkill(t.reqSkill);
+    if (needResCount) {
+        f.taskResCount = taskResCountFeature(I, taskIx, t, req);
     }
 
-    f.availSkill = (availCached >= 0.0)
-        ? availCached
-        : bestFreeMatchedLevel(I, taskIx, t, ctx.now);
+    if (g_needTaskAvgResCost) {
+        f.avgResCostForSkill = avgSalaryForSkill(I, taskIx, t, req);
+    }
 
-    f.availGap = f.availSkill - (double)req;
-    f.feasibleNow = predsDone && (f.availSkill >= (double)req);
+    if (g_needTaskUnschedTasks) {
+        f.unschedTasks = (double)countUnschedTasks(I);
+    }
 
-    if (auto cpm = gp::getCPMPrecalc()) {
-        if (taskIx >= 0 && taskIx < (int)cpm->critLen.size()) {
-            f.critLen = cpm->critLen[taskIx];
+    if (needAvailability) {
+        bool predsDone = false;
+        if (g_remainingPredCountByTask &&
+            taskIx >= 0 &&
+            taskIx < (int)g_remainingPredCountByTask->size()) {
+            predsDone = ((*g_remainingPredCountByTask)[taskIx] == 0);
         }
-        if (taskIx >= 0 && taskIx < (int)cpm->slack.size()) {
-            f.slack = cpm->slack[taskIx];
+        else {
+            predsDone = predecessorsDoneNow(I, t, ctx.now);
         }
-        if (taskIx >= 0 && taskIx < (int)cpm->descCount.size()) {
-            f.descCount = cpm->descCount[taskIx];
+
+        double availCached = -1.0;
+
+        if (req > 0 && canUseSingleSkillCache(t) && !t.reqSkill.empty()) {
+            availCached = cachedAvailSkill(t.reqSkill);
+        }
+
+        f.availSkill = (availCached >= 0.0)
+            ? availCached
+            : bestFreeMatchedLevel(I, taskIx, t, ctx.now);
+
+        f.availGap = f.availSkill - (double)req;
+        f.feasibleNow = predsDone && (f.availSkill >= (double)req);
+    }
+
+    if (needStructure) {
+        if (auto cpm = gp::getCPMPrecalc()) {
+            if (taskIx >= 0 && taskIx < (int)cpm->critLen.size()) {
+                f.critLen = cpm->critLen[taskIx];
+            }
+            if (taskIx >= 0 && taskIx < (int)cpm->slack.size()) {
+                f.slack = cpm->slack[taskIx];
+            }
+            if (taskIx >= 0 && taskIx < (int)cpm->descCount.size()) {
+                f.descCount = cpm->descCount[taskIx];
+            }
         }
     }
 
-    f.taskReleasePressure = taskReleasePressureRaw(
-        t,
-        f.taskResCount,
-        f.critLen,
-        f.slack,
-        f.descCount
-    );
+    if (g_needTaskReleasePressure) {
+        f.taskReleasePressure = taskReleasePressureRaw(
+            t,
+            f.taskResCount,
+            f.critLen,
+            f.slack,
+            f.descCount
+        );
+    }
 
-    fillCostNowFeatures(f, I, t, req, ctx.now);
+    if (g_needTaskCostNowFeatures) {
+        fillCostNowFeatures(f, I, t, req, ctx.now);
+    }
+
     normalizeTaskFeatures(f, S);
 
-    {
+    if (g_needTaskCriticalPressure) {
         const double structuralUrgency = clamp01(
             0.55 * f.critLen +
             0.30 * (1.0 - f.slack) +
@@ -1225,9 +1299,20 @@ Features computeResourceFeatures(const Instance& I, const Task& t, const Resourc
     }
 
     f.resReservePressure = reservePressure;
-    f.resFutureBranchFit = futureBranchFitCached(I, taskIx, t, r);
-    f.resBottleneckPreservation = bottleneckPreservationRaw(I, taskIx, t, criticalReserve);
-    f.resSpecialistMisuse = specialistMisuseRaw(I, taskIx, t, r, criticalReserve);
+
+    if (g_needResFutureBranchFit) {
+        f.resFutureBranchFit = futureBranchFitCached(I, taskIx, t, r);
+    }
+
+    if (g_needResBottleneckPreservation) {
+        f.resBottleneckPreservation =
+            bottleneckPreservationRaw(I, taskIx, t, criticalReserve);
+    }
+
+    if (g_needResSpecialistMisuse) {
+        f.resSpecialistMisuse =
+            specialistMisuseRaw(I, taskIx, t, r, criticalReserve);
+    }
 
     const std::string currentFamKey = t.requirementKey();
 
@@ -1319,13 +1404,19 @@ Features computeResourceFeaturesFast(
     f.resReservePressure = reservePressureExcludingTask;
     f.resFamilyMismatch = familyMismatchExcludingTask;
 
-    f.resFutureBranchFit = futureBranchFitCached(I, taskIx, t, r);
+    if (g_needResFutureBranchFit) {
+        f.resFutureBranchFit = futureBranchFitCached(I, taskIx, t, r);
+    }
 
-    f.resBottleneckPreservation =
-        bottleneckPreservationRaw(I, taskIx, t, criticalReserveExcludingTask);
+    if (g_needResBottleneckPreservation) {
+        f.resBottleneckPreservation =
+            bottleneckPreservationRaw(I, taskIx, t, criticalReserveExcludingTask);
+    }
 
-    f.resSpecialistMisuse =
-        specialistMisuseRaw(I, taskIx, t, r, criticalReserveExcludingTask);
+    if (g_needResSpecialistMisuse) {
+        f.resSpecialistMisuse =
+            specialistMisuseRaw(I, taskIx, t, r, criticalReserveExcludingTask);
+    }
 
     const auto& S = gp::getFeatureScaling();
 

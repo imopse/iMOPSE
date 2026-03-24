@@ -844,15 +844,120 @@ ScheduleResult Scheduler::withResources(Instance& I,
     const GPTreeRule* gpRule = dynamic_cast<const GPTreeRule*>(&ruleT);
     const bool usePairTree = (pairTree != nullptr);
 
+    auto treeContainsFeature = [](const GPTree* tree, FeatureId feat) -> bool {
+        if (!tree) return false;
+
+        for (const auto& n : tree->nodes) {
+            if (n.kind == NodeKind::FEATURE && n.feat == feat) {
+                return true;
+            }
+        }
+
+        return false;
+        };
+
+    const GPTree* activeTaskTree = usePairTree
+        ? pairTree
+        : (gpRule ? &gpRule->getTree() : nullptr);
+
+    const bool needTaskCritLen =
+        treeContainsFeature(activeTaskTree, FeatureId::CRITLEN);
+    const bool needTaskSlack =
+        treeContainsFeature(activeTaskTree, FeatureId::SLACK);
+    const bool needTaskDescCount =
+        treeContainsFeature(activeTaskTree, FeatureId::DESC_COUNT);
+    const bool needTaskReleasePressure =
+        treeContainsFeature(activeTaskTree, FeatureId::TASK_RELEASE_PRESSURE);
+    const bool needTaskCriticalPressure =
+        treeContainsFeature(activeTaskTree, FeatureId::TASK_CRITICAL_PRESSURE);
+    const bool needTaskAvailSkill =
+        treeContainsFeature(activeTaskTree, FeatureId::AVAIL_SKILL);
+    const bool needTaskAvailGap =
+        treeContainsFeature(activeTaskTree, FeatureId::AVAIL_GAP);
+    const bool needTaskCheapestCostNow =
+        treeContainsFeature(activeTaskTree, FeatureId::CHEAPEST_COST_NOW);
+    const bool needTaskCostPerSkillNow =
+        treeContainsFeature(activeTaskTree, FeatureId::COST_PER_SKILL_NOW);
+    const bool needTaskMinFeasibleCostNow =
+        treeContainsFeature(activeTaskTree, FeatureId::MIN_FEASIBLE_COST_NOW);
+    const bool needTaskCostRegretNow =
+        treeContainsFeature(activeTaskTree, FeatureId::COST_REGRET_NOW);
+    const bool needTaskResCount =
+        treeContainsFeature(activeTaskTree, FeatureId::TASK_RES_COUNT);
+    const bool needTaskAvgResCost =
+        treeContainsFeature(activeTaskTree, FeatureId::AVG_RES_COST);
+    const bool needTaskUnschedTasks =
+        treeContainsFeature(activeTaskTree, FeatureId::UNSCHED_TASKS);
+
+    const bool needTaskStructureFeatures =
+        needTaskCritLen ||
+        needTaskSlack ||
+        needTaskDescCount ||
+        needTaskReleasePressure ||
+        needTaskCriticalPressure;
+
+    const bool needTaskAvailabilityFeatures =
+        needTaskAvailSkill ||
+        needTaskAvailGap ||
+        needTaskCheapestCostNow ||
+        needTaskCostPerSkillNow ||
+        needTaskMinFeasibleCostNow ||
+        needTaskCostRegretNow;
+
+    const bool needTaskCostNowFeatures =
+        needTaskCheapestCostNow ||
+        needTaskCostPerSkillNow ||
+        needTaskMinFeasibleCostNow ||
+        needTaskCostRegretNow;
+
+    setOptionalTaskFeatureUsage(
+        needTaskStructureFeatures,
+        needTaskResCount,
+        needTaskAvgResCost,
+        needTaskUnschedTasks,
+        needTaskAvailabilityFeatures,
+        needTaskCostNowFeatures,
+        needTaskReleasePressure,
+        needTaskCriticalPressure
+    );
+
+    const GPTree* activeResourceTree = usePairTree
+        ? pairTree
+        : (ruleR ? ruleR->tree : nullptr);
+
+    const bool needResReservePressure =
+        treeContainsFeature(activeResourceTree, FeatureId::RES_RESERVE_PRESSURE);
+    const bool needResFamilyMismatch =
+        treeContainsFeature(activeResourceTree, FeatureId::RES_FAMILY_MISMATCH);
+    const bool needResFutureBranchFit =
+        treeContainsFeature(activeResourceTree, FeatureId::RES_FUTURE_BRANCH_FIT);
+    const bool needResBottleneckPreservation =
+        treeContainsFeature(activeResourceTree, FeatureId::RES_BOTTLENECK_PRESERVATION);
+    const bool needResSpecialistMisuse =
+        treeContainsFeature(activeResourceTree, FeatureId::RES_SPECIALIST_MISUSE);
+
+    setOptionalResourceFeatureUsage(
+        needResFutureBranchFit,
+        needResBottleneckPreservation,
+        needResSpecialistMisuse
+    );
+
     std::unordered_map<std::string, SkillStepInfo> skillStepCache;
-    skillStepCache.reserve(g_lookupCache.skillLevels.size());
+    if (needTaskAvailabilityFeatures || needTaskCostNowFeatures) {
+        skillStepCache.reserve(g_lookupCache.skillLevels.size());
+    }
 
     while (scheduled < n) {
         freeResources(now);
 
         bool startedAny = false;
 
-        buildSkillStepCache(I, now, skillStepCache);
+        if (needTaskAvailabilityFeatures || needTaskCostNowFeatures) {
+            buildSkillStepCache(I, now, skillStepCache);
+        }
+        else {
+            skillStepCache.clear();
+        }
 
         setFeaturePrecomputed(
             &staticTaskResCount,
@@ -895,6 +1000,8 @@ ScheduleResult Scheduler::withResources(Instance& I,
             double bestResScore = std::numeric_limits<double>::infinity();
             int minWaitFeasible = std::numeric_limits<int>::max() / 4;
 
+            const bool traceEnabled = (options.decisionTrace != nullptr);
+
             struct TaskCandidate {
                 int ix = -1;
                 int allocResId = -1;
@@ -917,13 +1024,15 @@ ScheduleResult Scheduler::withResources(Instance& I,
                 };
 
             std::vector<TaskCandidate> pairCandidates;
-            pairCandidates.reserve(ready.size());
+            if (!usePairTree || traceEnabled) {
+                pairCandidates.reserve(ready.size());
+            }
 
             std::vector<double> familyBestPressureByRes;
             std::vector<double> familySecondBestPressureByRes;
             std::vector<int> familyBestFamByRes;
 
-            if (familyCount > 0) {
+            if (familyCount > 0 && needResFamilyMismatch) {
                 const int resCount = (int)I.resources.size();
 
                 familyBestPressureByRes.assign(resCount, 0.0);
@@ -1072,18 +1181,24 @@ ScheduleResult Scheduler::withResources(Instance& I,
 
                                 const Resource& r = I.resources[ri];
 
-                                double reservePressureExcludingTask =
-                                    reservePressureByRes[ri] - reservePressureWeightPerTask[ix];
-                                if (reservePressureExcludingTask < 0.0)
-                                    reservePressureExcludingTask = 0.0;
+                                double reservePressureExcludingTask = 0.0;
+                                if (needResReservePressure) {
+                                    reservePressureExcludingTask =
+                                        reservePressureByRes[ri] - reservePressureWeightPerTask[ix];
+                                    if (reservePressureExcludingTask < 0.0)
+                                        reservePressureExcludingTask = 0.0;
+                                }
 
-                                double criticalReserveExcludingTask =
-                                    criticalReserveByRes[ri] - criticalReserveWeightPerTask[ix];
-                                if (criticalReserveExcludingTask < 0.0)
-                                    criticalReserveExcludingTask = 0.0;
+                                double criticalReserveExcludingTask = 0.0;
+                                if (needResBottleneckPreservation || needResSpecialistMisuse) {
+                                    criticalReserveExcludingTask =
+                                        criticalReserveByRes[ri] - criticalReserveWeightPerTask[ix];
+                                    if (criticalReserveExcludingTask < 0.0)
+                                        criticalReserveExcludingTask = 0.0;
+                                }
 
                                 double familyMismatchExcludingTask = 0.0;
-                                if (familyCount > 0) {
+                                if (needResFamilyMismatch && familyCount > 0) {
                                     const int famId = familyIdByTask[ix];
                                     const size_t base = (size_t)ri * (size_t)familyCount;
 
@@ -1121,8 +1236,11 @@ ScheduleResult Scheduler::withResources(Instance& I,
                                     if (s < localBestPairScore) {
                                         localBestPairScore = s;
                                         localBestResId = r.id;
-                                        localBestTraceFeatures = f;
-                                        localHasTrace = true;
+
+                                        if (traceEnabled) {
+                                            localBestTraceFeatures = f;
+                                            localHasTrace = true;
+                                        }
                                     }
                             }
                         }
@@ -1135,18 +1253,24 @@ ScheduleResult Scheduler::withResources(Instance& I,
 
                                 const int ri = (int)(&r - &I.resources[0]);
 
-                                double reservePressureExcludingTask =
-                                    reservePressureByRes[ri] - reservePressureWeightPerTask[ix];
-                                if (reservePressureExcludingTask < 0.0)
-                                    reservePressureExcludingTask = 0.0;
+                                double reservePressureExcludingTask = 0.0;
+                                if (needResReservePressure) {
+                                    reservePressureExcludingTask =
+                                        reservePressureByRes[ri] - reservePressureWeightPerTask[ix];
+                                    if (reservePressureExcludingTask < 0.0)
+                                        reservePressureExcludingTask = 0.0;
+                                }
 
-                                double criticalReserveExcludingTask =
-                                    criticalReserveByRes[ri] - criticalReserveWeightPerTask[ix];
-                                if (criticalReserveExcludingTask < 0.0)
-                                    criticalReserveExcludingTask = 0.0;
+                                double criticalReserveExcludingTask = 0.0;
+                                if (needResBottleneckPreservation || needResSpecialistMisuse) {
+                                    criticalReserveExcludingTask =
+                                        criticalReserveByRes[ri] - criticalReserveWeightPerTask[ix];
+                                    if (criticalReserveExcludingTask < 0.0)
+                                        criticalReserveExcludingTask = 0.0;
+                                }
 
                                 double familyMismatchExcludingTask = 0.0;
-                                if (familyCount > 0) {
+                                if (needResFamilyMismatch && familyCount > 0) {
                                     const int famId = familyIdByTask[ix];
                                     const size_t base = (size_t)ri * (size_t)familyCount;
 
@@ -1184,8 +1308,11 @@ ScheduleResult Scheduler::withResources(Instance& I,
                                     if (s < localBestPairScore) {
                                         localBestPairScore = s;
                                         localBestResId = r.id;
-                                        localBestTraceFeatures = f;
-                                        localHasTrace = true;
+
+                                        if (traceEnabled) {
+                                            localBestTraceFeatures = f;
+                                            localHasTrace = true;
+                                        }
                                     }
                             }
                         }
@@ -1292,18 +1419,24 @@ ScheduleResult Scheduler::withResources(Instance& I,
 
                                 const Resource& r = I.resources[ri];
 
-                                double reservePressureExcludingTask =
-                                    reservePressureByRes[ri] - reservePressureWeightPerTask[ix];
-                                if (reservePressureExcludingTask < 0.0)
-                                    reservePressureExcludingTask = 0.0;
+                                double reservePressureExcludingTask = 0.0;
+                                if (needResReservePressure) {
+                                    reservePressureExcludingTask =
+                                        reservePressureByRes[ri] - reservePressureWeightPerTask[ix];
+                                    if (reservePressureExcludingTask < 0.0)
+                                        reservePressureExcludingTask = 0.0;
+                                }
 
-                                double criticalReserveExcludingTask =
-                                    criticalReserveByRes[ri] - criticalReserveWeightPerTask[ix];
-                                if (criticalReserveExcludingTask < 0.0)
-                                    criticalReserveExcludingTask = 0.0;
+                                double criticalReserveExcludingTask = 0.0;
+                                if (needResBottleneckPreservation || needResSpecialistMisuse) {
+                                    criticalReserveExcludingTask =
+                                        criticalReserveByRes[ri] - criticalReserveWeightPerTask[ix];
+                                    if (criticalReserveExcludingTask < 0.0)
+                                        criticalReserveExcludingTask = 0.0;
+                                }
 
                                 double familyMismatchExcludingTask = 0.0;
-                                if (familyCount > 0) {
+                                if (needResFamilyMismatch && familyCount > 0) {
                                     const int famId = familyIdByTask[ix];
                                     const size_t base = (size_t)ri * (size_t)familyCount;
 
@@ -1353,18 +1486,24 @@ ScheduleResult Scheduler::withResources(Instance& I,
 
                                 const int ri = (int)(&r - &I.resources[0]);
 
-                                double reservePressureExcludingTask =
-                                    reservePressureByRes[ri] - reservePressureWeightPerTask[ix];
-                                if (reservePressureExcludingTask < 0.0)
-                                    reservePressureExcludingTask = 0.0;
+                                double reservePressureExcludingTask = 0.0;
+                                if (needResReservePressure) {
+                                    reservePressureExcludingTask =
+                                        reservePressureByRes[ri] - reservePressureWeightPerTask[ix];
+                                    if (reservePressureExcludingTask < 0.0)
+                                        reservePressureExcludingTask = 0.0;
+                                }
 
-                                double criticalReserveExcludingTask =
-                                    criticalReserveByRes[ri] - criticalReserveWeightPerTask[ix];
-                                if (criticalReserveExcludingTask < 0.0)
-                                    criticalReserveExcludingTask = 0.0;
+                                double criticalReserveExcludingTask = 0.0;
+                                if (needResBottleneckPreservation || needResSpecialistMisuse) {
+                                    criticalReserveExcludingTask =
+                                        criticalReserveByRes[ri] - criticalReserveWeightPerTask[ix];
+                                    if (criticalReserveExcludingTask < 0.0)
+                                        criticalReserveExcludingTask = 0.0;
+                                }
 
                                 double familyMismatchExcludingTask = 0.0;
-                                if (familyCount > 0) {
+                                if (needResFamilyMismatch && familyCount > 0) {
                                     const int famId = familyIdByTask[ix];
                                     const size_t base = (size_t)ri * (size_t)familyCount;
 
@@ -1431,8 +1570,36 @@ ScheduleResult Scheduler::withResources(Instance& I,
                     cand.taskScore = localBestPairScore;
                     cand.resScore = 0.0;
                     cand.pairScore = localBestPairScore;
-                    cand.traceFeatures = localBestTraceFeatures;
-                    cand.hasTrace = localHasTrace;
+
+                    if (traceEnabled) {
+                        cand.traceFeatures = localBestTraceFeatures;
+                        cand.hasTrace = localHasTrace;
+                        pairCandidates.push_back(cand);
+                    }
+
+                    bool take = false;
+
+                    if (cand.pairScore < bestScore) {
+                        take = true;
+                    }
+                    else if (best != -1 && std::abs(cand.pairScore - bestScore) < 1e-12) {
+                        if (g_priorityKeys) {
+                            const auto& K = *g_priorityKeys;
+                            if ((size_t)best < K.size() &&
+                                (size_t)cand.ix < K.size() &&
+                                K[cand.ix] < K[best]) {
+                                take = true;
+                            }
+                        }
+                    }
+
+                    if (take) {
+                        best = cand.ix;
+                        bestResId = cand.allocResId;
+                        bestScore = cand.pairScore;
+                        bestTaskScore = cand.taskScore;
+                        bestResScore = cand.resScore;
+                    }
                 }
                 else {
                     double sc;
@@ -1445,40 +1612,13 @@ ScheduleResult Scheduler::withResources(Instance& I,
 
                     cand.taskScore = sc;
                     cand.resScore = std::isfinite(localBestResScore) ? localBestResScore : 0.0;
-                }
 
-                pairCandidates.push_back(std::move(cand));
+                    pairCandidates.push_back(std::move(cand));
+                }
             }
 
             if (!pairCandidates.empty()) {
-                if (usePairTree) {
-                    for (const auto& cand : pairCandidates) {
-                        bool take = false;
-
-                        if (cand.pairScore < bestScore) {
-                            take = true;
-                        }
-                        else if (best != -1 && std::abs(cand.pairScore - bestScore) < 1e-12) {
-                            if (g_priorityKeys) {
-                                const auto& K = *g_priorityKeys;
-                                if ((size_t)best < K.size() &&
-                                    (size_t)cand.ix < K.size() &&
-                                    K[cand.ix] < K[best]) {
-                                    take = true;
-                                }
-                            }
-                        }
-
-                        if (take) {
-                            best = cand.ix;
-                            bestResId = cand.allocResId;
-                            bestScore = cand.pairScore;
-                            bestTaskScore = cand.taskScore;
-                            bestResScore = cand.resScore;
-                        }
-                    }
-                }
-                else {
+                if (!usePairTree) {
                     double minTask = std::numeric_limits<double>::infinity();
                     double maxTask = -std::numeric_limits<double>::infinity();
                     double minRes = std::numeric_limits<double>::infinity();
@@ -1495,30 +1635,17 @@ ScheduleResult Scheduler::withResources(Instance& I,
                         }
                     }
 
-                    for (auto& cand : pairCandidates) {
-                        const double taskNorm = norm01(cand.taskScore, minTask, maxTask);
-                        const double resNorm = (ruleR != nullptr)
-                            ? norm01(cand.resScore, minRes, maxRes)
-                            : 0.0;
-
-                        cand.pairScore =
-                            (1.0 - kPairResourceWeight) * taskNorm +
-                            kPairResourceWeight * resNorm;
+                    for (const auto& cand : pairCandidates) {
+                        const double nt = norm01(cand.taskScore, minTask, maxTask);
+                        const double nr = norm01(cand.resScore, minRes, maxRes);
+                        const double combined = (1.0 - kPairResourceWeight) * nt + kPairResourceWeight * nr;
 
                         bool take = false;
-
-                        if (cand.pairScore < bestScore) {
+                        if (combined < bestScore) {
                             take = true;
                         }
-                        else if (best != -1 && std::abs(cand.pairScore - bestScore) < 1e-12) {
-                            if (cand.taskScore < bestTaskScore - 1e-12) {
-                                take = true;
-                            }
-                            else if (std::abs(cand.taskScore - bestTaskScore) < 1e-12 &&
-                                cand.resScore < bestResScore - 1e-12) {
-                                take = true;
-                            }
-                            else if (g_priorityKeys) {
+                        else if (best != -1 && std::abs(combined - bestScore) < 1e-12) {
+                            if (g_priorityKeys) {
                                 const auto& K = *g_priorityKeys;
                                 if ((size_t)best < K.size() &&
                                     (size_t)cand.ix < K.size() &&
@@ -1531,7 +1658,7 @@ ScheduleResult Scheduler::withResources(Instance& I,
                         if (take) {
                             best = cand.ix;
                             bestResId = cand.allocResId;
-                            bestScore = cand.pairScore;
+                            bestScore = combined;
                             bestTaskScore = cand.taskScore;
                             bestResScore = cand.resScore;
                         }
