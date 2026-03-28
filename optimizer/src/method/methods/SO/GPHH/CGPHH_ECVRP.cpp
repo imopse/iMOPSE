@@ -1,18 +1,17 @@
-#include "CGPHH.h"
+#include "CGPHH_ECVRP.h"
 #include "../utils/aggregatedFitness/CAggregatedFitness.h"
 #include "../utils/experiment/CSOExperimentUtils.h"
 #include "../../../../utils/logger/ErrorUtils.h"
 #include "../../../../utils/logger/CExperimentLogger.h"
-#include "nodes/terminals/CTerminals.h"
+
 #include <iostream>
 #include <chrono>
 #include <algorithm>
-#include <limits>
 
 using std::cout;
 using std::endl;
 
-CGPHH::CGPHH(
+CGPHH_ECVRP::CGPHH_ECVRP(
 	std::vector<float>& objectiveWeights,
 	AProblem& evaluator,
 	AInitialization& initialization,
@@ -40,7 +39,7 @@ m_Constructive(constructive)
 	m_LogConfig = SGPHHLogConfig::LoadConfig(configMap);
 }
 
-void CGPHH::RunOptimization()
+void CGPHH_ECVRP::RunOptimization()
 {
 	cout << "Running GPHH" << endl;
 	CExperimentLogger::ResetGPHHHeaderFlags();
@@ -72,7 +71,7 @@ void CGPHH::RunOptimization()
 	CSOExperimentUtils::LogResultData(*best, m_Problem);
 }
 
-void CGPHH::CreateIndividual()
+void CGPHH_ECVRP::CreateIndividual()
 {
 	SProblemEncoding& problemEncoding = m_Problem.GetProblemEncoding();
 	auto* newInd = static_cast<CGPHHIndividual*>(m_Initialization.CreateSOIndividual(problemEncoding));
@@ -87,7 +86,7 @@ void CGPHH::CreateIndividual()
 	m_Population.push_back(newInd);
 }
 
-void CGPHH::EvolveToNextGeneration()
+void CGPHH_ECVRP::EvolveToNextGeneration()
 {
 	std::vector<CGPHHIndividual*> elites;
 	if (m_EliteSize > 0) {

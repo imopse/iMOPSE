@@ -24,7 +24,7 @@ void CBNTGA::RunOptimization()
 {
     int generation = 0;
 
-    m_StartTime = std::chrono::high_resolution_clock::now();
+    m_StartTime = std::chrono::steady_clock::now();
     CCSV<float> m_OperatorStats(1);
     CCSV<float> m_HVStats(4);
 
@@ -50,8 +50,10 @@ void CBNTGA::RunOptimization()
         {
             // It will sort the archive
             float paretoHV = CalcHV(m_Archive, std::vector<float>{ 1.f, 1.f });
-            auto currentTime = std::chrono::high_resolution_clock::now();
-            auto durationMS = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - m_StartTime);
+            auto currentTime = std::chrono::steady_clock::now();
+            auto durationMS = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    currentTime - m_StartTime
+            );
             std::vector<float> newRow = { (float)generation, paretoHV, (float)durationMS.count(), float(fet) };
             m_HVStats.AddRow(std::move(newRow));
         }

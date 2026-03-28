@@ -7,9 +7,9 @@
 #include "../../../operators/selection/selections/CFitnessTournament.h"
 #include "constructive/IGPHHConstructive.h"
 
-class CGPHH : public ASOGeneticMethod {
+class CGPHH_ECVRP : public ASOGeneticMethod {
 public:
-    CGPHH(
+    CGPHH_ECVRP(
         std::vector<float> &objectiveWeights,
         AProblem &evaluator,
         AInitialization &initialization,

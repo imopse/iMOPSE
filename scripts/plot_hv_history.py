@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 import argparse
 import pandas as pd
 import matplotlib.pyplot as plt

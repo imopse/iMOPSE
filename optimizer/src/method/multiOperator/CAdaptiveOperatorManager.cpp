@@ -441,9 +441,9 @@ float CAdaptiveOperatorManager::CalcFitnessImprovementRateVer5(SMOIndividual* ne
     float s = 0.f;
     for (size_t i = 0; i < objCount; ++i)
     {
-        s += std::powf(oldIndividual->m_NormalizedEvaluation[i], 2);
+        s += powf(oldIndividual->m_NormalizedEvaluation[i], 2);
     }
-    s = std::sqrtf(s);
+    s = sqrtf(s);
 
     for (size_t i = 0; i < objCount; ++i)
     {

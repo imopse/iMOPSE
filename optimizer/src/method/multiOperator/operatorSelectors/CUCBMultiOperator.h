@@ -2,6 +2,7 @@
 
 #include "method/multiOperator/AMultiOperator.h"
 #include <iostream>
+#include <cfloat>
 
 template <typename O>
 class CUCBMultiOperator: public AMultiOperator<O>

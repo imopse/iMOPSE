@@ -1,139 +1,219 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-solution_file_path = '../optimizer/experiments/GA/run_0/best_solution.sol' # Input path to solution file
+solution_path = "./sol.sol"
+instance_path = "./200_40_130_9_D4.def"
 
-def read_and_format_data(filename):
+def read_instance_file(filename):
+    with open(filename, 'r') as file:
+        lines = file.readlines()
+
+    general = {}
+    resources = []
+    tasks = []
+    current_section = None
+
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        if set(line) == {"="}:
+            continue
+
+        if line.startswith("ResourceID"):
+            current_section = "resources"
+            continue
+        if line.startswith("TaskID"):
+            current_section = "tasks"
+            continue
+
+        if current_section == "resources":
+            parts = line.split()
+            if not parts:
+                continue
+            try:
+                resource_id = int(parts[0])
+            except ValueError:
+                continue
+            try:
+                salary = float(parts[1])
+            except ValueError:
+                salary = None
+            skills = {}
+            i = 2
+            while i < len(parts):
+                skill = parts[i].replace(":", "")
+                if i + 1 < len(parts):
+                    try:
+                        level = int(parts[i + 1])
+                    except ValueError:
+                        level = None
+                    skills[skill] = level
+                    i += 2
+                else:
+                    break
+            resources.append({
+                "ResourceID": resource_id,
+                "Salary": salary,
+                "Skills": skills
+            })
+            continue
+
+        if current_section == "tasks":
+            parts = line.split()
+            if not parts:
+                continue
+            try:
+                task_id = int(parts[0])
+                duration = int(parts[1])
+                skill_name = parts[2].replace(":", "")
+                skill_level = int(parts[3])
+                skill = f"{skill_name}::{skill_level}"
+                predecessors = [int(x) for x in parts[4:]] if len(parts) > 4 else []
+                tasks.append({
+                    "TaskID": task_id,
+                    "Duration": duration,
+                    "Skill": skill,
+                    "Predecessors": predecessors
+                })
+            except Exception:
+                continue
+            continue
+
+    return general, pd.DataFrame(resources), pd.DataFrame(tasks)
+
+
+def read_solution_file(filename):
     all_tasks = []
     with open(filename, 'r') as file:
         lines = file.readlines()
 
-    # Extract instance name and project information
-    header_parts = lines[1].strip().split(';')
-    instance_name = header_parts[0].split(': ')[1]
-    project_info_keys = ['Duration', 'Cost', 'AvgCashFlowDev', 'AvgSkillOverUse', 'AvgUseOfResTime']
-    project_info_values = header_parts[1:]
-    project_info = dict(zip(project_info_keys, project_info_values))
+    for line in lines:
+        tokens = line.strip().split()
+        if not tokens:
+            continue
+        try:
+            time = int(tokens[0])
+            for token in tokens[1:]:
+                resource_str, task_str = token.split('-')
+                resource = int(resource_str)
+                task = int(task_str)
+                all_tasks.append({
+                    'Time': time,
+                    'Resource': resource,
+                    'Task': task
+                })
+        except ValueError:
+            continue
 
-    # Process tasks
-    for line in lines[3:]:
-        parts = line.strip().split(';')
-        if len(parts) >= 2:
-            try:
-                time = int(parts[0])
-            except ValueError:
-                continue  # Skip non-numeric lines
-
-            assignments = [a for a in parts[1:] if a]
-            for assignment in assignments:
-                task_parts = assignment.split('-')
-                if len(task_parts) >= 4:
-                    resource, task_id, duration, preds = task_parts
-                    try:
-                        resource, task_id, duration = map(int, [resource, task_id, duration])
-                    except ValueError:
-                        raise ValueError("Not all tasks are assigned to resources")
-                    predecessors = [int(pred) for pred in preds.split(',') if pred]
-                    all_tasks.append({
-                        'Time': time,
-                        'Resource': resource,
-                        'Task': task_id,
-                        'Duration': duration,
-                        'Predecessors': predecessors
-                    })
-
-    tasks_df = pd.DataFrame(all_tasks)
-    tasks_df = tasks_df.sort_values(by=['Resource', 'Time'])
-    return tasks_df, project_info, instance_name
+    return pd.DataFrame(all_tasks)
 
 
-def validate_tasks(tasks_df):
+def validate_solution(tasks_df, solution_df, resources_df):
+    errors = []
+    task_durations = dict(zip(tasks_df['TaskID'], tasks_df['Duration']))
+    task_predecessors = dict(zip(tasks_df['TaskID'], tasks_df['Predecessors']))
+    resource_skills = dict(zip(resources_df['ResourceID'], resources_df['Skills']))
+
     task_end_times = {}
-    incorrect_order_reasons = {}
-    overlapping_tasks_reasons = {} 
+    resource_timeline = {}
 
-    # First pass to establish end times for all tasks
-    for _, row in tasks_df.iterrows():
-        end = row['Time'] + row['Duration']
-        task_end_times[row['Task']] = end
-
-    # Second pass for validation
-    for _, row in tasks_df.iterrows():
-        resource = row['Resource']
-        start = row['Time']
-        end = start + row['Duration']
-
-        # Check against predecessors
-        for predecessor in row['Predecessors']:
-            pred_end = task_end_times.get(predecessor)
-            if pred_end is not None and start < pred_end:
-                reason = f"Starts before predecessor {predecessor} ends"
-                incorrect_order_reasons[row['Task']] = reason
-
-        # Check for overlapping tasks
-        for _, other_row in tasks_df[tasks_df['Resource'] == resource].iterrows():
-            if other_row['Task'] != row['Task']:  # Don't compare the task to itself
-                other_start = other_row['Time']
-                other_end = other_start + other_row['Duration']
-                if start < other_end and end > other_start:
-                    reason = f"Overlaps with task {other_row['Task']}"
-                    overlapping_tasks_reasons[row['Task']] = reason
-                    overlapping_tasks_reasons[other_row['Task']] = f"Overlaps with task {row['Task']}"
-
-    return incorrect_order_reasons, overlapping_tasks_reasons
-
-
-def plot_gantt_chart(tasks_df, project_info, instance_name, incorrect_order_reasons, overlapping_tasks_reasons):
-    fig, ax = plt.subplots(figsize=(15, 10))
-    for _, row in tasks_df.iterrows():
+    instance_tasks = set(tasks_df['TaskID'])
+    for _, row in solution_df.iterrows():
         task_id = row['Task']
-        if task_id in incorrect_order_reasons:
-            color = 'tab:red'
-            reason = incorrect_order_reasons[task_id]
-        elif task_id in overlapping_tasks_reasons:
-            color = 'tab:orange'
-            reason = overlapping_tasks_reasons[task_id]
-        else:
-            color = 'tab:blue'
-            reason = ""
+        if task_id not in instance_tasks:
+            errors.append(f"Task {task_id} in solution does not exist in the instance.")
 
-        # Draw the task bar
-        ax.barh(row['Resource'], row['Duration'], left=row['Time'], height=0.4, color=color, edgecolor='k')
+    for _, row in solution_df.iterrows():
+        task_id = row['Task']
+        start_time = row['Time']
+        resource = row['Resource']
+        duration = task_durations.get(task_id, 0)
 
-        # Annotate the task ID and reason on the bar
-        text_x = row['Time'] + row['Duration'] / 2  # Middle of the task
-        text_y = row['Resource']
-        annotation_text = f"{task_id}" + (f": {reason}" if reason else "")
-        ax.text(text_x, text_y, annotation_text, ha='center', va='center', color='black', fontsize=8)
+        for t in range(start_time, start_time + duration):
+            if resource not in resource_timeline:
+                resource_timeline[resource] = set()
+            if t in resource_timeline[resource]:
+                errors.append(f"Resource {resource} is double-booked at time {t} for task {task_id}")
+            resource_timeline[resource].add(t)
 
-    # Adjusted error message for incorrect order and overlapping tasks
-    error_messages = []
-    if incorrect_order_reasons:
-        error_messages.append("Incorrect task order detected!")
-    if overlapping_tasks_reasons:
-        error_messages.append("Overlapping tasks detected!")
-    if not error_messages:
-        error_messages.append("Solution is correct.")
+        task_end_times[task_id] = start_time + duration
 
-    # Combine error messages and project info into one message
-    error_message = ' | '.join(error_messages)
-    project_info_text = ', '.join([f"{key}: {value}" for key, value in project_info.items()])
-    plt.text(0.5, 1.10, f"{error_message} | {project_info_text}", ha='center', va='center', transform=ax.transAxes,
-             color='black', fontsize=12, bbox=dict(facecolor='white', alpha=0.5))
+        try:
+            task_skill_full = tasks_df.loc[tasks_df['TaskID'] == task_id, 'Skill'].values[0]
+            required_skill, req_level_str = task_skill_full.split("::")
+            required_level = int(req_level_str)
+        except Exception:
+            errors.append(f"Could not parse skill requirement for task {task_id}")
+            continue
 
-    # Continue with the rest of the plot settings...
-    ax.grid(True)
-    ax.set_xlabel('Time')
-    ax.set_ylabel('Resource')
-    ax.set_title(f'Gantt Chart for {instance_name}: Resource Assignments with Validation')
+        available_skills = resource_skills.get(resource, {})
+        available_level = available_skills.get(required_skill, 0)
+        if available_level < required_level:
+            errors.append(
+                f"Resource {resource} does not meet skill requirement for task {task_id} "
+                f"(required {required_skill} level {required_level}, available level {available_level})"
+            )
 
-    ax.set_yticks(tasks_df['Resource'].unique())
-    ax.set_yticklabels([f'Resource {res}' for res in sorted(tasks_df['Resource'].unique())])
+    for _, row in solution_df.iterrows():
+        task_id = row['Task']
+        start_time = row['Time']
+        predecessors = task_predecessors.get(task_id, [])
+        for pred in predecessors:
+            pred_end_time = task_end_times.get(pred, None)
+            if pred_end_time is None:
+                errors.append(f"Predecessor task {pred} for task {task_id} is not scheduled.")
+            elif pred_end_time > start_time:
+                errors.append(
+                    f"Task {task_id} starts at {start_time} before predecessor {pred} ends at {pred_end_time}"
+                )
 
+    task_counts = solution_df['Task'].value_counts()
+    for task, count in task_counts.items():
+        if count > 1:
+            errors.append(f"Task {task} is scheduled {count} times.")
+    missing_tasks = instance_tasks - set(solution_df['Task'])
+    if missing_tasks:
+        errors.append(f"Missing tasks: {missing_tasks}")
+
+    return errors
+
+
+def plot_schedule(tasks_df, solution_df):
+    task_durations = dict(zip(tasks_df['TaskID'], tasks_df['Duration']))
+
+    fig, ax = plt.subplots(figsize=(12, 8))
+
+    for _, row in solution_df.iterrows():
+        task_id = row['Task']
+        resource = row['Resource']
+        start_time = row['Time']
+        duration = task_durations.get(task_id, 0)
+        ax.barh(resource, duration, left=start_time, height=0.4, align='center', edgecolor='black')
+        ax.text(start_time + duration / 2, resource, f"{task_id}", va='center', ha='center', color='white', fontsize=8)
+
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Resource")
+    ax.set_title("Gantt Chart of Schedule for 200_40_133_15")
+    ax.set_yticks(sorted(solution_df['Resource'].unique()))
+    plt.tight_layout()
     plt.show()
 
 
-# Main code
-tasks_df, project_info, instance_name = read_and_format_data(solution_file_path)
-incorrect_order_tasks, overlapping_tasks = validate_tasks(tasks_df)
-plot_gantt_chart(tasks_df, project_info, instance_name, incorrect_order_tasks, overlapping_tasks)
+def main():
+    general, resources_df, tasks_df = read_instance_file(instance_path)
+    solution_df = read_solution_file(solution_path)
+
+    errors = validate_solution(tasks_df, solution_df, resources_df)
+    if errors:
+        print("Validation Errors:")
+        for err in errors:
+            print("-", err)
+    else:
+        print("The solution is valid!")
+
+    plot_schedule(tasks_df, solution_df)
+
+
+if __name__ == "__main__":
+    main()

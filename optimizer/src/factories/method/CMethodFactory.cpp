@@ -19,7 +19,7 @@
 #include "methods/MO/ANTGA/CANTGAFactory.h"
 #include "methods/MO/BNTGA/CBNTGAFactory.h"
 #include "methods/MO/SPEA2/CSPEA2Factory.h"
-#include "methods/SO/GPHH/CGPHHFactory.h"
+#include "methods/SO/GPHH/CGPHH_ECVRPTFactory.h"
 #include "methods/MO/GPHH/CGPHHFactory.h"
 #include "../../utils/fileReader/CReadUtils.h"
 #include <iostream> 
@@ -111,19 +111,14 @@ AMethod* CMethodFactory::CreateMethod(
             CALNSMutationFactory::CreateInsertionOperators(problem)
         );
     }
-    
-    // If the method name is not supported, throw an error.
-    throw std::runtime_error("Method name: " + std::string(methodName) + " not supported");
-    if (strcmp(methodName.c_str(), "GPHH") == 0)
-        return CGPHHFactory::CreateGPHH(configMap, problem, initialization);
+	if (strcmp(methodName.c_str(), "GPHH") == 0)
+		return CGPHHFactory::CreateGPHH(configMap, problem, initialization);
 
 	// GPHH creates its own operators internally, so handle it before standard operator creation
 	if (strcmp(methodName.c_str(), "GPHH") == 0) {
 		cout << "Creating GPHH method" << endl;
-		return CGPHHFactory::CreateGPHH(configMap, problem);
+		return CGPHH_ECVRPTFactory::CreateGPHH(configMap, problem);
 	}
-
-
 
 	// Create crossover and mutation strategies based on the configuration map.
 	crossover = CCrossoverFactory::Create(configMap, "Crossover", problem);
@@ -186,6 +181,6 @@ void CMethodFactory::DeleteObjects() {
 	CBNTGAFactory::DeleteObjects();
 	CSPEA2Factory::DeleteObjects();
 	CACOFactory::DeleteObjects();
-	CGPHHFactory::DeleteObjects();
+	CGPHH_ECVRPTFactory::DeleteObjects();
 	CNTGA2_ALNSFactory::DeleteObjects();
 }

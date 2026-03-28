@@ -30,7 +30,7 @@ void CMOEAD_FRRMAB::RunOptimization()
     CCSV<float> m_OperatorStats(3 + (m_MultiMutation->GetOperatorCount() * 3));
     CCSV<float> m_HVStats(4);
 
-    m_StartTime = std::chrono::high_resolution_clock::now();
+    m_StartTime = std::chrono::steady_clock::now();
 
     int generation = 0;
 
@@ -73,7 +73,7 @@ void CMOEAD_FRRMAB::RunOptimization()
         {
             // It will sort the archive
             float paretoHV = CalcHV(m_Archive, std::vector<float>{ 1.f, 1.f });
-            auto currentTime = std::chrono::high_resolution_clock::now();
+            auto currentTime =  std::chrono::steady_clock::now();
             auto durationMS = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - m_StartTime);
             std::vector<float> newRow = { (float)generation, paretoHV, (float)durationMS.count(), float(fet)  };
             m_HVStats.AddRow(std::move(newRow));

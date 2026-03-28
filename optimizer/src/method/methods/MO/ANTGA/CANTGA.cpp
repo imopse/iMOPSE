@@ -39,7 +39,7 @@ void CANTGA::RunOptimization()
     CCSV<float> m_OperatorStats(3 + (m_MultiMutation->GetOperatorCount() * 3));
     CCSV<float> m_HVStats(4);
 
-    m_StartTime = std::chrono::high_resolution_clock::now();
+    m_StartTime = std::chrono::steady_clock::now();
 
     for (size_t i = 0; i < m_PopulationSize; ++i)
     {
@@ -285,7 +285,7 @@ void CANTGA::LogHVStatsToCSV(CCSV<float>& csv)
     int fet = (m_Generation + 1) * int(m_PopulationSize);
     // It will sort the archive
     float paretoHV = CalcHV(m_Archive, std::vector<float>{ 1.f, 1.f });
-    auto currentTime = std::chrono::high_resolution_clock::now();
+    auto currentTime = std::chrono::steady_clock::now();
     auto durationMS = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - m_StartTime);
     std::vector<float> newRow = { (float)m_Generation, paretoHV, (float)durationMS.count(), float(fet) };
     csv.AddRow(std::move(newRow));
@@ -483,9 +483,9 @@ float CANTGA::CalcFitnessImprovementRateVer5(SMOIndividual* newIndividual, SMOIn
     float s = 0.f;
     for (size_t i = 0; i < objCount; ++i)
     {
-        s += std::powf(oldIndividual->m_NormalizedEvaluation[i], 2);
+        s += powf(oldIndividual->m_NormalizedEvaluation[i], 2);
     }
-    s = std::sqrtf(s);
+    s = sqrtf(s);
 
     for (size_t i = 0; i < objCount; ++i)
     {

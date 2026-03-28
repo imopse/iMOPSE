@@ -1,16 +1,16 @@
-#include "CGPHHFactory.h"
-#include "../../../../../method/methods/SO/GPHH/CGPHH.h"
+#include "CGPHH_ECVRPTFactory.h"
+#include "../../../../../method/methods/SO/GPHH/CGPHH_ECVRP.h"
 #include "../../../../../method/operators/selection/selections/CFitnessTournament.h"
 #include <sstream>
 #include "../../../../../method/methods/SO/GPHH/constructive/CCVRPConstructive.h"
 #include "../../../../../problem/problems/CVRP/CCVRP.h"
 
-CGPHHInitialization* CGPHHFactory::initialization = nullptr;
-CGPHHCrossover* CGPHHFactory::crossover = nullptr;
-CGPHHMutation* CGPHHFactory::mutation = nullptr;
-IGPHHConstructive* CGPHHFactory::constructive = nullptr;
+CGPHHInitialization* CGPHH_ECVRPTFactory::initialization = nullptr;
+CGPHHCrossover* CGPHH_ECVRPTFactory::crossover = nullptr;
+CGPHHMutation* CGPHH_ECVRPTFactory::mutation = nullptr;
+IGPHHConstructive* CGPHH_ECVRPTFactory::constructive = nullptr;
 
-AMethod* CGPHHFactory::CreateGPHH(SConfigMap* configMap, AProblem& problem) {
+AMethod* CGPHH_ECVRPTFactory::CreateGPHH(SConfigMap* configMap, AProblem& problem) {
 
 	int treeDepthLimit = 5;
 	configMap->TakeValue("TreeDepthLimit", treeDepthLimit);
@@ -63,7 +63,7 @@ AMethod* CGPHHFactory::CreateGPHH(SConfigMap* configMap, AProblem& problem) {
 	// Objective weights
 	static std::vector<float> weights = { 1.0f };
 
-	return new CGPHH(
+	return new CGPHH_ECVRP(
 		weights,
 		problem,
 		*initialization,
@@ -75,14 +75,14 @@ AMethod* CGPHHFactory::CreateGPHH(SConfigMap* configMap, AProblem& problem) {
 	);
 }
 
-void CGPHHFactory::DeleteObjects() {
+void CGPHH_ECVRPTFactory::DeleteObjects() {
 	if (initialization) { delete initialization; initialization = nullptr; }
 	if (crossover) { delete crossover; crossover = nullptr; }
 	if (mutation) { delete mutation; mutation = nullptr; }
 	if (constructive) { delete constructive; constructive = nullptr; }
 }
 
-std::vector<std::string> CGPHHFactory::Split(const std::string& s, char delimiter) {
+std::vector<std::string> CGPHH_ECVRPTFactory::Split(const std::string& s, char delimiter) {
 	std::vector<std::string> tokens;
 	std::string token;
 	std::istringstream tokenStream(s);

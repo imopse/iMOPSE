@@ -9,7 +9,7 @@
 #include "../../../../../method/methods/SO/GPHH/operators/CGPHHMutation.h"
 #include "../../../../../method/methods/SO/GPHH/constructive/IGPHHConstructive.h"
 
-class CGPHHFactory {
+class CGPHH_ECVRPTFactory {
 public:
     static AMethod* CreateGPHH(
         SConfigMap* configMap,
