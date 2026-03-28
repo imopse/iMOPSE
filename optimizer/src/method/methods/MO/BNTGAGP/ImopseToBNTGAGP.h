@@ -3,7 +3,7 @@
 
 class CScheduler;
 
-namespace GPBNTGAAdapter {
+namespace BNTGAGPAdapter {
     Instance FromScheduler(const CScheduler& sch);
 
-} // namespace GPBNTGAAdapter
+} // namespace BNTGAGPAdapter

@@ -3,9 +3,9 @@
 #include "method/configMap/SConfigMap.h"
 #include <cstdint>
 
-class CGPBNTGA : public AMethod {
+class CBNTGAGP : public AMethod {
 public:
-    CGPBNTGA(AProblem& problem, AInitialization& init, SConfigMap* cfg);
+    CBNTGAGP(AProblem& problem, AInitialization& init, SConfigMap* cfg);
     void RunOptimization() override;
     void Reset() override {}
 

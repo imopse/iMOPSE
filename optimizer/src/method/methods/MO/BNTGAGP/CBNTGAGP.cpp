@@ -1,9 +1,9 @@
-#include "CGPBNTGA.h"
+#include "CBNTGAGP.h"
 #include "scheduler/Scheduler.hpp"
 #include "problem/problems/MSRCPSP/CMSRCPSP_TA.h"
 #include "problem/problems/MSRCPSP/CMSRCPSP_TO.h"
 #include "../utils/archive/ArchiveUtils.h"
-#include "ImopseToGPBNTGA.h"
+#include "ImopseToBNTGAGP.h"
 #include "gp/TreeEA.hpp"
 #include "utils/random/CRandom.h"
 #include "gp/FeatureScaling.hpp"
@@ -16,7 +16,7 @@
 #include <sstream>
 #include <vector>
 
-CGPBNTGA::CGPBNTGA(AProblem& problem, AInitialization& init, SConfigMap* cfg)
+CBNTGAGP::CBNTGAGP(AProblem& problem, AInitialization& init, SConfigMap* cfg)
     : AMethod(problem, init), m_Cfg(cfg)
 {
     if (m_Cfg && m_Cfg->HasValue("Seed")) {
@@ -55,7 +55,7 @@ static std::string ToLower(std::string s)
     return s;
 }
 
-void CGPBNTGA::RunOptimization()
+void CBNTGAGP::RunOptimization()
 {
     CScheduler* sch = nullptr;
     bool isTAProblem = false;
@@ -64,7 +64,7 @@ void CGPBNTGA::RunOptimization()
     if (auto* p = dynamic_cast<CMSRCPSP_TO*>(&m_Problem)) { sch = &p->GetScheduler(); isTAProblem = false; }
 
     if (!sch) {
-        throw std::runtime_error("GPBNTGA works only with MSRCPSP_TA/MSRCPSP_TO problems.");
+        throw std::runtime_error("bNTGA-GP works only with MSRCPSP_TA/MSRCPSP_TO problems.");
     }
 
     SConfigMap cfgCopy;
@@ -83,7 +83,6 @@ void CGPBNTGA::RunOptimization()
     P.useBNTGA = (GetInt(cfg, "UseBNTGA", 0) != 0);
     P.useImopseEvaluate = (GetInt(cfg, "UseImopseEvaluate", 1) != 0);
     P.useSinglePairTree = (GetInt(cfg, "UseSinglePairTree", 0) != 0);
-
 
     P.popSize = (size_t)GetInt(cfg, "PopulationSize", (int)P.popSize);
     P.generations = (size_t)GetInt(cfg, "Generations", (int)P.generations);
@@ -114,7 +113,7 @@ void CGPBNTGA::RunOptimization()
         P.seed = (uint64_t)CRandom::GetSeed();
     }
 
-    Instance inst = GPBNTGAAdapter::FromScheduler(*sch);
+    Instance inst = BNTGAGPAdapter::FromScheduler(*sch);
     gp::initFeatureScaling(inst);
 
     const bool useBaseline = (GetInt(cfg, "UseBaseline", 1) != 0);

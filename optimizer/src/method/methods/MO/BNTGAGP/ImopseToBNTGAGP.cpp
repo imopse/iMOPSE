@@ -1,4 +1,4 @@
-#include "ImopseToGPBNTGA.h"
+#include "ImopseToBNTGAGP.h"
 #include "problem/problems/MSRCPSP/CScheduler.h"
 #include <string>
 #include <algorithm>
@@ -9,7 +9,7 @@ static std::string skillName(unsigned typeId) {
     return "Q" + std::to_string(typeId);
 }
 
-Instance GPBNTGAAdapter::FromScheduler(const CScheduler& sch) {
+Instance BNTGAGPAdapter::FromScheduler(const CScheduler& sch) {
     Instance I;
 
     for (const auto& r : sch.GetResources()) {
@@ -54,7 +54,6 @@ Instance GPBNTGAAdapter::FromScheduler(const CScheduler& sch) {
 
         if (!tt.requiredSkills.empty()) {
             tt.reqSkill = tt.requiredSkills.front().skill;
-
             tt.reqLevel = tt.totalRequiredLevel();
         }
         else {

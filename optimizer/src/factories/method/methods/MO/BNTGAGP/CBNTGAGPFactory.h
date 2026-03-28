@@ -4,7 +4,7 @@
 #include "problem/AProblem.h"
 #include "method/operators/initialization/AInitialization.h"
 
-class CGPBNTGAFactory {
+class CBNTGAGPFactory {
 public:
-    static AMethod* CreateGPBNTGA(SConfigMap* cfg, AProblem& problem, AInitialization* init);
+    static AMethod* CreateBNTGAGP(SConfigMap* cfg, AProblem& problem, AInitialization* init);
 };
