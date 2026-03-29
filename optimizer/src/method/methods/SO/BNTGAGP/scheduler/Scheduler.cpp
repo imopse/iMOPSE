@@ -12,6 +12,8 @@
 #include "../gp/Features.hpp"
 #include <unordered_map>
 
+namespace gpbntga_so {
+
 static const std::unordered_map<int, int>* g_resIndex = nullptr;
 static const std::unordered_map<std::string, std::vector<int>>* g_skillLevels = nullptr;
 
@@ -1479,6 +1481,8 @@ ScheduleResult Scheduler::withResources(Instance& I,
                     cand.resScore = 0.0;
                     cand.pairScore = localBestPairScore;
 
+                    pairCandidates.push_back(cand);
+
                     const bool take = (cand.pairScore < bestScore);
 
                     if (take) {
@@ -1525,6 +1529,7 @@ ScheduleResult Scheduler::withResources(Instance& I,
                         const double nt = norm01(cand.taskScore, minTask, maxTask);
                         const double nr = norm01(cand.resScore, minRes, maxRes);
                         const double combined = (1.0 - kPairResourceWeight) * nt + kPairResourceWeight * nr;
+
                         const bool take = (combined < bestScore);
 
                         if (take) {
@@ -1662,3 +1667,5 @@ ScheduleResult Scheduler::withResources(Instance& I,
     }
     return out;
 }
+
+} // namespace gpbntga_so

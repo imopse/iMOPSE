@@ -9,6 +9,8 @@
 #include <cmath>
 #include <functional>
 
+namespace gpbntga_so {
+
 double GPTree::featureValue(FeatureId id, const Features& f) const {
     switch (id) {
     case FeatureId::DURATION:              return f.duration;
@@ -286,6 +288,47 @@ namespace {
         }
         return "?";
     }
+}
+
+std::string GPTree::toJson() const {
+    std::ostringstream oss;
+    oss.imbue(std::locale::classic());
+    oss << std::setprecision(12);
+
+    oss << "{";
+    oss << "\"root\":" << this->root << ",\"nodes\":[";
+    for (size_t i = 0; i < nodes.size(); ++i) {
+        const GPNode& n = nodes[i];
+        if (i) oss << ",";
+        oss << "{";
+
+        switch (n.kind) {
+        case NodeKind::CONST: {
+            double v = n.constant;
+            if (!std::isfinite(v)) v = 0.0;
+            oss << "\"kind\":\"CONST\",\"constant\":" << v;
+            break;
+        }
+        case NodeKind::FEATURE: {
+            oss << "\"kind\":\"FEATURE\",\"feat\":\"" << featToString(n.feat) << "\"";
+            break;
+        }
+        case NodeKind::UNARY: {
+            oss << "\"kind\":\"UNARY\",\"uop\":\"" << uopToString(n.uop)
+                << "\",\"left\":" << n.left;
+            break;
+        }
+        case NodeKind::BINARY: {
+            oss << "\"kind\":\"BINARY\",\"bop\":\"" << bopToString(n.bop)
+                << "\",\"left\":" << n.left << ",\"right\":" << n.right;
+            break;
+        }
+        }
+
+        oss << "}";
+    }
+    oss << "]}";
+    return oss.str();
 }
 
 std::string GPTree::toStringAt(int idx) const {
@@ -874,3 +917,4 @@ void GPTree::replaceSubtree(int nodeId, const GPTree& sub) {
     *this = std::move(out);
 }
 
+} // namespace gpbntga_so

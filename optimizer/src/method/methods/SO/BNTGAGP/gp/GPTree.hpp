@@ -7,6 +7,7 @@
 #include "Op.hpp"
 #include "Features.hpp"
 
+namespace gpbntga_so {
 
 enum class FeatureId {
     DURATION,
@@ -68,6 +69,8 @@ public:
     double      eval(const Features& f) const;
     double      evalWithNodeValues(const Features& f, std::vector<double>* nodeValues) const;
     std::string toString() const;
+    std::string toJson() const;
+    std::string debugNodeLabel(int idx) const { return nodeLabel(idx); }
 
     bool hasAnyFeature() const {
         for (const auto& n : nodes) if (n.kind == NodeKind::FEATURE) return true;
@@ -121,3 +124,5 @@ private:
         int replaceAt,
         std::vector<GPNode>& out) const;
 };
+
+} // namespace gpbntga_so

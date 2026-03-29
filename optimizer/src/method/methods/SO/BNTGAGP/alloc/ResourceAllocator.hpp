@@ -1,0 +1,33 @@
+#pragma once
+#include <vector>
+#include <optional>
+#include <string>
+#include <unordered_map>
+#include "../domain/Instance.hpp"
+
+namespace gpbntga_so {
+
+class ResourceAllocator {
+public:
+    static int availableSkillSum(const Instance& I, int now, const std::string& skill);
+
+    static int waitUntilFeasible(const Instance& I, int now,
+        const std::string& skill, int reqLevel);
+
+    static int cheapestSubsetSingleId(const Instance& I,
+        const std::string& skill,
+        int reqLevel,
+        int now);
+
+    static std::optional<std::vector<int>> cheapestSubset(const Instance& I,
+        const std::string& skill,
+        int reqLevel,
+        int now);
+
+    static void setPrecomputed(
+        const std::unordered_map<std::string, std::vector<int>>* resIdsBySkill,
+        const std::unordered_map<int, int>* resIndexById,
+        const std::unordered_map<std::string, std::vector<int>>* skillLevelsBySkillIndex);
+};
+
+} // namespace gpbntga_so

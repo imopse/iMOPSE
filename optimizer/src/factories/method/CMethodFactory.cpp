@@ -19,6 +19,7 @@
 #include "methods/MO/BNTGA/CBNTGAFactory.h"
 #include "methods/MO/SPEA2/CSPEA2Factory.h"
 #include "methods/MO/BNTGAGP/CBNTGAGPFactory.h"
+#include "methods/SO/BNTGAGP/CBNTGAGPSOFactory.h"
 #include "../../utils/fileReader/CReadUtils.h"
 
 // Static members of CMethodFactory, initialized to nullptr. These will hold various components of an optimization method.
@@ -61,6 +62,8 @@ AMethod* CMethodFactory::CreateMethod(
         return CPSOFactory::CreatePSO(configMap, problem, initialization);
     if (strcmp(methodName.c_str(), "bNTGA-GP") == 0)
         return CBNTGAGPFactory::CreateBNTGAGP(configMap, problem, initialization);
+    if (strcmp(methodName.c_str(), "bNTGA-GP-SO") == 0)
+        return CBNTGAGPSOFactory::CreateBNTGAGPSO(configMap, problem, initialization);
 
     // Create crossover and mutation strategies based on the configuration map.
     crossover = CCrossoverFactory::Create(configMap, "Crossover", problem);

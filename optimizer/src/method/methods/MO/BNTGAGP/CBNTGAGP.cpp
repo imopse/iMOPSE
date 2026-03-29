@@ -2,18 +2,16 @@
 #include "scheduler/Scheduler.hpp"
 #include "problem/problems/MSRCPSP/CMSRCPSP_TA.h"
 #include "problem/problems/MSRCPSP/CMSRCPSP_TO.h"
-#include "../utils/archive/ArchiveUtils.h"
+#include "utils/logger/CExperimentLogger.h"
+#include <sstream>
 #include "ImopseToBNTGAGP.h"
 #include "gp/TreeEA.hpp"
 #include "utils/random/CRandom.h"
 #include "gp/FeatureScaling.hpp"
-#include <random>
+
 #include <algorithm>
-#include <cctype>
 #include <cstdint>
-#include <string>
 #include <stdexcept>
-#include <sstream>
 #include <vector>
 
 CBNTGAGP::CBNTGAGP(AProblem& problem, AInitialization& init, SConfigMap* cfg)
@@ -41,20 +39,6 @@ static double GetDouble(SConfigMap* cfg, const char* key, double def)
     return v;
 }
 
-static std::string GetString(SConfigMap* cfg, const char* key, const std::string& def)
-{
-    std::string v = def;
-    if (cfg) cfg->TakeValue(key, v);
-    return v;
-}
-
-static std::string ToLower(std::string s)
-{
-    std::transform(s.begin(), s.end(), s.begin(),
-        [](unsigned char c) { return (char)std::tolower(c); });
-    return s;
-}
-
 void CBNTGAGP::RunOptimization()
 {
     CScheduler* sch = nullptr;
@@ -79,9 +63,6 @@ void CBNTGAGP::RunOptimization()
     P.pMutStruct = 0.02;
     P.maxDepth = 8;
     P.tournamentK = 2;
-    P.eliteCount = 0;
-    P.useBNTGA = (GetInt(cfg, "UseBNTGA", 0) != 0);
-    P.useImopseEvaluate = (GetInt(cfg, "UseImopseEvaluate", 1) != 0);
     P.useSinglePairTree = (GetInt(cfg, "UseSinglePairTree", 0) != 0);
 
     P.popSize = (size_t)GetInt(cfg, "PopulationSize", (int)P.popSize);
@@ -99,12 +80,7 @@ void CBNTGAGP::RunOptimization()
     }
 
     P.maxDepth = GetInt(cfg, "MaxDepth", P.maxDepth);
-    P.weight = GetDouble(cfg, "Weight", P.weight);
-
     P.tournamentK = GetInt(cfg, "TournamentSize", P.tournamentK);
-    P.eliteCount = (size_t)GetInt(cfg, "EliteCount", (int)P.eliteCount);
-
-    P.useNormalization = (GetInt(cfg, "UseNormalization", (int)P.useNormalization) != 0);
 
     if (m_HasSeedOverride) {
         P.seed = m_SeedOverride;
@@ -116,87 +92,26 @@ void CBNTGAGP::RunOptimization()
     Instance inst = BNTGAGPAdapter::FromScheduler(*sch);
     gp::initFeatureScaling(inst);
 
-    const bool useBaseline = (GetInt(cfg, "UseBaseline", 1) != 0);
-    const int  seedDepth = GetInt(cfg, "SeedDepth", 3);
-    std::string startRule = ToLower(GetString(cfg, "StartRule", "random"));
-
-    std::mt19937 rng((unsigned)P.seed);
-
-    GPTree startTreeTask;
-    if (P.useSinglePairTree) {
-        if (startRule == "random")                        startTreeTask = GPTree::RandomTreePAIR(rng, seedDepth);
-        else if (startRule == "avail-gap")                startTreeTask = GPTree::Make_AVAIL_minus_REQ();
-        else if (startRule == "work")                     startTreeTask = GPTree::Make_REQ_times_DUR();
-        else if (startRule == "cheapxdur")                startTreeTask = GPTree::Make_CHEAPxDUR();
-        else if (startRule == "cheap-per-skill+dur")      startTreeTask = GPTree::Make_CHEAP_PER_SKILL_plus_DUR();
-        else if (startRule == "bntga-bridge-ratio")       startTreeTask = GPTree::Make_BNTGA_BridgeRatioPair();
-        else                                              startTreeTask = GPTree::RandomTreePAIR(rng, seedDepth);
-    }
-    else {
-        if (startRule == "random")                        startTreeTask = GPTree::RandomTreeMS(rng, seedDepth);
-        else if (startRule == "avail-gap")                startTreeTask = GPTree::Make_AVAIL_minus_REQ();
-        else if (startRule == "work")                     startTreeTask = GPTree::Make_REQ_times_DUR();
-        else if (startRule == "cheapxdur")                startTreeTask = GPTree::Make_CHEAPxDUR();
-        else if (startRule == "cheap-per-skill+dur")      startTreeTask = GPTree::Make_CHEAP_PER_SKILL_plus_DUR();
-        else if (startRule == "bntga-bridge-ratio")       startTreeTask = GPTree::Make_BNTGA_BridgeRatioPair();
-        else                                              startTreeTask = GPTree::Make_AVAIL_minus_REQ();
-    }
-
-    GPTree startTreeRes = P.useSinglePairTree
-        ? GPTree{}
-    : GPTree::RandomTreeRES(rng, seedDepth);
-
     TreeEA ea(inst, P, sch, isTAProblem);
-    if (useBaseline) ea.setSeedTrees(startTreeTask, startTreeRes);
-
     ea.run();
 
-    const auto& pf = ea.getPareto();
+    const auto& gpArchive = ea.getArchive();
 
-    std::vector<GP_ParetoPoint> pfSorted = pf;
-    std::sort(pfSorted.begin(), pfSorted.end(),
-        [](const GP_ParetoPoint& a, const GP_ParetoPoint& b) {
-            if (a.makespan != b.makespan) return a.makespan < b.makespan;
-            return a.cost < b.cost;
+    std::vector<const GP_Individual*> gpArchiveSorted;
+    gpArchiveSorted.reserve(gpArchive.size());
+    for (const auto& ind : gpArchive) {
+        gpArchiveSorted.push_back(&ind);
+    }
+
+    std::sort(gpArchiveSorted.begin(), gpArchiveSorted.end(),
+        [](const GP_Individual* a, const GP_Individual* b) {
+            if (a->makespan != b->makespan) return a->makespan < b->makespan;
+            return a->cost < b->cost;
         });
 
-    std::vector<SMOIndividual*> archive;
-    archive.reserve(pfSorted.size());
-
-    for (const auto& p : pfSorted) {
-        SGenotype g;
-
-        std::vector<float> eval = {
-            (float)p.makespan,
-            (float)p.cost
-        };
-
-        std::vector<float> norm = {
-            (float)p.msNorm,
-            (float)p.costNorm
-        };
-
-        archive.push_back(new SMOIndividual(g, eval, norm));
+    std::ostringstream oss;
+    for (const GP_Individual* p : gpArchiveSorted) {
+        oss << p->makespan << ';' << p->cost << '\n';
     }
-
-    ArchiveUtils::LogParetoFront(archive);
-
-    const auto& gpArchive = ea.getArchive();
-    if (!gpArchive.empty()) {
-        auto bestLeft = std::min_element(
-            gpArchive.begin(),
-            gpArchive.end(),
-            [](const GP_Individual& a, const GP_Individual& b)
-            {
-                if (a.makespan != b.makespan)
-                    return a.makespan < b.makespan;
-                return a.cost < b.cost;
-            }
-        );
-
-        ea.exportSolutionAndTrees(*bestLeft, "leftmost_pareto_tree.txt");
-    }
-
-    for (auto* ind : archive) delete ind;
-    archive.clear();
+    CExperimentLogger::LogResult(oss.str().c_str());
 }

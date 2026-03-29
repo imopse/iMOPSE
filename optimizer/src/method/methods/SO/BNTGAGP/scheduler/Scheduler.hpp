@@ -1,9 +1,13 @@
 ﻿#pragma once
 #include <vector>
+#include <string>
+#include <ostream>
 #include "../domain/Instance.hpp"
 #include "../rules/IDispatchingRule.hpp"
 #include "../rules/GPTreeRule.hpp"
 #include "../rules/GPTreeResRule.hpp"
+
+namespace gpbntga_so {
 
 struct ScheduleResult {
     int makespan = 0;
@@ -25,3 +29,5 @@ public:
         const ScheduleOptions& options = {},
         const GPTree* pairTree = nullptr);
 };
+
+} // namespace gpbntga_so
