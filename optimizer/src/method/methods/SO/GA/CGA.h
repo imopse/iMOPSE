@@ -24,7 +24,7 @@ public:
     ~CGA() override = default;
 
     void RunOptimization() override;
-private:
+protected:
     CFitnessTournament &m_FitnessTournament;
 
     void CreateIndividual();
