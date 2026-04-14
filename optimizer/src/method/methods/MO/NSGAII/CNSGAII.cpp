@@ -1,21 +1,24 @@
 #include <cfloat>
 #include <algorithm>
-#include <sstream>
 #include "CNSGAII.h"
-#include "../utils/archive/ArchiveUtils.h"
 #include "../utils/clustering/CNonDominatedSorting.h"
 #include "../../../../utils/logger/ErrorUtils.h"
 
-CNSGAII::CNSGAII(AProblem &evaluator,
-                 AInitialization &initialization,
-                 CRankedTournament &rankedTournament,
-                 ACrossover &crossover,
-                 AMutation &mutation,
-                 SConfigMap *configMap
-) :
-        AMOGeneticMethod(evaluator, initialization, crossover, mutation),
-        m_RankedTournament(rankedTournament)
+CNSGAII::CNSGAII(
+        AProblem* evaluator,
+        AInitialization* initialization,
+        CRankedTournament* rankedTournament,
+        ACrossover* crossover,
+        AMutation* mutation,
+        SConfigMap* configMap
+) 
 {
+    m_Problem = evaluator;
+    m_Initialization = initialization;
+    m_Crossover = crossover;
+    m_Mutation = mutation;
+    m_RankedTournament = rankedTournament;
+    
     configMap->TakeValue("PopulationSize", m_PopulationSize);
     ErrorUtils::LowerThanZeroI("NSGAII", "PopulationSize", m_PopulationSize);
     m_Population.reserve(m_PopulationSize);
@@ -32,10 +35,10 @@ void CNSGAII::RunOptimization()
 
     for (size_t i = 0; i < m_PopulationSize; ++i)
     {
-        SProblemEncoding& problemEncoding = m_Problem.GetProblemEncoding();
-        auto* newInd = m_Initialization.CreateMOIndividual(problemEncoding);
+        SProblemEncoding& problemEncoding = m_Problem->GetProblemEncoding();
+        auto* newInd = m_Initialization->CreateMOIndividual(problemEncoding);
 
-        m_Problem.Evaluate(*newInd);
+        m_Problem->Evaluate(*newInd);
 
         m_Population.push_back(newInd);
     }
@@ -100,7 +103,7 @@ void CNSGAII::RunOptimization()
     }
 
     ArchiveUtils::CopyToArchiveWithFiltering(m_NextPopulation, m_Archive);
-    ArchiveUtils::LogParetoFront(m_Archive);
+    LogParetoFront(m_Archive);
 }
 
 void CNSGAII::EvolveToNextGeneration()
@@ -108,25 +111,25 @@ void CNSGAII::EvolveToNextGeneration()
 
     for (size_t i = 0; i < m_PopulationSize; i += 2)
     {
-        auto *firstParent = m_RankedTournament.Select(m_Population);
-        auto *secondParent = m_RankedTournament.Select(m_Population);
+        auto *firstParent = m_RankedTournament->Select(m_Population);
+        auto *secondParent = m_RankedTournament->Select(m_Population);
 
         auto *firstChild = new SMOIndividual{*firstParent};
         auto *secondChild = new SMOIndividual{*secondParent};
 
-        m_Crossover.Crossover(
-                m_Problem.GetProblemEncoding(),
+        m_Crossover->Crossover(
+                m_Problem->GetProblemEncoding(),
                 *firstParent,
                 *secondParent,
                 *firstChild,
                 *secondChild
         );
 
-        m_Mutation.Mutate(m_Problem.GetProblemEncoding(), *firstChild);
-        m_Mutation.Mutate(m_Problem.GetProblemEncoding(), *secondChild);
+        m_Mutation->Mutate(m_Problem->GetProblemEncoding(), *firstChild);
+        m_Mutation->Mutate(m_Problem->GetProblemEncoding(), *secondChild);
 
-        m_Problem.Evaluate(*firstChild);
-        m_Problem.Evaluate(*secondChild);
+        m_Problem->Evaluate(*firstChild);
+        m_Problem->Evaluate(*secondChild);
 
         m_NextPopulation.emplace_back(firstChild);
         m_NextPopulation.emplace_back(secondChild);
@@ -136,7 +139,7 @@ void CNSGAII::EvolveToNextGeneration()
 
 void CNSGAII::CalcCrowdingDistance(std::vector<SMOIndividual *> &population, std::vector<size_t> &indices)
 {
-    for (int objIdx = 0; objIdx < m_Problem.GetProblemEncoding().m_objectivesNumber; ++objIdx)
+    for (int objIdx = 0; objIdx < m_Problem->GetProblemEncoding().m_objectivesNumber; ++objIdx)
     {
         std::sort(indices.begin(), indices.end(), [objIdx, population](const size_t &a, const size_t &b) -> bool
         {

@@ -117,12 +117,8 @@ bool CExperimentLogger::WriteSchedulerToFile(const CScheduler& schedule, const A
     std::string outputDataPath = m_OutputDataPathPrefix + "/best_solution.sol";
     snprintf(archive_filename, 256, "%s",outputDataPath.c_str());
     std::ofstream arch_file(archive_filename);
-
-    arch_file << "Instance name;Duration;Cost;AvgCashFlowDev;AvgSkillOverUse;AvgUseOfResTime " << std::endl;
     
-    arch_file << schedule.GetInstanceName() << ';' << solution.m_Evaluation[0] << ';' << solution.m_Evaluation[1] << ';' << solution.m_Evaluation[2] << ';' << solution.m_Evaluation[3] << ';' << solution.m_Evaluation[4] << ';' << std::endl;
-
-    arch_file << "Hour;Resource assignments (resource ID - task ID - Duration-predecessors) " << std::endl;
+    arch_file << "Time;Resource assignments (resource ID - task ID) " << std::endl;
 
     std::vector<int> startTimes = std::vector<int>();
     for (CTask task : schedule.GetTasks())
@@ -136,8 +132,7 @@ bool CExperimentLogger::WriteSchedulerToFile(const CScheduler& schedule, const A
 
     for (int startTime : startTimes)
     {
-        arch_file << startTime + 1;
-        arch_file << ";";
+        arch_file << startTime + 1 << " ";
 
         int taskId = 1;
 
@@ -146,16 +141,8 @@ bool CExperimentLogger::WriteSchedulerToFile(const CScheduler& schedule, const A
             if (task.GetStart() == startTime)
             {
                 TResourceID resourceID = task.GetResourceID();
-                TTime duration = task.GetDuration();
 
-                arch_file << resourceID << "-" << taskId << "-" << duration << "-";
-                
-                for (TTaskID id: task.GetPredecessors()) {
-                    arch_file << id << ",";
-                }
-
-                arch_file << ";";
-                    
+                arch_file << resourceID << "-" << taskId << " ";
             }
 
             taskId++;

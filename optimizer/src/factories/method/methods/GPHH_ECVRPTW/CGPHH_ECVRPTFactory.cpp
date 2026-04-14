@@ -1,16 +1,11 @@
-#include "CGPHH_ECVRPTFactory.h"
-#include "../../../../../method/methods/SO/GPHH/CGPHH_ECVRP.h"
-#include "../../../../../method/operators/selection/selections/CFitnessTournament.h"
+#include "CGPHH_ECVRPTWFactory.h"
+#include "method/methods/SO/GPHH/CGPHH_ECVRP.h"
+#include "method/operators/selection/selections/CFitnessTournament.h"
 #include <sstream>
-#include "../../../../../method/methods/SO/GPHH/constructive/CCVRPConstructive.h"
-#include "../../../../../problem/problems/CVRP/CCVRP.h"
+#include "method/methods/SO/GPHH/constructive/CCVRPConstructive.h"
+#include "problem/problems/CVRP/CCVRP.h"
 
-CGPHHInitialization* CGPHH_ECVRPTFactory::initialization = nullptr;
-CGPHHCrossover* CGPHH_ECVRPTFactory::crossover = nullptr;
-CGPHHMutation* CGPHH_ECVRPTFactory::mutation = nullptr;
-IGPHHConstructive* CGPHH_ECVRPTFactory::constructive = nullptr;
-
-AMethod* CGPHH_ECVRPTFactory::CreateGPHH(SConfigMap* configMap, AProblem& problem) {
+AMethod* CGPHH_ECVRPTWFactory::CreateGPHH(SConfigMap* configMap, AProblem* problem) {
 
 	int treeDepthLimit = 5;
 	configMap->TakeValue("TreeDepthLimit", treeDepthLimit);
@@ -41,16 +36,11 @@ AMethod* CGPHH_ECVRPTFactory::CreateGPHH(SConfigMap* configMap, AProblem& proble
 	float crossoverRate = 0.9f;
 	configMap->TakeValue("CrossoverRate", crossoverRate);
 
-	initialization = new CGPHHInitialization(treeDepthLimit, terminals, functions);
-	crossover = new CGPHHCrossover(treeDepthLimit, crossoverRate);
-	mutation = new CGPHHMutation(treeDepthLimit, terminals, functions, pointMutationRate, subtreeMutationRate);
+	auto initialization = new CGPHHInitialization(treeDepthLimit, terminals, functions);
+	auto crossover = new CGPHHCrossover(treeDepthLimit, crossoverRate);
+	auto mutation = new CGPHHMutation(treeDepthLimit, terminals, functions, pointMutationRate, subtreeMutationRate);
 
-	if (dynamic_cast<CCVRP*>(&problem)) {
-		constructive = new CCVRPConstructive();
-	}
-	else {
-		constructive = nullptr;
-	}
+	auto constructive = (dynamic_cast<CCVRP*>(problem)) ? new CCVRPConstructive() : nullptr;
 
 	// Create Fitness Tournament
 	static CFitnessTournament* tournament = nullptr;
@@ -61,28 +51,21 @@ AMethod* CGPHH_ECVRPTFactory::CreateGPHH(SConfigMap* configMap, AProblem& proble
 	tournament = new CFitnessTournament(tournamentSize);
 
 	// Objective weights
-	static std::vector<float> weights = { 1.0f };
-
+	auto* weights = new std::vector({ 1.0f });
+	
 	return new CGPHH_ECVRP(
-		weights,
 		problem,
-		*initialization,
-		*tournament,
-		*crossover,
-		*mutation,
+		initialization,
+		tournament,
+		crossover,
+		mutation,
 		constructive,
-		configMap
+		configMap,
+		weights
 	);
 }
 
-void CGPHH_ECVRPTFactory::DeleteObjects() {
-	if (initialization) { delete initialization; initialization = nullptr; }
-	if (crossover) { delete crossover; crossover = nullptr; }
-	if (mutation) { delete mutation; mutation = nullptr; }
-	if (constructive) { delete constructive; constructive = nullptr; }
-}
-
-std::vector<std::string> CGPHH_ECVRPTFactory::Split(const std::string& s, char delimiter) {
+std::vector<std::string> CGPHH_ECVRPTWFactory::Split(const std::string& s, char delimiter) {
 	std::vector<std::string> tokens;
 	std::string token;
 	std::istringstream tokenStream(s);

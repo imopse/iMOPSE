@@ -14,6 +14,5 @@ namespace ArchiveUtils
     void SaveArchiveToFile(const std::vector<SMOIndividual *> &archive, const std::string &instanceName, int configId,
                            int runId);
     std::vector<std::vector<float>> ToEvaluation(const std::vector<SMOIndividual *> &archive);
-    void LogParetoFront(const std::vector<SMOIndividual *> &archive);
     void LogParetoFront(const std::vector<SMOIndividual *> &archive, int fet);
 };

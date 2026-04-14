@@ -15,7 +15,7 @@ struct SProgramParams
     char *m_ProblemInstancePath;
 
     // <Optional> Number of executions (runs) per instance
-    int m_ExecutionsCount;
+    int m_RepetitionsCount;
 
     // <Optional> Seed for random generation
     int m_Seed;

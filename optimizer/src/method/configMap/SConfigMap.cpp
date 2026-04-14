@@ -1,5 +1,6 @@
 
 
+#include <cstring>
 #include "SConfigMap.h"
 
 bool SConfigMap::AddLine(const std::string &keyString, const std::string &valueString)

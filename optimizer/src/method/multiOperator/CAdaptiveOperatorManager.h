@@ -10,7 +10,7 @@ template <typename T> class CCSV;
 class CAdaptiveOperatorManager
 {
 public:
-    CAdaptiveOperatorManager(SConfigMap* configMap, AProblem& problem,
+    CAdaptiveOperatorManager(SConfigMap* configMap, AProblem* problem,
                              const std::vector<SMOIndividual*>& population, const std::vector<SMOIndividual*>& archive);
     ~CAdaptiveOperatorManager();
     void Reset();
@@ -25,7 +25,7 @@ private:
     // TODO - for testing
     AMultiOperator<AMutation>* m_SecondaryMultiMutation = nullptr;
 
-    AProblem &m_Problem;
+    AProblem* m_Problem;
 
     // References to method key variables
     const std::vector<SMOIndividual*>& m_Population;

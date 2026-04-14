@@ -1,5 +1,4 @@
 #include "../../../../../utils/fileReader/CReadUtils.h"
-#include "../../CAggregatedFitness.h"
 #include "../../../../../utils/logger/CExperimentLogger.h"
 #include "../../../../../utils/random/CRandom.h"
 #include <algorithm>
@@ -7,13 +6,15 @@
 #include <filesystem>
 #include <iostream>
 #include "CACO_TSP.h"
+#include "method/methods/SO/utils/aggregatedFitness/CAggregatedFitness.h"
 
-CACO_TSP::CACO_TSP(
-        AProblem &evaluator,
-        AInitialization &initialization,
-        SConfigMap *configMap,
-        std::vector<float> &objectiveWeights
-) : CACO(evaluator, initialization,objectiveWeights) {
+CACO_TSP::CACO_TSP(AProblem *problem, AInitialization *initialization, SConfigMap *configMap,
+                   std::vector<float> *objectiveWeights) {
+    
+    m_Initialization = initialization;
+    m_Problem = problem;
+    m_ObjectiveWeights = objectiveWeights;
+    
     configMap->TakeValue("GenerationLimit", m_GenerationLimit);
     configMap->TakeValue("ReducingMultiplier", m_ReducingMultiplier);
     configMap->TakeValue("PopulationSize", m_PopulationSize);
@@ -28,11 +29,10 @@ CACO_TSP::CACO_TSP(
 
     m_Population.reserve(m_PopulationSize);
 
-    size_t numberOfCities = m_Problem.GetProblemEncoding().m_Encoding[0].m_SectionDescription.size();
+    size_t numberOfCities = m_Problem->GetProblemEncoding().m_Encoding[0].m_SectionDescription.size();
     m_PheromoneMap = std::vector<std::vector<float>>(numberOfCities, std::vector<float>(numberOfCities, 0.0));
 
-    m_DistanceMatrix = m_Problem.GetProblemEncoding().m_additionalProblemData;
-
+    m_DistanceMatrix = m_Problem->GetProblemEncoding().m_additionalProblemData;
 }
 
 void CACO_TSP::SavePheromoneMap(int generation) {
@@ -58,7 +58,7 @@ void CACO_TSP::SavePheromoneMap(int generation) {
 
 void CACO_TSP::RunOptimization() {
     int generation = 0;
-    ResetPheromoneMap();
+    Reset();
     m_GloballyBest=GetRandomAnt();
 
     RandomAnts();
@@ -78,11 +78,12 @@ void CACO_TSP::RunOptimization() {
     AddExperimentData(generation);
 
     CExperimentLogger::LogData();
-    LogResultData();
+    auto* best = CSOExperimentUtils::FindBest(m_Population);
+    LogResultData(*best, *m_Problem);
 }
 
 void CACO_TSP::GetBestRoute() {
-    SProblemEncoding& problemEncoding = m_Problem.GetProblemEncoding();
+    SProblemEncoding& problemEncoding = m_Problem->GetProblemEncoding();
     SGenotype newGenotype;
 
     auto numberOfCities = problemEncoding.m_Encoding[0].m_SectionDescription.size();
@@ -114,9 +115,9 @@ void CACO_TSP::GetBestRoute() {
         currentPosition = nextPosition;
     }
 
-    auto *newAnt = m_Initialization.CreateSOIndividual(problemEncoding, newGenotype);
-    m_Problem.Evaluate(*newAnt);
-    CAggregatedFitness::CountFitness(*newAnt, m_ObjectiveWeights);
+    auto *newAnt = m_Initialization->CreateSOIndividual(problemEncoding, newGenotype);
+    m_Problem->Evaluate(*newAnt);
+    CAggregatedFitness::CountFitness(*newAnt, *m_ObjectiveWeights);
 
     m_Population.push_back(newAnt);
 }
@@ -163,11 +164,11 @@ void CACO_TSP::LeavePheromone() {
 }
 
 SSOIndividual* CACO_TSP::GetRandomAnt(){
-    SProblemEncoding& problemEncoding = m_Problem.GetProblemEncoding();
-    auto* newAnt = m_Initialization.CreateSOIndividual(problemEncoding);
+    SProblemEncoding& problemEncoding = m_Problem->GetProblemEncoding();
+    auto* newAnt = m_Initialization->CreateSOIndividual(problemEncoding);
 
-    m_Problem.Evaluate(*newAnt);
-    CAggregatedFitness::CountFitness(*newAnt, m_ObjectiveWeights);
+    m_Problem->Evaluate(*newAnt);
+    CAggregatedFitness::CountFitness(*newAnt, *m_ObjectiveWeights);
 
     return newAnt;
 }
@@ -180,7 +181,7 @@ void CACO_TSP::RandomAnts() {
 }
 
 void CACO_TSP::AntMarch() {
-    SProblemEncoding& problemEncoding = m_Problem.GetProblemEncoding();
+    SProblemEncoding& problemEncoding = m_Problem->GetProblemEncoding();
     SGenotype newGenotype;
 
     auto numberOfCities = problemEncoding.m_Encoding[0].m_SectionDescription.size();
@@ -228,9 +229,9 @@ void CACO_TSP::AntMarch() {
     }
 
 
-    auto *newAnt = m_Initialization.CreateSOIndividual(problemEncoding, newGenotype);
-    m_Problem.Evaluate(*newAnt);
-    CAggregatedFitness::CountFitness(*newAnt, m_ObjectiveWeights);
+    auto *newAnt = m_Initialization->CreateSOIndividual(problemEncoding, newGenotype);
+    m_Problem->Evaluate(*newAnt);
+    CAggregatedFitness::CountFitness(*newAnt, *m_ObjectiveWeights);
 
     m_Population.push_back(newAnt);
 
@@ -248,17 +249,28 @@ void CACO_TSP::RunAnts() {
         m_Population[bestAntPosition]= nullptr;
     }
 
-    ASOMethod::Reset();
+    for (auto &i: m_Population)
+    {
+        delete i;
+    }
+    m_Population.clear();
+    
     for (size_t i = 0; i < m_PopulationSize; ++i) {
         AntMarch();
     }
 }
 
-void CACO_TSP::ResetPheromoneMap(){
-    size_t numberOfCities = m_Problem.GetProblemEncoding().m_Encoding[0].m_SectionDescription.size();
+void CACO_TSP::Reset(){
+    for (auto &i: m_Population)
+    {
+        delete i;
+    }
+    m_Population.clear();
+    
+    size_t numberOfCities = m_Problem->GetProblemEncoding().m_Encoding[0].m_SectionDescription.size();
     m_PheromoneMap = std::vector<std::vector<float>>(numberOfCities, std::vector<float>(numberOfCities, 0.0));
 
-    m_DistanceMatrix = m_Problem.GetProblemEncoding().m_additionalProblemData;
+    m_DistanceMatrix = m_Problem->GetProblemEncoding().m_additionalProblemData;
 
     for(int i=0;i< m_PheromoneMap.size();i++){
         for(int ii=0;ii< m_PheromoneMap.size();ii++){
@@ -301,14 +313,6 @@ void CACO_TSP::AddExperimentData(int generation) {
                                  std::to_string(worst->m_Fitness) + ';' +
                                  std::to_string(meanFitness);
     CExperimentLogger::AddLine(generationData.c_str());
-}
-
-void CACO_TSP::LogResultData() {
-    SSOIndividual *best = *std::min_element(m_Population.begin(), m_Population.end(),
-                                            [](const auto &a, const auto &b) {
-                                                return a->m_Fitness < b->m_Fitness;
-                                            });
-    CExperimentLogger::LogResult(std::to_string(best->m_Fitness).c_str());
 }
 
 

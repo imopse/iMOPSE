@@ -1,6 +1,5 @@
 #include "MSRAProblem.h"
 #include <algorithm>
-#include <numeric>
 
 CMSRAProblem::CMSRAProblem(CMSRAInstance& problemTemplate)
     : m_ProblemTemplate(problemTemplate)

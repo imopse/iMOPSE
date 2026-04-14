@@ -1,22 +1,25 @@
 #include <algorithm>
-#include <sstream>
 #include "CNTGA2.h"
-#include "../utils/archive/ArchiveUtils.h"
 #include "../utils/clustering/CNonDominatedSorting.h"
 #include "../../../../utils/logger/ErrorUtils.h"
 
-CNTGA2::CNTGA2(AProblem &evaluator,
-               AInitialization &initialization,
-               CRankedTournament &rankedTournament,
-               CGapSelectionByRandomDim &gapSelection,
-               ACrossover &crossover,
-               AMutation &mutation,
-               SConfigMap *configMap
-) :
-        AMOGeneticMethod(evaluator, initialization, crossover, mutation),
-        m_RankedTournament(rankedTournament),
-        m_GapSelection(gapSelection)
+CNTGA2::CNTGA2(  
+        AProblem* evaluator,
+        AInitialization* initialization,
+        CRankedTournament* rankedTournament,
+        CGapSelectionByRandomDim* gapSelection,
+        ACrossover* crossover,
+        AMutation* mutation,
+        SConfigMap* configMap
+)
 {
+    m_Problem = evaluator;
+    m_Initialization = initialization;
+    m_Crossover = crossover;
+    m_Mutation = mutation;
+    m_RankedTournament = rankedTournament;
+    m_GapSelection = gapSelection;
+    
     configMap->TakeValue("GapSelectionPercent", m_GapSelectionPercent);
     ErrorUtils::OutOfScopeF("NTGA2", "GapSelectionPercent", m_GapSelectionPercent / 100.f);
 
@@ -36,10 +39,10 @@ void CNTGA2::RunOptimization()
 
     for (size_t i = 0; i < m_PopulationSize; ++i)
     {
-        SProblemEncoding& problemEncoding = m_Problem.GetProblemEncoding();
-        auto* newInd = m_Initialization.CreateMOIndividual(problemEncoding);
+        SProblemEncoding& problemEncoding = m_Problem->GetProblemEncoding();
+        auto* newInd = m_Initialization->CreateMOIndividual(problemEncoding);
 
-        m_Problem.Evaluate(*newInd);
+        m_Problem->Evaluate(*newInd);
 
         m_Population.push_back(newInd);
     }
@@ -62,8 +65,8 @@ void CNTGA2::RunOptimization()
 
             for (size_t i = 0; i < m_PopulationSize; i += 2)
             {
-                auto *firstParent = m_RankedTournament.Select(m_Population);
-                auto *secondParent = m_RankedTournament.Select(m_Population);
+                auto *firstParent = m_RankedTournament->Select(m_Population);
+                auto *secondParent = m_RankedTournament->Select(m_Population);
 
                 CrossoverAndMutate(*firstParent, *secondParent);
             }
@@ -71,9 +74,9 @@ void CNTGA2::RunOptimization()
         else
         {
             // Evolve with Gap
-            const auto &parents = m_GapSelection.Select(
+            const auto &parents = m_GapSelection->Select(
                     m_Archive,
-                    m_Problem.GetProblemEncoding().m_objectivesNumber,
+                    m_Problem->GetProblemEncoding().m_objectivesNumber,
                     m_PopulationSize
             );
             for (auto& parentPair : parents)
@@ -94,7 +97,7 @@ void CNTGA2::RunOptimization()
         ++generation;
     }
 
-    ArchiveUtils::LogParetoFront(m_Archive);
+    LogParetoFront(m_Archive);
 }
 
 void CNTGA2::CrossoverAndMutate(SMOIndividual &firstParent, SMOIndividual &secondParent)
@@ -102,19 +105,19 @@ void CNTGA2::CrossoverAndMutate(SMOIndividual &firstParent, SMOIndividual &secon
     auto *firstChild = new SMOIndividual{firstParent};
     auto *secondChild = new SMOIndividual{secondParent};
 
-    m_Crossover.Crossover(
-            m_Problem.GetProblemEncoding(),
+    m_Crossover->Crossover(
+            m_Problem->GetProblemEncoding(),
             firstParent,
             secondParent,
             *firstChild,
             *secondChild
     );
 
-    m_Mutation.Mutate(m_Problem.GetProblemEncoding(), *firstChild);
-    m_Mutation.Mutate(m_Problem.GetProblemEncoding(), *secondChild);
+    m_Mutation->Mutate(m_Problem->GetProblemEncoding(), *firstChild);
+    m_Mutation->Mutate(m_Problem->GetProblemEncoding(), *secondChild);
 
-    m_Problem.Evaluate(*firstChild);
-    m_Problem.Evaluate(*secondChild);
+    m_Problem->Evaluate(*firstChild);
+    m_Problem->Evaluate(*secondChild);
 
     m_NextPopulation.emplace_back(firstChild);
     m_NextPopulation.emplace_back(secondChild);

@@ -8,5 +8,5 @@ class AProblem;
 class CInitializationFactory
 {
 public:
-    static AInitialization* Create(SConfigMap* configMap, AProblem& problem);
+    static AInitialization* Create(SConfigMap* configMap, AProblem* problem);
 };

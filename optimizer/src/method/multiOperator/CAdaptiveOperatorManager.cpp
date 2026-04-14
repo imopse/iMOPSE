@@ -1,19 +1,17 @@
 #include "CAdaptiveOperatorManager.h"
-#include "factories/method/operators/mutation/CMultiMutationFactory.h"
 #include "method/individual/MO/SMOIndividual.h"
 #include "utils/dataStructures/CCSV.h"
-#include "method/multiOperator/operatorSelectors/CCreditRouletteMultiOperator.h"
 #include "method/multiOperator/operatorSelectors/CUCBMultiOperator.h"
 #include "method/multiOperator/operatorSelectors/CUCB2MultiOperator.h"
+#include "factories/method/operators/mutation/CMutationFactory.h"
 
-
-CAdaptiveOperatorManager::CAdaptiveOperatorManager(SConfigMap* configMap, AProblem& problem,
+CAdaptiveOperatorManager::CAdaptiveOperatorManager(SConfigMap* configMap, AProblem* problem,
                                                    const std::vector<SMOIndividual*>& population, const std::vector<SMOIndividual*>& archive)
     : m_Problem(problem)
     , m_Population(population)
     , m_Archive(archive)
 {
-    m_MultiMutation = CMultiMutationFactory::Create(configMap, problem);
+    m_MultiMutation = CMutationFactory::CreateMultiMutation(configMap, problem);
     CreateMutationDataMapping();
 
     //m_SecondaryMultiMutation = new CCreditRouletteMultiOperator<AMutation>();
@@ -110,10 +108,10 @@ void CAdaptiveOperatorManager::LocalAdaptiveMutation(SMOIndividual* individual, 
         variantDataIdx = operatorDataIds[0];
     }
 
-    mutation->Mutate(m_Problem.GetProblemEncoding(), *individual);
+    mutation->Mutate(m_Problem->GetProblemEncoding(), *individual);
 
     // Evaluate and update operator data in the individual
-    m_Problem.Evaluate(*individual);
+    m_Problem->Evaluate(*individual);
     float creditVal = CalculateCredit(individual, parent, otherParent);
     individual->m_OperatorsData[variantDataIdx].m_Credits += creditVal;
     individual->m_OperatorsData[variantDataIdx].m_Calls += 1;
@@ -382,7 +380,7 @@ float CAdaptiveOperatorManager::CalcFitnessImprovementRateVer1(SMOIndividual* ne
     // Simple weighted sum
     float newValue = 0.f;
     float oldValue = 0.f;
-    const size_t objCount = m_Problem.GetProblemEncoding().m_objectivesNumber;
+    const size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
     for (size_t i = 0; i < objCount; ++i)
     {
         newValue += newIndividual->m_NormalizedEvaluation[i];
@@ -399,7 +397,7 @@ float CAdaptiveOperatorManager::CalcFitnessImprovementRateVer3(SMOIndividual* ne
     // Simple weighted sum
     float newValue = 0.f;
     float oldValue = 0.f;
-    const size_t objCount = m_Problem.GetProblemEncoding().m_objectivesNumber;
+    const size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
     for (size_t i = 0; i < objCount; ++i)
     {
         newValue += newIndividual->m_NormalizedEvaluation[i] * (oldIndividual->m_NormalizedEvaluation[i] - 1.0f);
@@ -417,7 +415,7 @@ float CAdaptiveOperatorManager::CalcFitnessImprovementRateVer4(SMOIndividual* ne
     // Simple weighted sum
     float newValue = 0.f;
     float oldValue = 0.f;
-    const size_t objCount = m_Problem.GetProblemEncoding().m_objectivesNumber;
+    const size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
     for (size_t i = 0; i < objCount; ++i)
     {
         newValue += (newIndividual->m_NormalizedEvaluation[i] - 1.f) * (oldIndividual->m_NormalizedEvaluation[i] - 1.0f);
@@ -435,7 +433,7 @@ float CAdaptiveOperatorManager::CalcFitnessImprovementRateVer5(SMOIndividual* ne
     // Simple weighted sum
     float newValue = 0.f;
     float oldValue = 0.f;
-    const size_t objCount = m_Problem.GetProblemEncoding().m_objectivesNumber;
+    const size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
 
     // calc vec normal
     float s = 0.f;

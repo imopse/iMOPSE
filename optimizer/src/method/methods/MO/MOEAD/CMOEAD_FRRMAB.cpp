@@ -1,28 +1,23 @@
 #include <algorithm>
-#include <sstream>
 #include "CMOEAD_FRRMAB.h"
-#include "../utils/archive/ArchiveUtils.h"
 #include "../../../../utils/random/CRandom.h"
 #include "../../../../utils/logger/ErrorUtils.h"
-#include "factories/method/operators/mutation/CMultiMutationFactory.h"
 #include "utils/dataStructures/CCSV.h"
 #include "utils/logger/CExperimentLogger.h"
+#include "factories/method/operators/mutation/CMutationFactory.h"
 
-CMOEAD_FRRMAB::CMOEAD_FRRMAB(AProblem &problem, AInitialization &initialization, ACrossover &crossover, AMutation &mutation, SConfigMap *configMap)
-    : CMOEAD(problem, initialization, crossover, mutation, configMap)
+CMOEAD_FRRMAB::CMOEAD_FRRMAB(
+        AProblem* evaluator,
+        AInitialization* initialization,
+        ACrossover* crossover,
+        AMutation* mutation,
+        SConfigMap* configMap
+) : CMOEAD(evaluator, initialization, crossover, mutation, configMap)
 {
-    m_MultiMutation = CMultiMutationFactory::Create(configMap, problem);
+    m_MultiMutation = CMutationFactory::CreateMultiMutation(configMap, m_Problem);
 
     configMap->TakeValue("SlidingWindowWidth", m_SlidingWindowWidth);
     ErrorUtils::LowerThanZeroI("CMOEAD_FRRMAB", "SlidingWindowWidth", m_SlidingWindowWidth);
-}
-
-CMOEAD_FRRMAB::~CMOEAD_FRRMAB()
-{
-    if (m_MultiMutation)
-    {
-        delete m_MultiMutation;
-    }
 }
 
 void CMOEAD_FRRMAB::RunOptimization()
@@ -41,10 +36,10 @@ void CMOEAD_FRRMAB::RunOptimization()
 
     for (size_t i = 0; i < m_PopulationSize; ++i)
     {
-        SProblemEncoding& problemEncoding = m_Problem.GetProblemEncoding();
-        auto* newInd = m_Initialization.CreateMOIndividual(problemEncoding);
+        SProblemEncoding& problemEncoding = m_Problem->GetProblemEncoding();
+        auto* newInd = m_Initialization->CreateMOIndividual(problemEncoding);
 
-        m_Problem.Evaluate(*newInd);
+        m_Problem->Evaluate(*newInd);
 
         m_Population.push_back(newInd);
     }
@@ -87,17 +82,10 @@ void CMOEAD_FRRMAB::RunOptimization()
         }
     }
 
-    ArchiveUtils::LogParetoFront(m_Archive);
+    LogParetoFront(m_Archive);
 
     CExperimentLogger::LogResult(m_OperatorStats.ToStringStream().str().c_str(), "OperatorStats.csv");
     CExperimentLogger::LogResult(m_HVStats.ToStringStream().str().c_str(), "HVStats.csv");
-}
-
-void CMOEAD_FRRMAB::Reset()
-{
-    AMOGeneticMethod::Reset();
-    m_MultiMutation->ResetAllOperatorData();
-    m_SlidingWindow = {};
 }
 
 void CMOEAD_FRRMAB::EvolveToNextGeneration()
@@ -107,7 +95,7 @@ void CMOEAD_FRRMAB::EvolveToNextGeneration()
 
     for (size_t i = 0; i < m_Population.size(); ++i)
     {
-        const SSubproblem& sp = m_Subproblems[i];
+        const SMOEADSubproblem& sp = m_Subproblems[i];
         const size_t nhSize = sp.m_Neighborhood.size();
 
         size_t firstParentIdx = sp.m_Neighborhood[CRandom::GetInt(0, nhSize)];
@@ -118,8 +106,8 @@ void CMOEAD_FRRMAB::EvolveToNextGeneration()
         auto *firstChild = new SMOIndividual{*firstParent};
         auto *secondChild = new SMOIndividual{*secondParent};
 
-        m_Crossover.Crossover(
-            m_Problem.GetProblemEncoding(),
+        m_Crossover->Crossover(
+            m_Problem->GetProblemEncoding(),
             *firstParent,
             *secondParent,
             *firstChild,
@@ -128,7 +116,7 @@ void CMOEAD_FRRMAB::EvolveToNextGeneration()
 
         CAtomicOperator<AMutation>* atomicMutation = m_MultiMutation->SelectOperator();
         AMutation* mutation = atomicMutation->Get();
-        mutation->Mutate(m_Problem.GetProblemEncoding(), *firstChild);
+        mutation->Mutate(m_Problem->GetProblemEncoding(), *firstChild);
         atomicMutation->GetData().m_AccCalls += 1;
 
         size_t operatorId = atomicMutation->GetId();
@@ -143,7 +131,7 @@ void CMOEAD_FRRMAB::EvolveToNextGeneration()
         //Take only one child
         delete secondChild;
         testIndividual = firstChild;
-        m_Problem.Evaluate(*testIndividual);
+        m_Problem->Evaluate(*testIndividual);
 
         // Now check if any neighborhood solution is improved
         for (size_t j : sp.m_Neighborhood)
@@ -169,12 +157,12 @@ void CMOEAD_FRRMAB::EvolveToNextGeneration()
     }
 }
 
-float CMOEAD_FRRMAB::CalcFitnessImprovementRate(SMOIndividual* newIndividual, SMOIndividual* oldIndividual, CMOEAD::SSubproblem& subproblem)
+float CMOEAD_FRRMAB::CalcFitnessImprovementRate(SMOIndividual* newIndividual, SMOIndividual* oldIndividual, SMOEADSubproblem& subproblem)
 {
     // Simple weighted sum
     float newValue = 0.f;
     float oldValue = 0.f;
-    const size_t objCount = m_Problem.GetProblemEncoding().m_objectivesNumber;
+    const size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
     for (size_t i = 0; i < objCount; ++i)
     {
         newValue += newIndividual->m_NormalizedEvaluation[i] * subproblem.m_WeightVector[i];
@@ -194,14 +182,6 @@ void CMOEAD_FRRMAB::UpdateMultiOperatorCredits()
         opData.m_Calls += 1;
         opData.m_Credits += windowSlot.m_OperatorFIR;
     }
-
-    // TODO - implement Decay if needed
-    // Decay(Reward, FRR);
-    //Rank Rewardi in descending order and set Ranki 9 to be
-    //the rank value of operator i;
-    // for op ← 1 to K do
-    //   Decayop = DRankop × Rewardop;
-    // end
 }
 
 // TODO - copied from ParetoAnalyzer - remove it or move somewhere else

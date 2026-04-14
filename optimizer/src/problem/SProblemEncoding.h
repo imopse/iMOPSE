@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <vector>
+#include <set>
 
 struct SEncodingDescriptor
 {
@@ -11,9 +12,9 @@ struct SEncodingDescriptor
 
 enum class EEncodingType
 {
-    ASSOCIATION = 0,
     PERMUTATION,
     BINARY,
+    ASSOCIATION
 };
 
 struct SEncodingSection
@@ -27,4 +28,17 @@ struct SProblemEncoding
     int m_objectivesNumber;
     std::vector<SEncodingSection> m_Encoding;
     std::vector<std::vector<float>> m_additionalProblemData;
+    std::set<EEncodingType> allowedEncodingTypes;
+
+    std::set<EEncodingType> GetAllEncodingTypes()
+    {
+        std::set<EEncodingType> uniqueTypes;
+
+        for (const auto &section: m_Encoding)
+        {
+            uniqueTypes.insert(section.m_SectionType);
+        }
+
+        return uniqueTypes;
+    }
 };

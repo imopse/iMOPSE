@@ -8,15 +8,13 @@ Our library provides a set of optimization algorithms, problems and ready-to-use
 
 If you use iMOPSE library in a scientific work, We would appreciate citation to the following paper(s):
 
-@inproceedings{imopse-lib,
-author = {Gmyrek, Konrad and Myszkowski, Pawe\l{} B. and Antkiewicz, Micha\l{} and Olech, \L{}ukasz P.},
-title = {iMOPSE: a Comprehensive Open Source Library for Single- and Multi-objective Metaheuristic Optimization},
-year = {2024},
-url = {https://doi.org/10.1007/978-3-031-70068-2_11},
-doi = {10.1007/978-3-031-70068-2_11},
-booktitle = {Parallel Problem Solving from Nature – PPSN XVIII: 18th International Conference, PPSN 2024, Hagenberg, Austria, September 14–18, 2024, Proceedings, Part II},
-pages = {170–184}
-}
+Gmyrek, Konrad and Myszkowski, Paweł B. and Antkiewicz, Michał and Olech, Łukasz P.
+*iMOPSE: a Comprehensive Open Source Library for Single- and Multi-objective Metaheuristic Optimization*
+2024,
+https://doi.org/10.1007/978-3-031-70068-2_11,
+doi: 10.1007/978-3-031-70068-2_11,
+booktitle: Parallel Problem Solving from Nature – PPSN XVIII: 18th International Conference, PPSN 2024, Hagenberg, Austria, September 14–18, 2024, Proceedings, Part II,
+pages: 170–184
 
 
 ### Key Features
@@ -26,11 +24,14 @@ pages = {170–184}
   - Non-dominated Tournament Genetic Algorithm 2 (NTGA2)
   - Strength Pareto Evolutionary Algorithm 2 (SPEA2)
   - Balancing Non-dominated Tournament Genetic Algorithm (BNTGA)
+  - Adaptive Non-dominated Tournament Genetic Algorithm (ANTGA)
+  - BNTGA based on Genetic Programming-based Hyper-heuristic (bNTGA-GP)
 - **NP-hard Problems** with ready-to-use **instances**:
   - Multi-Skill Resource-Constrained Project Scheduling Problem (MSRPCP)
   - Traveling Salesman Problem (TSP)
   - Traveling Thief Problem (TTP)
   - Capacitated Vehicle Routing Problem (CVRP)
+  - Capacitated Vehicle Routing Problem with Time Windows (CVRPTW)
 - **Flexible Encoding Mechanism** and **Specialized Operators**:  iMOPSE excels in handling classical NP-hard problems with constraints, with focus on scheduling and combinatorial problems like MS-RCPSP or TSP. Its versatile encoding system effectively manages various problems and enhances the application of specialized operators.
 - **Comprehensive Tool Suite**: iMOPSE provides pre-configured problem instances and method setups, complemented by an extensive array of tools for data collection, visualization, and analysis, making it highly effective for research and result interpretation.
 - **Extensive Customization**: Offers numerous customization options to facilitate research into diverse optimization methods and scenarios.
@@ -126,7 +127,7 @@ The `ParetoAnalyzer` project is essential for analyzing and comparing multi-obje
 iMOPSE includes various tools for visualization, and validation, enhancing its research capabilities. These additional tools are implemented as Python scripts:
 
 - **msrcpsp_solution_visualizer:** Validates and visualizes MS-RCPSP solutions.
-- **multi-objective_visualizer:** Visualizes trade-offs between competing objectives for multi-objective optimization.
+- **pareto_visualizer:** Visualizes trade-offs between competing objectives for multi-objective optimization.
 - **single-objective_visualizer:** Provides a graphical overview of fitness values for single-objective optimization.
 
 # Example of Use
@@ -226,6 +227,7 @@ Thanks to all the contributors who have invested their time and expertise in dev
 - **Michał Antkiewicz** (2021 - Now)
 - **Konrad Gmyrek** (2023 - Now)
 - **Łukasz Olech** (2023 - Now)
+- **Adam Paliszek-Saładyga** (2026 - Now)
 
 ## Past Collaborators
 - **Adam Krzeminski** (2023 - 2024)

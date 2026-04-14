@@ -1,15 +1,15 @@
 #include "CSA.h"
-#include "../../../../utils/logger/CExperimentLogger.h"
 #include "../utils/aggregatedFitness/CAggregatedFitness.h"
 #include "../../../../utils/random/CRandom.h"
-#include "../utils/experiment/CSOExperimentUtils.h"
 #include "../../../../utils/logger/ErrorUtils.h"
 #include <cmath>
 
-CSA::CSA(std::vector<float>& objectiveWeights, AProblem& evaluator, AInitialization& initialization,
-         SConfigMap* configMap)
-        : ASOMethod(evaluator, initialization, objectiveWeights)
+CSA::CSA( AProblem* evaluator, AInitialization* initialization, SConfigMap* configMap, std::vector<float>* objectiveWeights)
 {
+    m_Problem = evaluator;
+    m_Initialization = initialization;
+    m_ObjectiveWeights = objectiveWeights;
+    
     configMap->TakeValue("InitialTemperature", m_InitialTemperature);
     ErrorUtils::LowerThanZeroF("SA", "InitialTemperature", m_InitialTemperature);
 
@@ -34,24 +34,24 @@ void CSA::RunOptimization()
         temperature *= m_CoolingRate;
     }
     
-    CSOExperimentUtils::LogResultData(*m_CurrentSolution, m_Problem);
+    LogResultData(*m_CurrentSolution, *m_Problem);
 }
 
 void CSA::InitializeSolution()
 {
-    SProblemEncoding& problemEncoding = m_Problem.GetProblemEncoding();
-    m_CurrentSolution = m_Initialization.CreateSOIndividual(problemEncoding);
-    m_Problem.Evaluate(*m_CurrentSolution);
-    CAggregatedFitness::CountFitness(*m_CurrentSolution, m_ObjectiveWeights);
+    SProblemEncoding& problemEncoding = m_Problem->GetProblemEncoding();
+    m_CurrentSolution = m_Initialization->CreateSOIndividual(problemEncoding);
+    m_Problem->Evaluate(*m_CurrentSolution);
+    CAggregatedFitness::CountFitness(*m_CurrentSolution, *m_ObjectiveWeights);
 }
 
 void CSA::Iterate(double temperature)
 {
-    SSOIndividual* neighborSolution = m_Initialization.CreateNeighborSolution(m_Problem.GetProblemEncoding(), *m_CurrentSolution);
-    m_Problem.Evaluate(*neighborSolution);
-    CAggregatedFitness::CountFitness(*neighborSolution, m_ObjectiveWeights);
+    SSOIndividual* neighborSolution = m_Initialization->CreateNeighborSolution(m_Problem->GetProblemEncoding(), *m_CurrentSolution);
+    m_Problem->Evaluate(*neighborSolution);
+    CAggregatedFitness::CountFitness(*neighborSolution, *m_ObjectiveWeights);
     
-    double delta = CAggregatedFitness::CalculateDelta(*neighborSolution, *m_CurrentSolution, m_ObjectiveWeights);
+    double delta = CAggregatedFitness::CalculateDelta(*neighborSolution, *m_CurrentSolution, *m_ObjectiveWeights);
 
     if (delta < 0 || (exp(-delta / temperature) > CRandom::GetFloat(0.0f, 1.0f)))
     {
@@ -62,10 +62,4 @@ void CSA::Iterate(double temperature)
     {
         delete neighborSolution;
     }
-}
-
-// Destructor to clean up
-CSA::~CSA()
-{
-
 }

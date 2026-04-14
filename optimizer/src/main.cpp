@@ -50,9 +50,9 @@ int main(int argc, char *argv[])
     CExperimentLogger::m_OutputDirPath = argv[OUTPUT_DIR_PATH_INDEX];  // Set output directory
 
     // Set the number of executions, default if not provided
-    programParams.m_ExecutionsCount = (argc > EXECUTION_COUNT_INDEX) ?
-                                      std::stoi(argv[EXECUTION_COUNT_INDEX]) :
-                                      DEFAULT_EXECUTIONS_NUMBER;
+    programParams.m_RepetitionsCount = (argc > EXECUTION_COUNT_INDEX) ?
+                                       std::stoi(argv[EXECUTION_COUNT_INDEX]) :
+                                       DEFAULT_EXECUTIONS_NUMBER;
 
     std::random_device rd;
     programParams.m_Seed = (argc > SEED_INDEX) ? std::stoi(argv[SEED_INDEX]) : rd();

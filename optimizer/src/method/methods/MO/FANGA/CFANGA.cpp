@@ -1,17 +1,25 @@
 #include <algorithm>
-#include <sstream>
 #include "CFANGA.h"
 #include "method/methods/MO/utils/archive/ArchiveUtils.h"
 #include "utils/logger/ErrorUtils.h"
 #include "utils/dataStructures/CCSV.h"
 #include "utils/logger/CExperimentLogger.h"
 
-CFANGA::CFANGA(AProblem& evaluator, AInitialization& initialization,
-               ACrossover& crossover, AMutation& mutation, CGapSelectionByRandomDim& gapSelection,
-               SConfigMap* configMap)
-    : AMOGeneticMethod(evaluator, initialization, crossover, mutation), m_GapSelection(gapSelection)
-    , m_AdaptiveOperatorManager(configMap, evaluator, m_Population, m_Archive)
+CFANGA::CFANGA(
+        AProblem* evaluator,
+        AInitialization* initialization,
+        ACrossover* crossover,
+        AMutation* mutation,
+        CGapSelectionByRandomDim* gapSelection,
+        SConfigMap* configMap
+) : m_AdaptiveOperatorManager(configMap, evaluator, m_Population, m_Archive)
 {
+    m_Problem = evaluator;
+    m_Initialization = initialization;
+    m_Crossover = crossover;
+    m_Mutation = mutation;
+    m_GapSelection = gapSelection;
+    
     configMap->TakeValue("PopulationSize", m_PopulationSize);
     ErrorUtils::LowerThanZeroI("ANTGA", "PopulationSize", m_PopulationSize);
     m_Population.reserve(m_PopulationSize);
@@ -19,10 +27,6 @@ CFANGA::CFANGA(AProblem& evaluator, AInitialization& initialization,
 
     configMap->TakeValue("GenerationLimit", m_GenerationLimit);
     ErrorUtils::LowerThanZeroI("ANTGA", "GenerationLimit", m_GenerationLimit);
-}
-
-CFANGA::~CFANGA()
-{
 }
 
 void CFANGA::RunOptimization()
@@ -36,9 +40,9 @@ void CFANGA::RunOptimization()
 
     for (size_t i = 0; i < m_PopulationSize; ++i)
     {
-        SProblemEncoding& problemEncoding = m_Problem.GetProblemEncoding();
-        auto* newInd = m_Initialization.CreateMOIndividual(problemEncoding);
-        m_Problem.Evaluate(*newInd);
+        SProblemEncoding& problemEncoding = m_Problem->GetProblemEncoding();
+        auto* newInd = m_Initialization->CreateMOIndividual(problemEncoding);
+        m_Problem->Evaluate(*newInd);
         m_Population.push_back(newInd);
     }
 
@@ -66,22 +70,15 @@ void CFANGA::RunOptimization()
 
         if (fet % 5000 == 0)
         {
-            //ArchiveUtils::LogParetoFront(m_Archive, fet);
+            //LogParetoFront(m_Archive, fet);
         }
     }
 
-    ArchiveUtils::LogParetoFront(m_Archive);
+    LogParetoFront(m_Archive);
     //CExperimentLogger::LogResult(m_PopulationHistory.ToStringStream().str().c_str(), "PopHist.csv");
     //CExperimentLogger::LogResult(m_ArchiveHistory.ToStringStream().str().c_str(), "ArchHist.csv");
     CExperimentLogger::LogResult(m_OperatorStats.ToStringStream().str().c_str(), "OperatorStats.csv");
     CExperimentLogger::LogResult(m_HVStats.ToStringStream().str().c_str(), "HVStats.csv");
-}
-
-void CFANGA::Reset()
-{
-    AMOGeneticMethod::Reset();
-    m_Generation = 0;
-    m_AdaptiveOperatorManager.Reset();
 }
 
 void CFANGA::EvolveToNextGeneration()
@@ -98,9 +95,9 @@ void CFANGA::EvolveToNextGeneration()
         //ResetAllArchiveOperatorDataButAccCalls();
     }
 
-    const auto& parents = m_GapSelection.Select(
+    const auto& parents = m_GapSelection->Select(
         m_Archive,
-        m_Problem.GetProblemEncoding().m_objectivesNumber,
+        m_Problem->GetProblemEncoding().m_objectivesNumber,
         m_PopulationSize
     );
     for (auto& parentPair : parents)
@@ -119,8 +116,8 @@ void CFANGA::CrossoverAndMutate(SMOIndividual* firstParent, SMOIndividual* secon
     firstChild->m_OperatorsData = firstParent->m_OperatorsData;
     secondChild->m_OperatorsData = secondParent->m_OperatorsData;
 
-    m_Crossover.Crossover(
-        m_Problem.GetProblemEncoding(),
+    m_Crossover->Crossover(
+        m_Problem->GetProblemEncoding(),
         *firstParent,
         *secondParent,
         *firstChild,

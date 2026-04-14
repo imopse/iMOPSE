@@ -11,6 +11,5 @@ public:
     static CFitnessTournament *CreateFitnessTournamentSelection(SConfigMap *configMap);
     static CRankedTournament *CreateRankedTournamentSelection(SConfigMap *configMap);
     static CGapSelectionByRandomDim *CreateGapSelection(SConfigMap *configMap, bool bntga);
-private:
-    static int ValidateSelectionAndReturnTournamentSize(SConfigMap *configMap, std::string selectionName);
+    static ASelection *Create(SConfigMap *configMap, bool bntga);
 };

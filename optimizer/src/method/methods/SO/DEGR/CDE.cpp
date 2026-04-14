@@ -1,19 +1,16 @@
 #include "CDE.h"
 #include <numeric>
 
-#include <numeric>
 #include "../../../../utils/random/CRandom.h"
-#include "../utils/experiment/CSOExperimentUtils.h"
 #include "../utils/aggregatedFitness/CAggregatedFitness.h"
 #include "../../../../utils/logger/ErrorUtils.h"
 
-CDE::CDE(
-        std::vector<float>& objectiveWeights,
-        AProblem& evaluator,
-        AInitialization& initialization,
-        SConfigMap* configMap
-) : ASOMethod(evaluator, initialization, objectiveWeights)
+CDE::CDE( AProblem *evaluator, AInitialization *initialization, SConfigMap *configMap, std::vector<float> *objectiveWeights )
 {
+    m_Problem = evaluator;
+    m_Initialization = initialization;
+    m_ObjectiveWeights = objectiveWeights;
+
     configMap->TakeValue("PopulationSize", m_PopulationSize);
     m_Population.reserve(m_PopulationSize);
     ErrorUtils::LowerThanZeroI("DE", "PopulationSize", m_PopulationSize);
@@ -23,7 +20,7 @@ CDE::CDE(
 
     configMap->TakeValue("Cr", m_Cr);
     ErrorUtils::OutOfScopeF("DE", "Cr", m_Cr);
-        
+
     configMap->TakeValue("F", m_F);
     ErrorUtils::OutOfScopeF("DE", "F", m_F);
 }
@@ -46,16 +43,16 @@ void CDE::RunOptimization()
         generation++;
     }
     auto* best = CSOExperimentUtils::FindBest(m_Population);
-    CSOExperimentUtils::LogResultData(*best, m_Problem);
+    LogResultData(*best, *m_Problem);
 }
 
 void CDE::CreateIndividual()
 {
-    SProblemEncoding& problemEncoding = m_Problem.GetProblemEncoding();
-    auto* newInd = m_Initialization.CreateSOIndividual(problemEncoding);
+    SProblemEncoding& problemEncoding = m_Problem->GetProblemEncoding();
+    auto* newInd = m_Initialization->CreateSOIndividual(problemEncoding);
 
-    m_Problem.Evaluate(*newInd);
-    CAggregatedFitness::CountFitness(*newInd, m_ObjectiveWeights);
+    m_Problem->Evaluate(*newInd);
+    CAggregatedFitness::CountFitness(*newInd, *m_ObjectiveWeights);
 
     m_Population.push_back(newInd);
 }
@@ -73,8 +70,8 @@ void CDE::EvolveToNextGeneration()
         auto& random3 = m_Population[indices[2]]->m_Genotype;
 
         DifferentialEvolutionStep(donor->m_Genotype, random1, random2, random3);
-        m_Problem.Evaluate(*donor);
-        CAggregatedFitness::CountFitness(*donor, m_ObjectiveWeights);
+        m_Problem->Evaluate(*donor);
+        CAggregatedFitness::CountFitness(*donor, *m_ObjectiveWeights);
 
         if (donor->m_Fitness < m_Population[i]->m_Fitness)
         {
@@ -91,7 +88,7 @@ void CDE::EvolveToNextGeneration()
 void CDE::DifferentialEvolutionStep(SGenotype& donor, const SGenotype& gens1, const SGenotype& gens2, const SGenotype& gens3)
 {
     size_t sectionStartIndex = 0;
-    for (const auto& encodingSection: m_Problem.GetProblemEncoding().m_Encoding)
+    for (const auto& encodingSection: m_Problem->GetProblemEncoding().m_Encoding)
     {
         const auto& sectionDesc = encodingSection.m_SectionDescription;
         const size_t sectionSize = sectionDesc.size();

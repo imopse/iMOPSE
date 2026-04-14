@@ -5,7 +5,7 @@
 #include "method/operators/initialization/initializations/CInitialization.h"
 #include "method/operators/initialization/initializations/CECVRPTWInitialization.h"
 
-AInitialization *CInitializationFactory::Create(SConfigMap* configMap, AProblem& problem)
+AInitialization *CInitializationFactory::Create(SConfigMap* configMap, AProblem* problem)
 {
     std::string initializationName;
 
@@ -14,7 +14,7 @@ AInitialization *CInitializationFactory::Create(SConfigMap* configMap, AProblem&
     }
 
     if (strcmp(initializationName.c_str(), "ECVRPTW") == 0)
-        return new CECVRPTWInitialization(dynamic_cast<CECVRPTW&>(problem));
+        return new CECVRPTWInitialization(dynamic_cast<CECVRPTW&>(*problem));
 
     throw std::runtime_error("Initialization name: " + std::string(initializationName) + " not supported");
 }

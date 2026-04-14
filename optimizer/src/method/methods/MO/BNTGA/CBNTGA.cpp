@@ -1,15 +1,24 @@
 #include <algorithm>
-#include <sstream>
 #include "CBNTGA.h"
-#include "../utils/archive/ArchiveUtils.h"
 #include "../../../../utils/logger/ErrorUtils.h"
 #include "utils/dataStructures/CCSV.h"
 #include "utils/logger/CExperimentLogger.h"
 
-CBNTGA::CBNTGA(AProblem &evaluator, AInitialization &initialization,
-               ACrossover &crossover, AMutation &mutation, CGapSelectionByRandomDim& gapSelection, SConfigMap *configMap) :
-        AMOGeneticMethod(evaluator, initialization, crossover, mutation), m_GapSelection(gapSelection)
+CBNTGA::CBNTGA(
+        AProblem* evaluator,
+        AInitialization* initialization,
+        ACrossover* crossover,
+        AMutation* mutation,
+        CGapSelectionByRandomDim* gapSelection,
+        SConfigMap* configMap
+)
 {
+    m_Problem = evaluator;
+    m_Initialization = initialization;
+    m_Crossover = crossover;
+    m_Mutation = mutation;
+    m_GapSelection = gapSelection;
+    
     configMap->TakeValue("PopulationSize", m_PopulationSize);
     ErrorUtils::LowerThanZeroI("BNTGA", "PopulationSize", m_PopulationSize);
     m_Population.reserve(m_PopulationSize);
@@ -30,10 +39,10 @@ void CBNTGA::RunOptimization()
 
     for (size_t i = 0; i < m_PopulationSize; ++i)
     {
-        SProblemEncoding& problemEncoding = m_Problem.GetProblemEncoding();
-        auto* newInd = m_Initialization.CreateMOIndividual(problemEncoding);
+        SProblemEncoding& problemEncoding = m_Problem->GetProblemEncoding();
+        auto* newInd = m_Initialization->CreateMOIndividual(problemEncoding);
 
-        m_Problem.Evaluate(*newInd);
+        m_Problem->Evaluate(*newInd);
 
         m_Population.push_back(newInd);
     }
@@ -74,7 +83,7 @@ void CBNTGA::RunOptimization()
         }
     }
     
-    ArchiveUtils::LogParetoFront(m_Archive);
+    LogParetoFront(m_Archive);
 
     CExperimentLogger::LogResult(m_OperatorStats.ToStringStream().str().c_str(), "OperatorStats.csv");
     CExperimentLogger::LogResult(m_HVStats.ToStringStream().str().c_str(), "HVStats.csv");
@@ -82,9 +91,9 @@ void CBNTGA::RunOptimization()
 
 void CBNTGA::EvolveToNextGeneration()
 {
-    const auto &parents = m_GapSelection.Select(
+    const auto &parents = m_GapSelection->Select(
             m_Archive,
-            m_Problem.GetProblemEncoding().m_objectivesNumber,
+            m_Problem->GetProblemEncoding().m_objectivesNumber,
             m_PopulationSize
     );
     for (auto& parentPair : parents)
@@ -99,19 +108,19 @@ void CBNTGA::CrossoverAndMutate(SMOIndividual* firstParent, SMOIndividual* secon
     auto *firstChild = new SMOIndividual{*firstParent};
     auto *secondChild = new SMOIndividual{*secondParent};
 
-    m_Crossover.Crossover(
-            m_Problem.GetProblemEncoding(),
+    m_Crossover->Crossover(
+            m_Problem->GetProblemEncoding(),
             *firstParent,
             *secondParent,
             *firstChild,
             *secondChild
     );
 
-    m_Mutation.Mutate(m_Problem.GetProblemEncoding(), *firstChild);
-    m_Mutation.Mutate(m_Problem.GetProblemEncoding(), *secondChild);
+    m_Mutation->Mutate(m_Problem->GetProblemEncoding(), *firstChild);
+    m_Mutation->Mutate(m_Problem->GetProblemEncoding(), *secondChild);
 
-    m_Problem.Evaluate(*firstChild);
-    m_Problem.Evaluate(*secondChild);
+    m_Problem->Evaluate(*firstChild);
+    m_Problem->Evaluate(*secondChild);
 
     m_NextPopulation.emplace_back(firstChild);
     m_NextPopulation.emplace_back(secondChild);

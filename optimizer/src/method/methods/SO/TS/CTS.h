@@ -4,23 +4,30 @@
 #include <memory>
 #include "../../../configMap/SConfigMap.h"
 #include "../../../individual/SO/SSOIndividual.h"
-#include "../ASOMethod.h"
+#include "method/methods/SO/ASOMethod.h"
 
 class CTS : public ASOMethod
 {
 public:
-    CTS(std::vector<float> &objectiveWeights, AProblem& evaluator, AInitialization& initialization,
-        SConfigMap* configMap);
-    ~CTS() override = default;
+    CTS( AProblem* evaluator, AInitialization* initialization, SConfigMap* configMap, std::vector<float>* objectiveWeights);
+    ~CTS() {
+        delete m_Problem;
+        delete m_Initialization;
+        delete m_ObjectiveWeights;
+    }
 
     void RunOptimization() override;
 
-    void Reset()
+    void Reset() override
     {
         m_TabuList.clear();
     };
 
 private:
+    AProblem* m_Problem;
+    AInitialization* m_Initialization;
+    std::vector<float>* m_ObjectiveWeights;
+    
     int m_TabuListSize;
     int m_MaxIterations;
     float m_SimilarityThreshold;

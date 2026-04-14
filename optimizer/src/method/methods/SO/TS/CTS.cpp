@@ -1,13 +1,13 @@
 #include "CTS.h"
-#include "../../../../utils/logger/CExperimentLogger.h"
 #include "../utils/aggregatedFitness/CAggregatedFitness.h"
-#include "../utils/experiment/CSOExperimentUtils.h"
 #include "../../../../utils/logger/ErrorUtils.h"
 
-CTS::CTS(std::vector<float>& objectiveWeights, AProblem& evaluator, AInitialization& initialization,
-         SConfigMap* configMap)
-        : ASOMethod(evaluator, initialization, objectiveWeights)
+CTS::CTS(AProblem* evaluator, AInitialization* initialization, SConfigMap* configMap, std::vector<float>* objectiveWeights)
 {
+    m_Problem = evaluator;
+    m_Initialization = initialization;
+    m_ObjectiveWeights = objectiveWeights;
+    
     configMap->TakeValue("TabuListSize", m_TabuListSize);
     ErrorUtils::LowerThanZeroI("TS", "TabuListSize", m_TabuListSize);
 
@@ -23,41 +23,41 @@ void CTS::RunOptimization()
 {
     InitializeSolution();
     auto bestSolution = std::make_shared<SSOIndividual>(*m_CurrentSolution);
-    CAggregatedFitness::CountFitness(*bestSolution, m_ObjectiveWeights);
+    CAggregatedFitness::CountFitness(*bestSolution, *m_ObjectiveWeights);
 
     for (int iteration = 0; iteration < m_MaxIterations; ++iteration)
     {
-        auto newSolution = std::shared_ptr<SSOIndividual>(m_Initialization.CreateNeighborSolution(m_Problem.GetProblemEncoding(), *m_CurrentSolution));
-        m_Problem.Evaluate(*newSolution);
-        CAggregatedFitness::CountFitness(*newSolution, m_ObjectiveWeights);
+        auto newSolution = std::shared_ptr<SSOIndividual>(m_Initialization->CreateNeighborSolution(m_Problem->GetProblemEncoding(), *m_CurrentSolution));
+        m_Problem->Evaluate(*newSolution);
+        CAggregatedFitness::CountFitness(*newSolution, *m_ObjectiveWeights);
 
-        double delta = CAggregatedFitness::CalculateDelta(*newSolution, *m_CurrentSolution, m_ObjectiveWeights);
+        double delta = CAggregatedFitness::CalculateDelta(*newSolution, *m_CurrentSolution, *m_ObjectiveWeights);
 
         if (!IsTabu(newSolution) && delta < 0)
         {
             UpdateTabuList(newSolution);
             m_CurrentSolution = newSolution;
 
-            if (delta < CAggregatedFitness::CalculateDelta(*bestSolution, *m_CurrentSolution, m_ObjectiveWeights))
+            if (delta < CAggregatedFitness::CalculateDelta(*bestSolution, *m_CurrentSolution,  *m_ObjectiveWeights))
             {
                 bestSolution = std::make_shared<SSOIndividual>(*m_CurrentSolution);
-                CAggregatedFitness::CountFitness(*bestSolution, m_ObjectiveWeights);
+                CAggregatedFitness::CountFitness(*bestSolution,  *m_ObjectiveWeights);
             }
         }
         
         CExperimentLogger::AddLine((std::to_string(delta) + ";" + std::to_string(m_CurrentSolution->m_Fitness)).c_str());
     }
 
-    CSOExperimentUtils::LogResultData(*m_CurrentSolution, m_Problem);
+    LogResultData(*m_CurrentSolution, *m_Problem);
 }
 
 void CTS::InitializeSolution()
 {
-    SProblemEncoding& problemEncoding = m_Problem.GetProblemEncoding();
-    m_CurrentSolution = std::make_shared<SSOIndividual>(*m_Initialization.CreateSOIndividual(problemEncoding));
+    SProblemEncoding& problemEncoding = m_Problem->GetProblemEncoding();
+    m_CurrentSolution = std::make_shared<SSOIndividual>(*m_Initialization->CreateSOIndividual(problemEncoding));
 
-    m_Problem.Evaluate(*m_CurrentSolution);
-    CAggregatedFitness::CountFitness(*m_CurrentSolution, m_ObjectiveWeights);
+    m_Problem->Evaluate(*m_CurrentSolution);
+    CAggregatedFitness::CountFitness(*m_CurrentSolution, *m_ObjectiveWeights);
 }
 
 bool CTS::IsTabu(const std::shared_ptr<SSOIndividual> candidate)

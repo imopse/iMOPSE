@@ -1,45 +1,86 @@
 #include <regex>
+#include <cstring>
 #include "CSelectionFactory.h"
 #include "../../../../utils/fileReader/CReadUtils.h"
 
+static const char* const SELECTION = "Selection";
+
 CFitnessTournament *CSelectionFactory::CreateFitnessTournamentSelection(SConfigMap *configMap)
 {
-    int tournamentSize = ValidateSelectionAndReturnTournamentSize(configMap, "FitnessTournament");
+    std::string selectionData;
+    bool failed = !configMap->TakeValue("FitnessTournament", selectionData);
+    if (failed){ return nullptr; }
+
+    auto const vec = CReadUtils::SplitLine(selectionData);
+    if (vec.size() != 1) { return nullptr; }
+
+    int tournamentSize = std::stoi(vec[0]);
     return new CFitnessTournament(tournamentSize);
 }
 
 CRankedTournament *CSelectionFactory::CreateRankedTournamentSelection(SConfigMap *configMap)
 {
-    int tournamentSize = ValidateSelectionAndReturnTournamentSize(configMap, "RankedTournament");
+    std::string selectionData;
+    bool failed = !configMap->TakeValue("RankedTournament", selectionData);
+    if (failed){ return nullptr; }
+
+    auto const vec = CReadUtils::SplitLine(selectionData);
+    if (vec.size() != 1) { return nullptr; }
+
+    int tournamentSize = std::stoi(vec[0]);
     return new CRankedTournament(tournamentSize);
 }
 
 CGapSelectionByRandomDim *CSelectionFactory::CreateGapSelection(SConfigMap *configMap, bool bntga)
 {
-    int tournamentSize = ValidateSelectionAndReturnTournamentSize(configMap, "GapSelection");
+    std::string selectionData;
+    bool failed = !configMap->TakeValue("GapSelection", selectionData);
+    if (failed){ return nullptr; }
+
+    auto const vec = CReadUtils::SplitLine(selectionData);
+    if (vec.size() != 1) { return nullptr; }
+
+    int tournamentSize = std::stoi(vec[0]);
     return new CGapSelectionByRandomDim(tournamentSize, bntga);
 }
 
-int CSelectionFactory::ValidateSelectionAndReturnTournamentSize(SConfigMap *configMap, std::string selectionName)
+ASelection *CSelectionFactory::Create(SConfigMap *configMap, bool bntga)
 {
-    std::string rawSelectionString;
-    if (!configMap->TakeValue(selectionName, rawSelectionString))
+    std::string selectionData;
+    if (!configMap->TakeValue(SELECTION, selectionData))
     {
-        throw std::runtime_error("Cannot find " + selectionName + " param in configuration");
-    }
-    auto const parameters = CReadUtils::SplitLine(rawSelectionString);
-
-    if (parameters.empty())
-    {
-        throw std::runtime_error("Tournament size for " + selectionName + " not provided");
+        return nullptr;
     }
 
-    try
+    auto const vec = CReadUtils::SplitLine(selectionData);
+    if (vec.empty())
     {
-        return std::stoi(parameters[0]);
+        return nullptr;
     }
-    catch (const std::invalid_argument &e)
+
+    const char *opName = vec[0].c_str();
+
+    if (vec[0] == "FitnessTournament")
     {
-        throw std::runtime_error("Invalid tournament size");
+        if (vec.size() != 2) { return nullptr; }
+
+        int tournamentSize = std::stoi(vec[1]);
+        return new CFitnessTournament(tournamentSize);
     }
+    else if (vec[0] == "RankedTournament")
+    {
+        if (vec.size() != 2) { return nullptr; }
+
+        int tournamentSize = std::stoi(vec[1]);
+        return new CRankedTournament(tournamentSize);
+    }
+    else if (vec[0] == "GapSelection")
+    {
+        if (vec.size() != 2) { return nullptr; }
+
+        int tournamentSize = std::stoi(vec[1]);
+        return new CGapSelectionByRandomDim(tournamentSize, bntga);
+    }
+
+    return nullptr;
 }

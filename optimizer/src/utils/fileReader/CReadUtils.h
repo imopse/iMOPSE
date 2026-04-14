@@ -25,7 +25,7 @@ public:
     static bool ReadStringByKey(const std::string &line, const std::string &lineKey, const std::string &delimiter, std::string &val);
 
 
-    static void ReadWeights(const std::string &rawWeightsString, std::vector<float> &objectiveWeights);
+    static std::vector<float>* ReadWeights(const std::string &rawWeightsString);
 
     static std::vector<std::string> SplitLine(const std::string& lineToSplit);
 };

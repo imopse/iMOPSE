@@ -1,16 +1,24 @@
 #include <algorithm>
-#include <sstream>
 #include "CMOEAD.h"
-#include "../utils/archive/ArchiveUtils.h"
 #include "../utils/DasDennis/CDasDennis.h"
 #include "../../../../utils/random/CRandom.h"
 #include "../../../../utils/logger/ErrorUtils.h"
 #include "utils/dataStructures/CCSV.h"
 #include "utils/logger/CExperimentLogger.h"
 
-CMOEAD::CMOEAD(AProblem &problem, AInitialization &initialization, ACrossover &crossover, AMutation &mutation, SConfigMap *configMap)
-        : AMOGeneticMethod(problem, initialization, crossover, mutation)
+CMOEAD::CMOEAD(
+        AProblem* evaluator,
+        AInitialization* initialization,
+        ACrossover* crossover,
+        AMutation* mutation,
+        SConfigMap* configMap
+)
 {
+    m_Problem = evaluator;
+    m_Initialization = initialization;
+    m_Crossover = crossover;
+    m_Mutation = mutation;
+    
     configMap->TakeValue("GenerationLimit", m_GenerationLimit);
     ErrorUtils::LowerThanZeroI("CMOEAD", "GenerationLimit", m_GenerationLimit);
 
@@ -36,10 +44,10 @@ void CMOEAD::RunOptimization()
 
     for (size_t i = 0; i < m_PopulationSize; ++i)
     {
-        SProblemEncoding& problemEncoding = m_Problem.GetProblemEncoding();
-        auto* newInd = m_Initialization.CreateMOIndividual(problemEncoding);
+        SProblemEncoding& problemEncoding = m_Problem->GetProblemEncoding();
+        auto* newInd = m_Initialization->CreateMOIndividual(problemEncoding);
 
-        m_Problem.Evaluate(*newInd);
+        m_Problem->Evaluate(*newInd);
 
         m_Population.push_back(newInd);
     }
@@ -70,7 +78,7 @@ void CMOEAD::RunOptimization()
         }
     }
 
-    ArchiveUtils::LogParetoFront(m_Archive);
+    LogParetoFront(m_Archive);
 
     CExperimentLogger::LogResult(m_OperatorStats.ToStringStream().str().c_str(), "OperatorStats.csv");
     CExperimentLogger::LogResult(m_HVStats.ToStringStream().str().c_str(), "HVStats.csv");
@@ -78,7 +86,7 @@ void CMOEAD::RunOptimization()
 
 void CMOEAD::ConstructSubproblems(size_t partitionsNumber, size_t neighborhoodSize)
 {
-    size_t dimCount = m_Problem.GetProblemEncoding().m_objectivesNumber;
+    size_t dimCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
 
     if (dimCount == 2)
     {
@@ -99,7 +107,7 @@ void CMOEAD::ConstructSubproblemsSimple2D(size_t partitionsNumber, size_t neighb
     for (size_t i = 0; i < partitionsNumber; ++i)
     {
         m_Subproblems.emplace_back();
-        SSubproblem& sp = m_Subproblems.back();
+        SMOEADSubproblem& sp = m_Subproblems.back();
         sp.m_WeightVector = { 0.f + i * stepVal, 1.f - i * stepVal};
     }
 
@@ -136,7 +144,7 @@ void CMOEAD::ConstructSubproblemsMultiD(size_t partitionsNumber, size_t neighbor
     for (const auto& subVec : subproblemVectors)
     {
         m_Subproblems.emplace_back();
-        SSubproblem& sp = m_Subproblems.back();
+        SMOEADSubproblem& sp = m_Subproblems.back();
         sp.m_WeightVector = std::vector<float>(dimCount, 0.f);
         for (size_t j = 0; j < dimCount; ++j)
         {
@@ -197,7 +205,7 @@ void CMOEAD::EvolveToNextGeneration()
 
     for (size_t i = 0; i < m_Population.size(); ++i)
     {
-        const SSubproblem& sp = m_Subproblems[i];
+        const SMOEADSubproblem& sp = m_Subproblems[i];
         const size_t nhSize = sp.m_Neighborhood.size();
         
         size_t firstParentIdx = sp.m_Neighborhood[CRandom::GetInt(0, nhSize)];
@@ -208,20 +216,20 @@ void CMOEAD::EvolveToNextGeneration()
         auto *firstChild = new SMOIndividual{*firstParent};
         auto *secondChild = new SMOIndividual{*secondParent};
 
-        m_Crossover.Crossover(
-                m_Problem.GetProblemEncoding(),
+        m_Crossover->Crossover(
+                m_Problem->GetProblemEncoding(),
                 *firstParent,
                 *secondParent,
                 *firstChild,
                 *secondChild
         );
 
-        m_Mutation.Mutate(m_Problem.GetProblemEncoding(), *firstChild);
-        m_Mutation.Mutate(m_Problem.GetProblemEncoding(), *secondChild);
+        m_Mutation->Mutate(m_Problem->GetProblemEncoding(), *firstChild);
+        m_Mutation->Mutate(m_Problem->GetProblemEncoding(), *secondChild);
 
         //Take only one child
         testIndividual = firstChild;
-        m_Problem.Evaluate(*testIndividual);
+        m_Problem->Evaluate(*testIndividual);
         delete secondChild;
 
         // Now check if any neighborhood solution is improved
@@ -238,12 +246,12 @@ void CMOEAD::EvolveToNextGeneration()
     }
 }
 
-bool CMOEAD::IsBetterInSubproblem(SMOIndividual* newIndividual, SMOIndividual* oldIndividual, CMOEAD::SSubproblem& subproblem)
+bool CMOEAD::IsBetterInSubproblem(SMOIndividual* newIndividual, SMOIndividual* oldIndividual, SMOEADSubproblem& subproblem)
 {
     // Simple weighted sum
     float newValue = 0.f;
     float oldValue = 0.f;
-    const size_t objCount = m_Problem.GetProblemEncoding().m_objectivesNumber;
+    const size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
     for (size_t i = 0; i < objCount; ++i)
     {
         newValue += newIndividual->m_NormalizedEvaluation[i] * subproblem.m_WeightVector[i];

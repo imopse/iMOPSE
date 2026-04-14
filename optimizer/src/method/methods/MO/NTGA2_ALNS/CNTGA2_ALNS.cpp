@@ -1,28 +1,30 @@
 #include <algorithm>
-#include <sstream>
 #include "CNTGA2_ALNS.h"
-#include "../utils/archive/ArchiveUtils.h"
 #include "../utils/clustering/CNonDominatedSorting.h"
 #include "../../../../utils/logger/ErrorUtils.h"
 #include "../../../../utils/random/CRandom.h"
-#include "../../../../utils/logger/CExperimentLogger.h"
 
-CNTGA2_ALNS::CNTGA2_ALNS(AProblem &evaluator,
-    AInitialization &initialization,
-    CRankedTournament &rankedTournament,
-    CGapSelectionByRandomDim &gapSelection,
-    ACrossover &crossover,
-    AMutation &mutation,
-    SConfigMap *configMap,
-    std::vector<AMutation*>& alnsRemovalMutations,
-    std::vector<AMutation*>& alnsInsertionMutations
+CNTGA2_ALNS::CNTGA2_ALNS(
+        AProblem* evaluator,
+        AInitialization* initialization,
+        CRankedTournament* rankedTournament,
+        CGapSelectionByRandomDim* gapSelection,
+        ACrossover* crossover,
+        AMutation* mutation,
+        SConfigMap* configMap,
+        std::vector<AMutation*>* alnsRemovalMutations,
+        std::vector<AMutation*>* alnsInsertionMutations
 ) :
-        AMOGeneticMethod(evaluator, initialization, crossover, mutation),
         m_RankedTournament(rankedTournament),
         m_GapSelection(gapSelection),
         m_alnsRemovalMutations(alnsRemovalMutations),
         m_alnsInsertionMutations(alnsInsertionMutations)
 {
+    m_Problem = evaluator;
+    m_Initialization = initialization;
+    m_Crossover = crossover;
+    m_Mutation = mutation;
+    
     configMap->TakeValue("GapSelectionPercent", m_GapSelectionPercent);
     ErrorUtils::OutOfScopeF("NTGA2_ALNS", "GapSelectionPercent", m_GapSelectionPercent / 100.f); // Assuming this checks for a valid percentage range
 
@@ -63,10 +65,10 @@ void CNTGA2_ALNS::RunOptimization()
 
     for (size_t i = 0; i < m_PopulationSize; ++i)
     {
-        SProblemEncoding& problemEncoding = m_Problem.GetProblemEncoding();
-        auto* newInd = m_Initialization.CreateMOIndividual(problemEncoding);
+        SProblemEncoding& problemEncoding = m_Problem->GetProblemEncoding();
+        auto* newInd = m_Initialization->CreateMOIndividual(problemEncoding);
 
-        m_Problem.Evaluate(*newInd);
+        m_Problem->Evaluate(*newInd);
 
         m_Population.push_back(newInd);
     }
@@ -117,8 +119,8 @@ void CNTGA2_ALNS::RunGeneration()
 
     for (size_t i = 0; i < m_PopulationSize; i += 2)
     {
-        auto* firstParent = m_RankedTournament.Select(m_Population);
-        auto* secondParent = m_RankedTournament.Select(m_Population);
+        auto* firstParent = m_RankedTournament->Select(m_Population);
+        auto* secondParent = m_RankedTournament->Select(m_Population);
 
         if (shouldUseALNS && CRandom::GetInt(0, 101) < m_ALNSProbabilityPercent) {
             auto* firstChild = RunALNS(*firstParent);
@@ -134,9 +136,9 @@ void CNTGA2_ALNS::RunGeneration()
 
 void CNTGA2_ALNS::RunGenerationWithGap()
 {
-    const auto& parents = m_GapSelection.Select(
+    const auto& parents = m_GapSelection->Select(
         m_Archive,
-        m_Problem.GetProblemEncoding().m_objectivesNumber,
+        m_Problem->GetProblemEncoding().m_objectivesNumber,
         m_PopulationSize
     );
     bool shouldUseALNS = ShouldUseALNS(m_PreviousPopulation, m_Population);
@@ -159,16 +161,16 @@ void CNTGA2_ALNS::CrossoverAndMutate(SMOIndividual &firstParent, SMOIndividual &
     auto *firstChild = new SMOIndividual{firstParent};
     auto *secondChild = new SMOIndividual{secondParent};
 
-    m_Crossover.Crossover(
-            m_Problem.GetProblemEncoding(),
+    m_Crossover->Crossover(
+            m_Problem->GetProblemEncoding(),
             firstParent,
             secondParent,
             *firstChild,
             *secondChild
     );
 
-    m_Mutation.Mutate(m_Problem.GetProblemEncoding(), *firstChild);
-    m_Mutation.Mutate(m_Problem.GetProblemEncoding(), *secondChild);
+    m_Mutation->Mutate(m_Problem->GetProblemEncoding(), *firstChild);
+    m_Mutation->Mutate(m_Problem->GetProblemEncoding(), *secondChild);
 
     EvaluateAndAdd(*firstChild);
     EvaluateAndAdd(*secondChild);
@@ -176,7 +178,7 @@ void CNTGA2_ALNS::CrossoverAndMutate(SMOIndividual &firstParent, SMOIndividual &
 
 void CNTGA2_ALNS::EvaluateAndAdd(SMOIndividual& individual)
 {
-    m_Problem.Evaluate(individual);
+    m_Problem->Evaluate(individual);
     m_NextPopulation.emplace_back(&individual);
 }
 
@@ -216,19 +218,19 @@ SMOIndividual* CNTGA2_ALNS::RunALNS(SMOIndividual& parent)
     int iteration = 1;
     int iterationsWithoutImprovement = 0;
     float temperature = 0;
-    std::vector<float> removalOperatorsProbabilityDistribution(m_alnsRemovalMutations.size(), 1.0f/m_alnsRemovalMutations.size());
-    std::vector<float> insertionOperatorsProbabilityDistribution(m_alnsInsertionMutations.size(), 1.0f / m_alnsInsertionMutations.size());
+    std::vector<float> removalOperatorsProbabilityDistribution(m_alnsRemovalMutations->size(), 1.0f/m_alnsRemovalMutations->size());
+    std::vector<float> insertionOperatorsProbabilityDistribution(m_alnsInsertionMutations->size(), 1.0f / m_alnsInsertionMutations->size());
     std::map<AMutation*, std::tuple<float, int>> removalOperatorsScores;
     std::map<AMutation*, std::tuple<float, int>> insertOperatorsScores;
-    m_Problem.Evaluate(*current);
+    m_Problem->Evaluate(*current);
     while (iteration < (m_ALNSIterations + 1) && iterationsWithoutImprovement < m_ALNSNoImprovementIterations) 
     {
         auto* generated = new SMOIndividual(*current);
-        auto& removalOperator = m_alnsRemovalMutations[CRandom::GetWeightedInt(removalOperatorsProbabilityDistribution)];
-        auto& insertOperator = m_alnsInsertionMutations[CRandom::GetWeightedInt(insertionOperatorsProbabilityDistribution)];
-        removalOperator->Mutate(m_Problem.GetProblemEncoding(), *generated);
-        insertOperator->Mutate(m_Problem.GetProblemEncoding(), *generated);
-        m_Problem.Evaluate(*generated);
+        auto& removalOperator = (*m_alnsRemovalMutations)[CRandom::GetWeightedInt(removalOperatorsProbabilityDistribution)];
+        auto& insertOperator = (*m_alnsInsertionMutations)[CRandom::GetWeightedInt(insertionOperatorsProbabilityDistribution)];
+        removalOperator->Mutate(m_Problem->GetProblemEncoding(), *generated);
+        insertOperator->Mutate(m_Problem->GetProblemEncoding(), *generated);
+        m_Problem->Evaluate(*generated);
         if (generated->m_isValid) 
         {
             if (generated->m_Evaluation[0] + generated->m_Evaluation[1] < current->m_Evaluation[0] + current->m_Evaluation[1])
@@ -328,8 +330,8 @@ void CNTGA2_ALNS::UpdateProbabilityTables(std::map<AMutation*, std::tuple<float,
             {
                 return std::get<0>(p1.second) / std::get<1>(p1.second) < std::get<0>(p2.second) / std::get<1>(p2.second);
             });
-        removalOperatorsProbabilityDistribution[std::find(m_alnsRemovalMutations.begin(), m_alnsRemovalMutations.end(), best->first) - m_alnsRemovalMutations.begin()] += probabilityChange;
-        removalOperatorsProbabilityDistribution[std::find(m_alnsRemovalMutations.begin(), m_alnsRemovalMutations.end(), worst->first) - m_alnsRemovalMutations.begin()] -= probabilityChange;
+        removalOperatorsProbabilityDistribution[std::find(m_alnsRemovalMutations->begin(), m_alnsRemovalMutations->end(), best->first) - m_alnsRemovalMutations->begin()] += probabilityChange;
+        removalOperatorsProbabilityDistribution[std::find(m_alnsRemovalMutations->begin(), m_alnsRemovalMutations->end(), worst->first) - m_alnsRemovalMutations->begin()] -= probabilityChange;
     }
     if (insertOperatorsScores.size() >= 2) {
         using pair_type = std::map<AMutation*, std::tuple<float, int>>::value_type;
@@ -341,17 +343,17 @@ void CNTGA2_ALNS::UpdateProbabilityTables(std::map<AMutation*, std::tuple<float,
             {
                 return std::get<0>(p1.second) / std::get<1>(p1.second) < std::get<0>(p2.second) / std::get<1>(p2.second);
             });
-        insertionOperatorsProbabilityDistribution[std::find(m_alnsInsertionMutations.begin(), m_alnsInsertionMutations.end(), best->first) - m_alnsInsertionMutations.begin()] += probabilityChange;
-        insertionOperatorsProbabilityDistribution[std::find(m_alnsInsertionMutations.begin(), m_alnsInsertionMutations.end(), worst->first) - m_alnsInsertionMutations.begin()] -= probabilityChange;
+        insertionOperatorsProbabilityDistribution[std::find(m_alnsInsertionMutations->begin(), m_alnsInsertionMutations->end(), best->first) - m_alnsInsertionMutations->begin()] += probabilityChange;
+        insertionOperatorsProbabilityDistribution[std::find(m_alnsInsertionMutations->begin(), m_alnsInsertionMutations->end(), worst->first) - m_alnsInsertionMutations->begin()] -= probabilityChange;
     }
 }
 
 void CNTGA2_ALNS::LogResult()
 {
-    ArchiveUtils::LogParetoFront(m_Archive);
+    LogParetoFront(m_Archive);
     for (int i = 0; i < m_Archive.size(); i++) {
-        m_Problem.LogSolution(*m_Archive[i]);
+        m_Problem->LogSolution(*m_Archive[i]);
     }
     CExperimentLogger::LogData();
-    m_Problem.LogAdditionalData();
+    m_Problem->LogAdditionalData();
 }

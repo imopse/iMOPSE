@@ -1,14 +1,22 @@
 #include <algorithm>
-#include <sstream>
 #include "CSPEA2.h"
-#include "../utils/archive/ArchiveUtils.h"
 #include "../utils/DasDennis/CDasDennis.h"
 #include "../../../../utils/random/CRandom.h"
 #include "../../../../utils/logger/ErrorUtils.h"
 
-CSPEA2::CSPEA2(AProblem &problem, AInitialization &initialization, ACrossover &crossover, AMutation &mutation, SConfigMap *configMap)
-        : AMOGeneticMethod(problem, initialization, crossover, mutation)
+CSPEA2::CSPEA2(
+        AProblem* evaluator,
+        AInitialization* initialization,
+        ACrossover* crossover,
+        AMutation* mutation,
+        SConfigMap *configMap
+)
 {
+    m_Problem = evaluator;
+    m_Initialization = initialization;
+    m_Crossover = crossover;
+    m_Mutation = mutation;
+    
     configMap->TakeValue("GenerationLimit", m_GenerationLimit);
     ErrorUtils::LowerThanZeroI("CSPEA2", "GenerationLimit", m_GenerationLimit);
 
@@ -28,10 +36,10 @@ void CSPEA2::RunOptimization()
 
     for (size_t i = 0; i < m_PopulationSize; ++i)
     {
-        SProblemEncoding& problemEncoding = m_Problem.GetProblemEncoding();
-        auto* newInd = m_Initialization.CreateMOIndividual(problemEncoding);
+        SProblemEncoding& problemEncoding = m_Problem->GetProblemEncoding();
+        auto* newInd = m_Initialization->CreateMOIndividual(problemEncoding);
 
-        m_Problem.Evaluate(*newInd);
+        m_Problem->Evaluate(*newInd);
 
         m_Population.push_back(newInd);
     }
@@ -67,7 +75,7 @@ void CSPEA2::RunOptimization()
     }
     
     ArchiveUtils::CopyToArchiveWithFiltering(m_NextPopulation, m_Archive);
-    ArchiveUtils::LogParetoFront(m_Archive);
+    LogParetoFront(m_Archive);
 }
 
 void CSPEA2::EvolveToNextGeneration()
@@ -82,19 +90,19 @@ void CSPEA2::EvolveToNextGeneration()
         auto *firstChild = new SMOIndividual{*firstParent};
         auto *secondChild = new SMOIndividual{*secondParent};
 
-        m_Crossover.Crossover(
-                m_Problem.GetProblemEncoding(),
+        m_Crossover->Crossover(
+                m_Problem->GetProblemEncoding(),
                 *firstParent,
                 *secondParent,
                 *firstChild,
                 *secondChild
         );
 
-        m_Mutation.Mutate(m_Problem.GetProblemEncoding(), *firstChild);
-        m_Mutation.Mutate(m_Problem.GetProblemEncoding(), *secondChild);
+        m_Mutation->Mutate(m_Problem->GetProblemEncoding(), *firstChild);
+        m_Mutation->Mutate(m_Problem->GetProblemEncoding(), *secondChild);
 
-        m_Problem.Evaluate(*firstChild);
-        m_Problem.Evaluate(*secondChild);
+        m_Problem->Evaluate(*firstChild);
+        m_Problem->Evaluate(*secondChild);
 
         delete m_Population[i];
         delete m_Population[i + 1];
@@ -138,7 +146,7 @@ void CSPEA2::BuildNeighborhood(std::vector<SMOIndividual *>& individuals, std::v
 
 float CSPEA2::CalcDist(const SMOIndividual& leftInd, const SMOIndividual& rightInd)
 {
-    size_t objCount = m_Problem.GetProblemEncoding().m_objectivesNumber;
+    size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
     float dist = 0.f;
     for (int i = 0; i < objCount; ++i)
     {

@@ -2,8 +2,6 @@
 #include "utils/logger/CExperimentLogger.h"
 #include "utils/dataStructures/CCSV.h"
 
-#include <ostream>
-#include <fstream>
 #include <algorithm>
 #include <sstream>
 
@@ -141,12 +139,6 @@ std::vector<std::vector<float>> ArchiveUtils::ToEvaluation(const std::vector<SMO
     return evalValues;
 }
 
-void ArchiveUtils::LogParetoFront(const std::vector<SMOIndividual*>& archive)
-{
-    std::ostringstream oss;
-    CCSV<float>::ToCSV(oss, ArchiveUtils::ToEvaluation(archive));
-    CExperimentLogger::LogResult(oss.str().c_str());
-}
 void ArchiveUtils::LogParetoFront(const std::vector<SMOIndividual*>& archive, int fet)
 {
     std::ostringstream oss;

@@ -2,21 +2,27 @@
 
 #include "../../../configMap/SConfigMap.h"
 #include "../../../individual/SO/SSOIndividual.h"
-#include "../ASOMethod.h"
+#include "method/methods/SO/ASOMethod.h"
 
 class CSA : public ASOMethod
 {
 public:
-    CSA(std::vector<float> &objectiveWeights,AProblem& evaluator, AInitialization& initialization,
-        SConfigMap* configMap);
-   ~CSA() override;
+    CSA( AProblem* evaluator, AInitialization* initialization, SConfigMap* , std::vector<float>* objectiveWeights);
+    ~CSA() {
+        delete m_Problem;
+        delete m_Initialization;
+        delete m_ObjectiveWeights;
+    };
 
-    void RunOptimization();
+    void RunOptimization() override;
 
-    void Reset() { delete m_CurrentSolution; }
+    void Reset() override { delete m_CurrentSolution; }
 
 private:
     SSOIndividual* m_CurrentSolution;
+    AProblem* m_Problem;
+    AInitialization* m_Initialization;
+    std::vector<float>* m_ObjectiveWeights;
 
     double m_InitialTemperature;
     double m_FinalTemperature;

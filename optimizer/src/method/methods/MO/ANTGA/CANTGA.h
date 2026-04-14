@@ -4,42 +4,74 @@
 #include <deque>
 #include "method/configMap/SConfigMap.h"
 #include "method/individual/MO/SMOIndividual.h"
-#include "method/methods/MO/AMOGeneticMethod.h"
 #include "method/operators/selection/selections/CRankedTournament.h"
 #include "method/operators/selection/selections/CGapSelectionByRandomDim.h"
 #include "method/multiOperator/AMultiOperator.h"
 #include "method/multiOperator/CMultiOperatorRegion.h"
+#include "method/methods/MO/AMOMethod.h"
 
 template <typename T> class CCSV;
 
-class CANTGA : public AMOGeneticMethod
+class CANTGA : public AMOMethod
 {
 public:
     CANTGA(
-        AProblem& evaluator,
-        AInitialization& initialization,
-        ACrossover& crossover,
-        AMutation& mutation,
-        CGapSelectionByRandomDim& gapSelection,
+        AProblem* evaluator,
+        AInitialization* initialization,
+        ACrossover* crossover,
+        AMutation* mutation,
+        CGapSelectionByRandomDim* gapSelection,
         SConfigMap* configMap
     );
 
-    ~CANTGA();
+    ~CANTGA() {
+        delete m_Problem;
+        delete m_Initialization;
+        delete m_GapSelection;
+        delete m_Crossover;
+        delete m_Mutation;
+        delete m_MultiMutation;
+    };
 
     void RunOptimization() override;
-    void Reset() override;
+
+    void Reset() override {
+        for (auto& i : m_Population)
+        {
+            delete i;
+        }
+        m_Population.clear();
+        for (auto &i: m_NextPopulation)
+        {
+            delete i;
+        }
+        m_NextPopulation.clear();
+        for (auto &i: m_Archive)
+        {
+            delete i;
+        }
+        m_Archive.clear();
+        
+        m_Generation = 0;
+        m_MultiMutation->ResetAllOperatorData();
+    }
 
 private:
-    int m_Generation = 0;
-    CGapSelectionByRandomDim& m_GapSelection;
+    AProblem* m_Problem;
+    AInitialization* m_Initialization;
+    CGapSelectionByRandomDim* m_GapSelection;
+    ACrossover* m_Crossover;
+    AMutation* m_Mutation;
     AMultiOperator<AMutation>* m_MultiMutation = nullptr;
-
-    struct SWindowSlot
-    {
-        size_t m_OperatorIdx = 0;
-        float m_Credits = 0.f;
-        float m_Calls = 0.f;
-    };
+    SConfigMap* configMap;
+    
+    std::vector<SMOIndividual*> m_Population;
+    std::vector<SMOIndividual*> m_NextPopulation;
+    std::vector<SMOIndividual*> m_Archive;
+    
+    int m_Generation = 0;
+    size_t m_PopulationSize = 0;
+    size_t m_GenerationLimit = 0;
 
     void EvolveToNextGeneration();
     void CrossoverAndMutate(SMOIndividual* firstParent, SMOIndividual* secondParent);

@@ -1,26 +1,19 @@
+
 #pragma once
 
 #include "../../AMethod.h"
-#include "../../individual/SO/SSOIndividual.h"
+#include "utils/logger/CExperimentLogger.h"
+#include "method/methods/SO/utils/experiment/CSOExperimentUtils.h"
 
 class ASOMethod : public AMethod
 {
-public:
-    explicit ASOMethod(AProblem &evaluator, AInitialization &initialization, std::vector<float>& objectiveWeights) :
-    AMethod(evaluator, initialization), m_ObjectiveWeights(objectiveWeights)
-    {};
-    ~ASOMethod() override = default;
-
-    void Reset() override
-    {
-        for (auto &i: m_Population)
-        {
-            delete i;
-        }
-        m_Population.clear();
-    };
 protected:
-    std::vector<float> &m_ObjectiveWeights;
-    std::vector<SSOIndividual *> m_Population;
-};
+    void LogResultData(SSOIndividual& best, AProblem& problem)
+    {
+        CExperimentLogger::LogData();
 
+        std::string resultString = CSOExperimentUtils::BestToCSVString(best);
+        CExperimentLogger::LogResult(resultString.c_str());
+        problem.LogSolution(best);
+    }
+};

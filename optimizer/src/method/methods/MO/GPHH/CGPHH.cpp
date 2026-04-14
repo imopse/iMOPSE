@@ -10,7 +10,6 @@
 #include <random>
 #include <algorithm>
 #include <cctype>
-#include <limits>
 #include <cstdint>
 #include <string>
 #include <stdexcept>
@@ -19,9 +18,12 @@
 
 extern bool g_trace;
 
-CGPHH::CGPHH(AProblem& problem, AInitialization& init, SConfigMap* cfg)
-    : AMethod(problem, init), m_Cfg(cfg)
+CGPHH::CGPHH( AProblem* problem, AInitialization* initialization, SConfigMap* cfg )
 {
+    m_Problem = problem;
+    m_Initialization = initialization;
+    m_Cfg = cfg;
+    
     if (m_Cfg && m_Cfg->HasValue("Seed")) {
         int s = 0;
         m_Cfg->TakeValue("Seed", s);
@@ -61,8 +63,8 @@ static std::string ToLower(std::string s)
 void CGPHH::RunOptimization()
 {
     const CScheduler* sch = nullptr;
-    if (auto* p = dynamic_cast<CMSRCPSP_TA*>(&m_Problem)) sch = &p->GetScheduler();
-    if (auto* p = dynamic_cast<CMSRCPSP_TO*>(&m_Problem)) sch = &p->GetScheduler();
+    if (auto* p = dynamic_cast<CMSRCPSP_TA*>(m_Problem)) sch = &p->GetScheduler();
+    if (auto* p = dynamic_cast<CMSRCPSP_TO*>(m_Problem)) sch = &p->GetScheduler();
 
     if (!sch) {
         throw std::runtime_error("GPHH works only with MSRCPSP_TA/MSRCPSP_TO problems.");
@@ -175,7 +177,7 @@ void CGPHH::RunOptimization()
         archive.push_back(new SMOIndividual(g, eval, norm));
     }
 
-    ArchiveUtils::LogParetoFront(archive);
+    LogParetoFront(archive);
 
     for (auto* ind : archive) delete ind;
     archive.clear();

@@ -3,19 +3,23 @@
 #include "../../../operators/initialization/AInitialization.h"
 #include "../../../configMap/SConfigMap.h"
 #include "../../../individual/SO/SParticle.h"
-#include "../CAggregatedFitness.h"
-#include "../ASOMethod.h"
+#include "method/methods/SO/ASOMethod.h"
 
 class CPSO : public ASOMethod
 {
 public:
     CPSO(
-        std::vector<float>& objectiveWeights,
-        AProblem& evaluator,
-        AInitialization& initialization,
-        SConfigMap* configMap
+        AProblem* evaluator,
+        AInitialization* initialization,
+        SConfigMap* configMap,
+        std::vector<float>* objectiveWeights
     );
-    ~CPSO() override = default;
+    ~CPSO()
+    {
+        delete m_Problem;
+        delete m_Initialization;
+        delete m_ObjectiveWeights;
+    };
 
     void RunOptimization() override;
 
@@ -28,6 +32,10 @@ public:
         m_Swarm.clear();
     };
 private:
+    AProblem* m_Problem;
+    AInitialization* m_Initialization;
+    std::vector<float>* m_ObjectiveWeights;
+    
     size_t m_IterationLimit = 0;
     size_t m_SwarmSize = 0;
     float m_InertiaWeight = 0.0f;

@@ -1,24 +1,58 @@
 #pragma once
 
-#include "../AMOGeneticMethod.h"
 #include "../../../configMap/SConfigMap.h"
+#include "method/methods/MO/AMOMethod.h"
 
-class CSPEA2 : public AMOGeneticMethod
+class CSPEA2 : public AMOMethod
 {
 public:
     CSPEA2(
-            AProblem &evaluator,
-            AInitialization &initialization,
-            ACrossover &crossover,
-            AMutation &mutation,
+            AProblem* evaluator,
+            AInitialization* initialization,
+            ACrossover* crossover,
+            AMutation* mutation,
             SConfigMap *configMap
     );
-    ~CSPEA2() override = default;
+    
+    ~CSPEA2() {
+        delete m_Problem;
+        delete m_Initialization;
+        delete m_Crossover;
+        delete m_Mutation;
+    };
 
     void RunOptimization() override;
+
+    void Reset() override {
+        for (auto& i : m_Population)
+        {
+            delete i;
+        }
+        m_Population.clear();
+        for (auto &i: m_NextPopulation)
+        {
+            delete i;
+        }
+        m_NextPopulation.clear();
+        for (auto &i: m_Archive)
+        {
+            delete i;
+        }
+        m_Archive.clear();
+    }
 private:
-    using TNeighborhood = std::vector<std::pair<size_t, float>>;
+    AProblem* m_Problem;
+    AInitialization* m_Initialization;
+    ACrossover* m_Crossover;
+    AMutation* m_Mutation;
+
+    std::vector<SMOIndividual*> m_Population;
+    std::vector<SMOIndividual*> m_NextPopulation;
+    std::vector<SMOIndividual*> m_Archive;
     
+    using TNeighborhood = std::vector<std::pair<size_t, float>>;
+
+    size_t m_PopulationSize = 0;
     size_t m_GenerationLimit = 0;
     size_t m_ArchiveSize = 0;
     

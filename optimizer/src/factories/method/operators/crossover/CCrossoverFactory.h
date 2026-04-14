@@ -8,6 +8,5 @@
 class CCrossoverFactory
 {
 public:
-    static ACrossover *Create(SConfigMap *configMap, const std::string& configKey, AProblem& problem);
-    static std::set<EEncodingType> GetAllEncodingTypes(const std::vector<SEncodingSection>& encoding);
+    static ACrossover* Create(SConfigMap* configMap, AProblem* problem);
 };

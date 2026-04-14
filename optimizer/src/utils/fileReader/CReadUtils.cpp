@@ -158,8 +158,9 @@ bool CReadUtils::ReadStringByKey(const std::string &line, const std::string &lin
     return false;
 }
 
-void CReadUtils::ReadWeights(const std::string &rawWeightsString, std::vector<float> &objectiveWeights)
+std::vector<float>* CReadUtils::ReadWeights(const std::string &rawWeightsString)
 {
+    auto* objectiveWeights = new std::vector<float>();
     std::istringstream stream(rawWeightsString.substr(1, rawWeightsString.length() - 2));
     std::string token;
     std::vector<float> values;
@@ -171,8 +172,10 @@ void CReadUtils::ReadWeights(const std::string &rawWeightsString, std::vector<fl
 
     for (float &value: values)
     {
-        objectiveWeights.emplace_back(value);
+        objectiveWeights->emplace_back(value);
     }
+    
+    return objectiveWeights;
 }
 
 std::vector<std::string> CReadUtils::SplitLine(const std::string& lineToSplit)

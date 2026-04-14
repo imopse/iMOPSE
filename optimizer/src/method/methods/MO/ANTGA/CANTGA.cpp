@@ -1,18 +1,26 @@
 #include <algorithm>
-#include <sstream>
 #include "CANTGA.h"
 #include "method/methods/MO/utils/archive/ArchiveUtils.h"
 #include "utils/logger/ErrorUtils.h"
-#include "factories/method/operators/mutation/CMultiMutationFactory.h"
-#include "factories/method/CMethodFactory.h"
 #include "utils/dataStructures/CCSV.h"
 #include "utils/logger/CExperimentLogger.h"
+#include "factories/method/operators/mutation/CMutationFactory.h"
 
-CANTGA::CANTGA(AProblem& evaluator, AInitialization& initialization,
-               ACrossover& crossover, AMutation& mutation, CGapSelectionByRandomDim& gapSelection,
-               SConfigMap* configMap)
-    : AMOGeneticMethod(evaluator, initialization, crossover, mutation), m_GapSelection(gapSelection)
+CANTGA::CANTGA(
+        AProblem* evaluator,
+        AInitialization* initialization,
+        ACrossover* crossover,
+        AMutation* mutation,
+        CGapSelectionByRandomDim* gapSelection,
+        SConfigMap* configMap
+)
 {
+    m_Problem = evaluator;
+    m_Initialization = initialization;
+    m_Crossover = crossover;
+    m_Mutation = mutation;
+    m_GapSelection = gapSelection;
+    
     configMap->TakeValue("PopulationSize", m_PopulationSize);
     ErrorUtils::LowerThanZeroI("ANTGA", "PopulationSize", m_PopulationSize);
     m_Population.reserve(m_PopulationSize);
@@ -21,15 +29,7 @@ CANTGA::CANTGA(AProblem& evaluator, AInitialization& initialization,
     configMap->TakeValue("GenerationLimit", m_GenerationLimit);
     ErrorUtils::LowerThanZeroI("ANTGA", "GenerationLimit", m_GenerationLimit);
 
-    m_MultiMutation = CMultiMutationFactory::Create(configMap, evaluator);
-}
-
-CANTGA::~CANTGA()
-{
-    if (m_MultiMutation)
-    {
-        delete m_MultiMutation;
-    }
+    m_MultiMutation = CMutationFactory::CreateMultiMutation(configMap, evaluator);
 }
 
 void CANTGA::RunOptimization()
@@ -43,9 +43,9 @@ void CANTGA::RunOptimization()
 
     for (size_t i = 0; i < m_PopulationSize; ++i)
     {
-        SProblemEncoding& problemEncoding = m_Problem.GetProblemEncoding();
-        auto* newInd = m_Initialization.CreateMOIndividual(problemEncoding);
-        m_Problem.Evaluate(*newInd);
+        SProblemEncoding& problemEncoding = m_Problem->GetProblemEncoding();
+        auto* newInd = m_Initialization->CreateMOIndividual(problemEncoding);
+        m_Problem->Evaluate(*newInd);
         m_Population.push_back(newInd);
     }
 
@@ -73,22 +73,15 @@ void CANTGA::RunOptimization()
 
         if (fet % 5000 == 0)
         {
-            //ArchiveUtils::LogParetoFront(m_Archive, fet);
+            //LogParetoFront(m_Archive, fet);
         }
     }
 
-    ArchiveUtils::LogParetoFront(m_Archive);
+    LogParetoFront(m_Archive);
     //CExperimentLogger::LogResult(m_PopulationHistory.ToStringStream().str().c_str(), "PopHist.csv");
     //CExperimentLogger::LogResult(m_ArchiveHistory.ToStringStream().str().c_str(), "ArchHist.csv");
     CExperimentLogger::LogResult(m_OperatorStats.ToStringStream().str().c_str(), "OperatorStats.csv");
     CExperimentLogger::LogResult(m_HVStats.ToStringStream().str().c_str(), "HVStats.csv");
-}
-
-void CANTGA::Reset()
-{
-    AMOGeneticMethod::Reset();
-    m_Generation = 0;
-    m_MultiMutation->ResetAllOperatorData();
 }
 
 void CANTGA::EvolveToNextGeneration()
@@ -105,9 +98,9 @@ void CANTGA::EvolveToNextGeneration()
         //ResetAllArchiveOperatorDataButAccCalls();
     }
 
-    const auto& parents = m_GapSelection.Select(
+    const auto& parents = m_GapSelection->Select(
         m_Archive,
-        m_Problem.GetProblemEncoding().m_objectivesNumber,
+        m_Problem->GetProblemEncoding().m_objectivesNumber,
         m_PopulationSize
     );
     for (auto& parentPair : parents)
@@ -126,8 +119,8 @@ void CANTGA::CrossoverAndMutate(SMOIndividual* firstParent, SMOIndividual* secon
     firstChild->m_OperatorsData = firstParent->m_OperatorsData;
     secondChild->m_OperatorsData = secondParent->m_OperatorsData;
 
-    m_Crossover.Crossover(
-        m_Problem.GetProblemEncoding(),
+    m_Crossover->Crossover(
+        m_Problem->GetProblemEncoding(),
         *firstParent,
         *secondParent,
         *firstChild,
@@ -167,11 +160,11 @@ void CANTGA::LocalAdaptiveMutation(SMOIndividual* individual, SMOIndividual* par
 
     CAtomicOperator<AMutation>* atomicMutation = m_MultiMutation->SelectOperator();
     AMutation* mutation = atomicMutation->Get();
-    mutation->Mutate(m_Problem.GetProblemEncoding(), *individual);
+    mutation->Mutate(m_Problem->GetProblemEncoding(), *individual);
     atomicMutation->GetData().m_Calls += 1;
     atomicMutation->GetData().m_AccCalls += 1;
 
-    m_Problem.Evaluate(*individual);
+    m_Problem->Evaluate(*individual);
     atomicMutation->GetData().m_Credits += CalculateCredit(individual, parent, otherParent);
 
     for (size_t i = 0; i < m_MultiMutation->GetOperatorCount(); ++i)
@@ -194,8 +187,8 @@ void CANTGA::GlobalAdaptiveMutation(SMOIndividual* firstChild, SMOIndividual* se
 {
     CAtomicOperator<AMutation>* atomicMutation = m_MultiMutation->SelectOperator();
     AMutation* mutation = atomicMutation->Get();
-    mutation->Mutate(m_Problem.GetProblemEncoding(), *firstChild);
-    mutation->Mutate(m_Problem.GetProblemEncoding(), *secondChild);
+    mutation->Mutate(m_Problem->GetProblemEncoding(), *firstChild);
+    mutation->Mutate(m_Problem->GetProblemEncoding(), *secondChild);
     atomicMutation->GetData().m_Calls += 2;
     atomicMutation->GetData().m_AccCalls += 2;
 
@@ -208,8 +201,8 @@ void CANTGA::GlobalAdaptiveMutation(SMOIndividual* firstChild, SMOIndividual* se
 
     secondChild->m_MutationIdx = firstChild->m_MutationIdx = operatorId;
 
-    m_Problem.Evaluate(*firstChild);
-    m_Problem.Evaluate(*secondChild);
+    m_Problem->Evaluate(*firstChild);
+    m_Problem->Evaluate(*secondChild);
 
     atomicMutation->GetData().m_Credits += CalculateCredit(firstChild, firstParent, secondParent);
     atomicMutation->GetData().m_Credits += CalculateCredit(secondChild, secondParent, firstParent);
@@ -424,7 +417,7 @@ float CANTGA::CalcFitnessImprovementRateVer1(SMOIndividual* newIndividual, SMOIn
     // Simple weighted sum
     float newValue = 0.f;
     float oldValue = 0.f;
-    const size_t objCount = m_Problem.GetProblemEncoding().m_objectivesNumber;
+    const size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
     for (size_t i = 0; i < objCount; ++i)
     {
         newValue += newIndividual->m_NormalizedEvaluation[i];
@@ -441,7 +434,7 @@ float CANTGA::CalcFitnessImprovementRateVer3(SMOIndividual* newIndividual, SMOIn
     // Simple weighted sum
     float newValue = 0.f;
     float oldValue = 0.f;
-    const size_t objCount = m_Problem.GetProblemEncoding().m_objectivesNumber;
+    const size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
     for (size_t i = 0; i < objCount; ++i)
     {
         newValue += newIndividual->m_NormalizedEvaluation[i] * (oldIndividual->m_NormalizedEvaluation[i] - 1.0f);
@@ -459,7 +452,7 @@ float CANTGA::CalcFitnessImprovementRateVer4(SMOIndividual* newIndividual, SMOIn
     // Simple weighted sum
     float newValue = 0.f;
     float oldValue = 0.f;
-    const size_t objCount = m_Problem.GetProblemEncoding().m_objectivesNumber;
+    const size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
     for (size_t i = 0; i < objCount; ++i)
     {
         newValue += (newIndividual->m_NormalizedEvaluation[i] - 1.f) * (oldIndividual->m_NormalizedEvaluation[i] - 1.0f);
@@ -477,7 +470,7 @@ float CANTGA::CalcFitnessImprovementRateVer5(SMOIndividual* newIndividual, SMOIn
     // Simple weighted sum
     float newValue = 0.f;
     float oldValue = 0.f;
-    const size_t objCount = m_Problem.GetProblemEncoding().m_objectivesNumber;
+    const size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
 
     // calc vec normal
     float s = 0.f;

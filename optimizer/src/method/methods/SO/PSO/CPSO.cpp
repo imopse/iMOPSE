@@ -1,12 +1,15 @@
 #include <algorithm>
 #include "CPSO.h"
 #include "../../../../utils/random/CRandom.h"
-#include "../utils/experiment/CSOExperimentUtils.h"
 #include "../../../../utils/logger/ErrorUtils.h"
+#include "method/methods/SO/utils/aggregatedFitness/CAggregatedFitness.h"
 
-CPSO::CPSO(std::vector<float>& objectiveWeights, AProblem& evaluator, AInitialization& initialization, SConfigMap* configMap)
-        : ASOMethod(evaluator, initialization, objectiveWeights)
+CPSO::CPSO( AProblem* evaluator, AInitialization* initialization, SConfigMap* configMap, std::vector<float>* objectiveWeights )
 {
+    m_Problem = evaluator;
+    m_Initialization = initialization;
+    m_ObjectiveWeights = objectiveWeights;
+    
     configMap->TakeValue("SwarmSize", m_SwarmSize);
     ErrorUtils::LowerThanZeroI("PSO", "SwarmSize", m_SwarmSize);
     m_Swarm.reserve(m_SwarmSize);
@@ -64,12 +67,12 @@ void CPSO::RunOptimization()
     }
 
     auto* best = CSOExperimentUtils::FindBest(m_Swarm);
-    CSOExperimentUtils::LogResultData(*best, m_Problem);
+    LogResultData(*best, *m_Problem);
 }
 
 void CPSO::UpdatePosition(std::vector<float>& position, std::vector<float>& velocity)
 {
-    std::vector<SEncodingDescriptor> sectionDescription = m_Problem.GetProblemEncoding().m_Encoding[0].m_SectionDescription;
+    std::vector<SEncodingDescriptor> sectionDescription = m_Problem->GetProblemEncoding().m_Encoding[0].m_SectionDescription;
 
     for (size_t i = 0; i < position.size(); ++i)
     {
@@ -101,12 +104,12 @@ void CPSO::Migrate()
     {
         for (size_t j = 0; j < m_Swarm[i]->m_Genotype.m_FloatGenotype.size(); ++j)
         {
-            float dimension = m_Problem.GetProblemEncoding().m_Encoding[0].m_SectionDescription[j].m_MaxValue * 0.9999999f - m_Swarm[i]->m_Genotype.m_FloatGenotype[j];
+            float dimension = m_Problem->GetProblemEncoding().m_Encoding[0].m_SectionDescription[j].m_MaxValue * 0.9999999f - m_Swarm[i]->m_Genotype.m_FloatGenotype[j];
             m_Swarm[i]->m_Genotype.m_FloatGenotype[j] = dimension;
         }
 
-        m_Problem.Evaluate(*m_Swarm[i]);
-        CAggregatedFitness::CountFitness(*m_Swarm[i], m_ObjectiveWeights);
+        m_Problem->Evaluate(*m_Swarm[i]);
+        CAggregatedFitness::CountFitness(*m_Swarm[i], *m_ObjectiveWeights);
 
         UpdateBests(m_Swarm[i]);
     }
@@ -114,12 +117,12 @@ void CPSO::Migrate()
 
 SParticle* CPSO::CreateParticle()
 {
-    SProblemEncoding& problemEncoding = m_Problem.GetProblemEncoding();
-    auto* newPart = m_Initialization.CreateParticle(problemEncoding);
+    SProblemEncoding& problemEncoding = m_Problem->GetProblemEncoding();
+    auto* newPart = m_Initialization->CreateParticle(problemEncoding);
 
-    m_Problem.Evaluate(*newPart);
+    m_Problem->Evaluate(*newPart);
     newPart->m_BestKnownPosition = newPart->m_Genotype.m_FloatGenotype;
-    CAggregatedFitness::CountFitness(*newPart, m_ObjectiveWeights);
+    CAggregatedFitness::CountFitness(*newPart, *m_ObjectiveWeights);
     newPart->m_BestKnownFitness = newPart->m_Fitness;
 
     m_Swarm.push_back(newPart);
@@ -147,7 +150,7 @@ void CPSO::InitVelocity(SProblemEncoding& problemEncoding, std::vector<float> *n
 
 void CPSO::MoveParticles()
 {
-    std::vector<SEncodingDescriptor> sectionDescription = m_Problem.GetProblemEncoding().m_Encoding[0].m_SectionDescription;
+    std::vector<SEncodingDescriptor> sectionDescription = m_Problem->GetProblemEncoding().m_Encoding[0].m_SectionDescription;
 
     for (size_t i = 0; i < m_SwarmSize; ++i)
     {
@@ -170,8 +173,8 @@ void CPSO::MoveParticles()
         }
 
         UpdatePosition(m_Swarm[i]->m_Genotype.m_FloatGenotype, m_Swarm[i]->m_Velocity);
-        m_Problem.Evaluate(*m_Swarm[i]);
-        CAggregatedFitness::CountFitness(*m_Swarm[i], m_ObjectiveWeights);
+        m_Problem->Evaluate(*m_Swarm[i]);
+        CAggregatedFitness::CountFitness(*m_Swarm[i], *m_ObjectiveWeights);
 
         UpdateBests(m_Swarm[i]);
     }

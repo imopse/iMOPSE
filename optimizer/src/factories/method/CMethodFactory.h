@@ -7,14 +7,6 @@
 class CMethodFactory
 {
 public:
-    static AMethod *CreateMethod(
-            const char *optimizerConfigPath,
-            AProblem &problem
-    );
-    static void DeleteObjects();
-private:
-    static SConfigMap *configMap;
-    static AInitialization *initialization;
-    static ACrossover *crossover;
-    static AMutation *mutation;
+    static AMethod* CreateMethod(const char* optimizerConfigPath, AProblem* problem);
+    static std::vector<float>* ProcessObjectiveWeights(SConfigMap* configMap);
 };

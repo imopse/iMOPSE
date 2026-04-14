@@ -1,36 +1,62 @@
 #pragma once
 
-#include "../ASOGeneticMethod.h"
 #include "individual/CGPHHIndividual.h"
 #include "../../../configMap/SConfigMap.h"
 #include "SGPHHLogConfig.h"
 #include "../../../operators/selection/selections/CFitnessTournament.h"
 #include "constructive/IGPHHConstructive.h"
+#include "method/methods/SO/ASOMethod.h"
 
-class CGPHH_ECVRP : public ASOGeneticMethod {
+class CGPHH_ECVRP : public ASOMethod
+{
 public:
     CGPHH_ECVRP(
-        std::vector<float> &objectiveWeights,
-        AProblem &evaluator,
-        AInitialization &initialization,
-        CFitnessTournament &fitnessTournament,
-        ACrossover &crossover,
-        AMutation &mutation,
+        AProblem* evaluator,
+        AInitialization* initialization,
+        CFitnessTournament* fitnessTournament,
+        ACrossover* crossover,
+        AMutation* mutation,
         IGPHHConstructive* constructive,
-        SConfigMap *configMap
+        SConfigMap* configMap,
+        std::vector<float>* objectiveWeights
     );
     
+    ~CGPHH_ECVRP() {
+        delete m_Problem;
+        delete m_Initialization;
+        delete m_FitnessTournament;
+        delete m_Crossover;
+        delete m_Mutation;
+        delete m_ObjectiveWeights;
+        delete m_Constructive;
+    };
+
     void RunOptimization() override;
 
+    void Reset() override {
+        for (auto &i: m_Population)
+        {
+            delete i;
+        }
+        m_Population.clear();
+    }
 private:
-    void CreateIndividual();
-    void EvolveToNextGeneration();
+    AProblem* m_Problem;
+    AInitialization* m_Initialization;
+    CFitnessTournament* m_FitnessTournament;
+    ACrossover* m_Crossover;
+    AMutation* m_Mutation;
+    IGPHHConstructive* m_Constructive;
+    std::vector<float>* m_ObjectiveWeights;
     
-    CFitnessTournament& m_FitnessTournament;
-    int m_PopulationSize;
-    int m_GenerationLimit;
+    std::vector<SSOIndividual*> m_Population;
+    
+    int m_PopulationSize = 0;
+    int m_GenerationLimit = 0;
     int m_EliteSize;
     
     SGPHHLogConfig m_LogConfig;
-    IGPHHConstructive* m_Constructive;
+
+    void CreateIndividual();
+    void EvolveToNextGeneration();
 };
