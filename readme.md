@@ -1,12 +1,21 @@
-# iMOPSE
+<p align="center">
+  <img src="additions/logo.png" alt="iMOPSE logo" width="360">
+</p>
+
+<p align="center">
+  <a href="https://imopse.github.io/iMOPSE/">Visit the iMOPSE site</a>
+</p>
+
+<p align="center">
+  The iMOPSE GitHub Pages site contains supplementary materials for publications as well as additional project information.
+</p>
+
+#
+
 
 The Intelligent Multi-Objective Problem Solving Environment is an open-source C++ library that specializes
 in single- and multi-objective metaheuristic optimization especially in the area of NP-hard optimization problems.
 Our library provides a set of optimization algorithms, problems and ready-to-use problem instances and tools useful in research and benchmarking.
-
-The iMOPSE GitHub Pages site contains supplementary materials for publications as well as additional project information.
-
-[Visit the iMOPSE site](https://imopse.github.io/iMOPSE/)
 
 ### Citation policy
 
@@ -231,7 +240,8 @@ Thanks to all the contributors who have invested their time and expertise in dev
 - **Michał Antkiewicz** (2021 - Now)
 - **Konrad Gmyrek** (2023 - Now)
 - **Łukasz Olech** (2023 - Now)
-- **Adam Paliszek-Saładyga** (2026 - Now)
+- **Kinga Paliszek-Saładyga** (2025 - Now)
+- **Adam Paliszek-Saładyga** (2025 - Now)
 
 ## Past Collaborators
 - **Adam Krzeminski** (2023 - 2024)
@@ -250,5 +260,5 @@ Thanks to all the contributors who have invested their time and expertise in dev
 - **Marcin Adamski** (2013 - 2014)
 - **Paweł Kwiatek** (2011 - 2012)
 - **Łukasz Podlodowski** (2011 - 2012)
-- **Kacper Małkowski** (2024)
-- **Jakub Korycki** (2024)
+- **Aleksandra Stecka** (2024 - 2025)
+- **Adrian Żak** (2024 - 2025)
