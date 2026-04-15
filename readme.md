@@ -4,6 +4,10 @@ The Intelligent Multi-Objective Problem Solving Environment is an open-source C+
 in single- and multi-objective metaheuristic optimization especially in the area of NP-hard optimization problems.
 Our library provides a set of optimization algorithms, problems and ready-to-use problem instances and tools useful in research and benchmarking.
 
+The iMOPSE GitHub Pages site contains supplementary materials for publications as well as additional project information.
+
+[Visit the iMOPSE site](https://imopse.github.io/iMOPSE/)
+
 ### Citation policy
 
 If you use iMOPSE library in a scientific work, We would appreciate citation to the following paper(s):
