@@ -2,7 +2,7 @@
 layout: default
 title: Example of Use
 permalink: /docs/example_of_use/
-nav_order: 8
+nav_order: 7
 ---
 
 # Example of Use
