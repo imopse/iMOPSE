@@ -82,6 +82,10 @@ void CBNTGAGP::RunOptimization()
     P.maxDepth = GetInt(cfg, "MaxDepth", P.maxDepth);
     P.tournamentK = GetInt(cfg, "TournamentSize", P.tournamentK);
 
+    P.logNodeDistribution = (GetInt(cfg, "LogNodeDistribution", 0) != 0);
+    P.nodeStatsEvery = (size_t)GetInt(cfg, "NodeStatsEvery", 25);
+    P.nodeStatsUseArchive = (GetInt(cfg, "NodeStatsUseArchive", 0) != 0);
+
     if (m_HasSeedOverride) {
         P.seed = m_SeedOverride;
     }

@@ -2,7 +2,10 @@
 #include "../rules/GPTreeRule.hpp"
 #include "../rules/GPTreeResRule.hpp"
 #include "problem/problems/MSRCPSP/CScheduler.h"
+#include "utils/logger/CExperimentLogger.h"
 
+#include <filesystem>
+#include <fstream>
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -78,6 +81,135 @@ namespace {
 
         return h;
     }
+    static const std::vector<FeatureId>& loggedFeatureOrder() {
+        static const std::vector<FeatureId> v = GPTree::allPairFeatures();
+        return v;
+    }
+
+    static const std::unordered_map<int, size_t>& loggedFeatureIndex() {
+        static const std::unordered_map<int, size_t> idx = []() {
+            std::unordered_map<int, size_t> m;
+            const auto& feats = loggedFeatureOrder();
+            m.reserve(feats.size());
+            for (size_t i = 0; i < feats.size(); ++i) {
+                m.emplace((int)feats[i], i);
+            }
+            return m;
+            }();
+        return idx;
+    }
+
+    static const char* featureShortName(FeatureId f) {
+        switch (f) {
+        case FeatureId::DURATION:                   return "DUR";
+        case FeatureId::REQ_LEVEL:                  return "REQ";
+        case FeatureId::AVAIL_SKILL:                return "AVAIL";
+        case FeatureId::CRITLEN:                    return "CRITLEN";
+        case FeatureId::SLACK:                      return "SLACK";
+        case FeatureId::DESC_COUNT:                 return "DESC_COUNT";
+        case FeatureId::TASK_CRITICAL_PRESSURE:     return "TASK_CRIT";
+        case FeatureId::TASK_RELEASE_PRESSURE:      return "REL_PRESS";
+        case FeatureId::AVAIL_GAP:                  return "GAP";
+        case FeatureId::CHEAPEST_COST_NOW:          return "CHEAP";
+        case FeatureId::COST_PER_SKILL_NOW:         return "CHEAP_PER_SK";
+        case FeatureId::TASK_RES_COUNT:             return "TASK_RES";
+        case FeatureId::AVG_RES_COST:               return "AVG_RES_COST";
+        case FeatureId::UNSCHED_TASKS:              return "UNSCHED";
+        case FeatureId::MIN_FEASIBLE_COST_NOW:      return "MIN_COST_NOW";
+        case FeatureId::COST_REGRET_NOW:            return "REGRET_NOW";
+
+        case FeatureId::RES_WAGE:                   return "RES_WAGE";
+        case FeatureId::RES_SKILL_LEVEL:            return "RES_SKILL";
+        case FeatureId::RES_IDLE_TIME:              return "RES_IDLE";
+        case FeatureId::RES_CAN_START_NOW:          return "RES_CAN_NOW";
+        case FeatureId::RES_UTILIZATION:            return "RES_UTIL";
+        case FeatureId::RES_WAGE_PER_LEVEL:         return "RES_W_PER_L";
+        case FeatureId::RES_ASSIGN_COST:            return "RES_ASSIGN_COST";
+        case FeatureId::RES_ASSIGN_PREMIUM_ALL:     return "RES_PREMIUM";
+        case FeatureId::RES_RESERVE_PRESSURE:       return "RES_RESERVE";
+        case FeatureId::RES_FAMILY_MISMATCH:        return "RES_FAM_MIS";
+        case FeatureId::RES_FUTURE_BRANCH_FIT:      return "RES_FUT_BRANCH";
+        case FeatureId::RES_BOTTLENECK_PRESERVATION:return "RES_BOTTLENECK";
+        case FeatureId::RES_SPECIALIST_MISUSE:      return "RES_SPEC_MIS";
+        case FeatureId::RES_RELATIVE_WAGE:          return "RES_REL_WAGE";
+        }
+        return "?";
+    }
+
+    static void accumulateTreeFeatureCounts(
+        const GPTree& t,
+        std::vector<size_t>& counts,
+        size_t& totalNodes)
+    {
+        totalNodes += t.nodes.size();
+
+        const auto& featIndex = loggedFeatureIndex();
+
+        for (const auto& n : t.nodes) {
+            if (n.kind != NodeKind::FEATURE) {
+                continue;
+            }
+
+            auto it = featIndex.find((int)n.feat);
+            if (it != featIndex.end()) {
+                counts[it->second] += 1;
+            }
+        }
+    }
+
+    static void writeNodeDistributionSnapshot(
+        const std::vector<GP_Individual>& pool,
+        size_t generation,
+        bool useSinglePairTree,
+        const char* sourceName,
+        bool overwrite)
+    {
+        if (CExperimentLogger::m_OutputDataPathPrefix.empty()) {
+            return;
+        }
+
+        const auto& feats = loggedFeatureOrder();
+        std::vector<size_t> counts(feats.size(), 0);
+        size_t totalNodes = 0;
+
+        for (const auto& ind : pool) {
+            accumulateTreeFeatureCounts(ind.taskTree, counts, totalNodes);
+
+            if (!useSinglePairTree) {
+                accumulateTreeFeatureCounts(ind.resTree, counts, totalNodes);
+            }
+        }
+
+        const std::filesystem::path outPath =
+            std::filesystem::path(CExperimentLogger::m_OutputDataPathPrefix) /
+            ("node_distribution_" + std::string(sourceName) + ".csv");
+
+        std::ofstream out(
+            outPath,
+            overwrite ? std::ios::out : (std::ios::out | std::ios::app));
+
+        if (!out.is_open()) {
+            return;
+        }
+
+        if (overwrite) {
+            out << "generation,pool_size,total_nodes";
+            for (FeatureId f : feats) {
+                out << "," << featureShortName(f);
+            }
+            out << "\n";
+        }
+
+        out << generation
+            << "," << pool.size()
+            << "," << totalNodes;
+
+        for (size_t c : counts) {
+            out << "," << c;
+        }
+        out << "\n";
+    }
+
 }
 
 static const std::vector<FeatureId>& taskFeatPool() {
@@ -683,6 +815,24 @@ void TreeEA::run() {
     archive_.reserve(P.popSize * 2);
     copyToArchiveWithFiltering(pop);
 
+    auto logNodeSnapshot = [&](size_t generation, bool overwrite) {
+        if (!P.logNodeDistribution) {
+            return;
+        }
+
+        const bool useArchive = P.nodeStatsUseArchive;
+        const auto& source = useArchive ? archive_ : pop;
+
+        writeNodeDistributionSnapshot(
+            source,
+            generation,
+            P.useSinglePairTree,
+            useArchive ? "archive" : "population",
+            overwrite);
+        };
+
+    logNodeSnapshot(0, true);
+
     for (size_t gen = 0; gen < P.generations; ++gen) {
         std::vector<GP_Individual> offspring;
         offspring.reserve(P.popSize);
@@ -750,6 +900,20 @@ void TreeEA::run() {
 
         copyToArchiveWithFiltering(offspring);
         pop.swap(offspring);
+
+        const size_t currentGeneration = gen + 1;
+        if (P.logNodeDistribution) {
+            const bool hitStep =
+                (P.nodeStatsEvery > 0) &&
+                ((currentGeneration % P.nodeStatsEvery) == 0);
+
+            const bool isLast =
+                (currentGeneration == P.generations);
+
+            if (hitStep || isLast) {
+                logNodeSnapshot(currentGeneration, false);
+            }
+        }
     }
 }
 

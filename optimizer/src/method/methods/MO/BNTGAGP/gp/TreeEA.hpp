@@ -26,6 +26,10 @@ struct GPEA_Params {
     uint64_t seed = 1234567;
     int      tournamentK = 3;
     bool     useSinglePairTree = false;
+
+    bool     logNodeDistribution = false;
+    size_t   nodeStatsEvery = 25;
+    bool     nodeStatsUseArchive = false;
 };
 
 struct GP_Individual {
