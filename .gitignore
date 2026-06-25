@@ -10,6 +10,7 @@
 # Precompiled Headers
 *.gch
 *.pch
+*.ipch
 
 # Compiled Dynamic libraries
 *.so
@@ -30,28 +31,17 @@
 *.exe
 *.out
 *.app
-<<<<<<< GPHH
-*/cmake-build*
-/out/build/x64-Debug
-/CMakeSettings.json
-/.vs
-
-#build folder
-/build
-/out
-optimizer/CMakeSettings.json
-=======
 
 # IDEs
 **/.idea/
 .vs/
 **/.vs/
 
-# Visual Studio CMake settings (local)
+# Visual Studio / CMake local files
 CMakeSettings.json
 optimizer/CMakeSettings.json
 
-# CMake / build output (repo-wide)
+# Build output
 **/out/
 **/build/
 **/cmake-build*/
@@ -63,4 +53,13 @@ optimizer/CMakeSettings.json
 **/*.ninja_deps
 **/*.ninja_log
 **/compile_commands.json
->>>>>>> main
+
+# Runtime/generated data
+results/
+experiments/
+
+# Visual Studio user files
+*.suo
+*.user
+*.VC.db
+*.VC.VC.opendb
