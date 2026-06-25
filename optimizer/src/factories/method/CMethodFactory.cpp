@@ -4,7 +4,8 @@
 #include "operators/crossover/CCrossoverFactory.h"
 #include "operators/mutation/CMutationFactory.h"
 #include "utils/fileReader/CReadUtils.h"
-#include "method/methods/MO/BNTGAGP/CBNTGAGP.h"`r`n#include "method/methods/SO/GPHH/CGPHH.h"
+#include "method/methods/MO/BNTGAGP/CBNTGAGP.h"
+#include "method/methods/SO/GPHH/CGPHH.h"
 #include "factories/method/operators/selection/CSelectionFactory.h"
 #include "method/methods/SO/ACO/TSP-BASED/CACO_TSP.h"
 #include "factories/method/methods/GPHH_ECVRPTW/CGPHH_ECVRPTWFactory.h"
@@ -75,7 +76,10 @@ AMethod* CMethodFactory::CreateMethod( const char* optimizerConfigPath, AProblem
 				configMap,
 				CMethodFactory::ProcessObjectiveWeights(configMap)
 		);
-	if (methodName == "GP-HH" || methodName == "GPHH")`r`n`t`treturn new CGPHH(problem, initialization, configMap);`r`n`tif (methodName == "bNTGA-GP")`r`n`t`treturn new CBNTGAGP(problem, initialization, configMap);
+	if (methodName == "GP-HH" || methodName == "GPHH")
+		return new CGPHH(problem, initialization, configMap);
+	if (methodName == "bNTGA-GP")
+		return new CBNTGAGP(problem, initialization, configMap);
 
 	auto* crossover = CCrossoverFactory::Create(configMap, problem);
 	if (crossover == nullptr) {
