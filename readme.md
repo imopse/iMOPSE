@@ -240,7 +240,7 @@ Thanks to all the contributors who have invested their time and expertise in dev
 - **Michał Antkiewicz** (2021 - Now)
 - **Konrad Gmyrek** (2023 - Now)
 - **Łukasz Olech** (2023 - Now)
-- **Kinga Paliszek-Saładyga** (2025 - Now)
+- **Kinga Paliszek-Saładyga** (2025 - 2026)
 - **Adam Paliszek-Saładyga** (2025 - Now)
 
 ## Past Collaborators
