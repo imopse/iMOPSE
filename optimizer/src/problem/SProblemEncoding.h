@@ -14,7 +14,8 @@ enum class EEncodingType
 {
     PERMUTATION,
     BINARY,
-    ASSOCIATION
+    ASSOCIATION,
+    FLOAT
 };
 
 struct SEncodingSection
@@ -28,7 +29,6 @@ struct SProblemEncoding
     int m_objectivesNumber;
     std::vector<SEncodingSection> m_Encoding;
     std::vector<std::vector<float>> m_additionalProblemData;
-    std::set<EEncodingType> allowedEncodingTypes;
 
     std::set<EEncodingType> GetAllEncodingTypes()
     {

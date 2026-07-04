@@ -8,7 +8,7 @@ class CECVRPTWTemplate;
 class CECVRPTWSolution
 {
 public:
-    CECVRPTWSolution(CECVRPTWTemplate& problemTemplate);
+    CECVRPTWSolution(CECVRPTWTemplate* problemTemplate);
 
     [[nodiscard]] float GetTotalDistance() const;
     [[nodiscard]] float GetTotalDuration() const;
@@ -30,7 +30,7 @@ private:
     void MoveCarToRechargeStationTowardsCity(size_t carIdx, size_t nextCityIdx);
     void MoveCarToRechargeStation(size_t carIdx, size_t stationIdx);
 
-    CECVRPTWTemplate& m_ECVRPTWTemplate;
+    CECVRPTWTemplate* m_ECVRPTWTemplate;
 
     std::vector<int> m_CurrentLoad;
     std::vector<size_t> m_CurrentPosition;

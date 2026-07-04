@@ -11,9 +11,9 @@ public:
     static int GetInt(int min, int max);
     static int GetWeightedInt(const std::vector<float>& weights);
     static float GetFloat(float min, float max);
+    static float GetNormalDistribution(float mean, float standardDeviation);
     static void Shuffle(int start, int end, std::vector<int> &vector);
     static unsigned int GetSeed();
-
 private:
     static std::mt19937 rng;
     static unsigned int currentSeed;

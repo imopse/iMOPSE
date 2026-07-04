@@ -11,7 +11,6 @@ class CTTPFactory
 public:
     static CTTP1 *CreateTTP1(const char *problemDefinitionPath);
     static CTTP2 *CreateTTP2(const char *problemDefinitionPath);
-    static void DeleteObjects();
 private:
     static const std::string s_Delimiter;
     static const std::string s_DimensionKey;
@@ -22,8 +21,7 @@ private:
     static const std::string s_RentingRatioKey;
     static const std::string s_CitiesSectionKey;
     static const std::string s_ItemsSectionKey;
-
-    static CTTPTemplate *ttpTemplate;
+    
     static CTTPTemplate *ReadTTPTemplate(const char *problemDefinitionPath);
     static void ReadCities(std::ifstream &fileStream, int dimension, std::vector<SCity> &cities);
     static void ReadItems(std::ifstream &fileStream, int itemCount, std::vector<SItem> &items);

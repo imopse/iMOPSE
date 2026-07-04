@@ -19,6 +19,7 @@ public:
         delete m_Problem;
         delete m_Initialization;
         delete m_ObjectiveWeights;
+        Reset();
     };
 
     void RunOptimization() override;

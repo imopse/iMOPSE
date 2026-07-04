@@ -21,7 +21,7 @@ public:
     static void LogResult(const char* result);
     static void LogResult(const char* result, const char* fileName);
     static void LogProgress(const float progress);
-    static bool WriteSchedulerToFile(const CScheduler& schedule, const AIndividual& solution);
+    static bool WriteSchedulerToFile(const CScheduler* schedule, const AIndividual& solution);
 
     // GPHH Logging
     static void LogGPHHGeneration(int generation, const std::vector<SSOIndividual*>& population, const SGPHHLogConfig& config, long long durationMs, float optimalValue);

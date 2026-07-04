@@ -3,15 +3,15 @@
 #include <algorithm>
 #include <limits>
 
-CCVRP::CCVRP(CCVRPTemplate &cvrpBase) : m_CVRPTemplate(cvrpBase) {
+CCVRP::CCVRP(CCVRPTemplate* cvrpBase) : m_CVRPTemplate(cvrpBase) {
     CreateProblemEncoding();
 
     m_MaxObjectiveValues = {
-            m_CVRPTemplate.GetMaxDistance()
+            m_CVRPTemplate->GetMaxDistance()
     };
 
     m_MinObjectiveValues = {
-            m_CVRPTemplate.GetMinDistance()
+            m_CVRPTemplate->GetMinDistance()
     };
 }
 
@@ -22,9 +22,9 @@ SProblemEncoding &CCVRP::GetProblemEncoding() {
 size_t CCVRP::GetNearestDepotIdx(const size_t cityIdx) {
     float minDist = FLT_MAX;
     size_t chosenIdx = 0;
-    auto& distMtx = m_CVRPTemplate.GetDistMtx();
-    auto& depotIndexes = m_CVRPTemplate.GetDepots();
-    auto& cities = m_CVRPTemplate.GetCities();
+    auto& distMtx = m_CVRPTemplate->GetDistMtx();
+    auto& depotIndexes = m_CVRPTemplate->GetDepots();
+    auto& cities = m_CVRPTemplate->GetCities();
 
     for (const auto idx : depotIndexes) {
         int depot_index = -1;
@@ -44,9 +44,9 @@ size_t CCVRP::GetNearestDepotIdx(const size_t cityIdx) {
 void CCVRP::Evaluate(AIndividual& individual) {
     if (individual.m_Genotype.m_IntGenotype.empty()) return;
 
-    auto& distMtx = m_CVRPTemplate.GetDistMtx();
-    int capacity = m_CVRPTemplate.GetCapacity();
-    const std::vector<SCityCVRP>& cities = m_CVRPTemplate.GetCities();
+    auto& distMtx = m_CVRPTemplate->GetDistMtx();
+    int capacity = m_CVRPTemplate->GetCapacity();
+    const std::vector<SCityCVRP>& cities = m_CVRPTemplate->GetCities();
     int current_load = capacity;
     current_load -= cities[individual.m_Genotype.m_IntGenotype[0]].m_demand;
     float distance = distMtx[GetNearestDepotIdx(individual.m_Genotype.m_IntGenotype[0])][individual.m_Genotype.m_IntGenotype[0]];
@@ -69,12 +69,12 @@ void CCVRP::Evaluate(AIndividual& individual) {
     individual.m_NormalizedEvaluation[0] = distance / GetOptimalValue();
 }
 
-float CCVRP::GetOptimalValue() { return m_CVRPTemplate.GetOptimalValue(); }
+float CCVRP::GetOptimalValue() { return m_CVRPTemplate->GetOptimalValue(); }
 
 void CCVRP::CreateProblemEncoding() {
-    size_t citiesSize = m_CVRPTemplate.GetCitiesSize();
+    size_t citiesSize = m_CVRPTemplate->GetCitiesSize();
     SEncodingSection citiesSection = { std::vector<SEncodingDescriptor>(citiesSize, SEncodingDescriptor{0.0f, (float)(citiesSize - 1)}), EEncodingType::PERMUTATION };
-    m_ProblemEncoding = SProblemEncoding{ 1, {citiesSection}, m_CVRPTemplate.GetDistMtx() };
+    m_ProblemEncoding = SProblemEncoding{ 1, {citiesSection}, m_CVRPTemplate->GetDistMtx() };
 }
 
 void CCVRP::LogSolution(AIndividual& individual) {}

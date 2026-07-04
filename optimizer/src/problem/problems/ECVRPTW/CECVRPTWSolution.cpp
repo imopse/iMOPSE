@@ -3,7 +3,7 @@
 #include <numeric>
 #include <stdexcept>
 
-CECVRPTWSolution::CECVRPTWSolution(CECVRPTWTemplate& problemTemplate)
+CECVRPTWSolution::CECVRPTWSolution(CECVRPTWTemplate* problemTemplate)
     : m_ECVRPTWTemplate(problemTemplate)
 {
 }
@@ -22,8 +22,8 @@ void CECVRPTWSolution::BuildSolution(const std::vector<int>& initialAssignment)
 {
     PrepareData(initialAssignment);
 
-    auto& distMtx = m_ECVRPTWTemplate.GetDistInfoMtx();
-    auto& cities = m_ECVRPTWTemplate.GetCities();
+    auto& distMtx = m_ECVRPTWTemplate->GetDistInfoMtx();
+    auto& cities = m_ECVRPTWTemplate->GetCities();
 
     int currentCar = 0;
     for (m_CurrentSolutionIdx = 0; m_CurrentSolutionIdx < m_Solution.size(); ++m_CurrentSolutionIdx)
@@ -49,7 +49,7 @@ void CECVRPTWSolution::BuildSolution(const std::vector<int>& initialAssignment)
         }
         else
         {
-            size_t depotIdx = m_ECVRPTWTemplate.GetNearestDepotIdx(m_CurrentPosition[currentCar]);
+            size_t depotIdx = m_ECVRPTWTemplate->GetNearestDepotIdx(m_CurrentPosition[currentCar]);
             if (CanSafelyReach(currentCar, depotIdx))
             {
                 // We assume, that we can safely reach any city (including recharge station) from the depot
@@ -66,24 +66,24 @@ void CECVRPTWSolution::BuildSolution(const std::vector<int>& initialAssignment)
 
 bool CECVRPTWSolution::CanSatisfyDemand(size_t carIdx, size_t cityIdx) const
 {
-    return m_CurrentLoad[carIdx] >= m_ECVRPTWTemplate.GetCities()[cityIdx].m_Demand;
+    return m_CurrentLoad[carIdx] >= m_ECVRPTWTemplate->GetCities()[cityIdx].m_Demand;
 }
 
 bool CECVRPTWSolution::CanSafelyReach(size_t carIdx, size_t cityIdx) const
 {
-    float fuelToTarget = m_ECVRPTWTemplate.GetRequiredFuel(m_CurrentPosition[carIdx], cityIdx);
-    size_t nearestChargingToCityIdx = m_ECVRPTWTemplate.GetNearestChargingStationIdx(cityIdx);
-    float fuelFromTargetToNearestCharging = m_ECVRPTWTemplate.GetRequiredFuel(cityIdx, nearestChargingToCityIdx);
+    float fuelToTarget = m_ECVRPTWTemplate->GetRequiredFuel(m_CurrentPosition[carIdx], cityIdx);
+    size_t nearestChargingToCityIdx = m_ECVRPTWTemplate->GetNearestChargingStationIdx(cityIdx);
+    float fuelFromTargetToNearestCharging = m_ECVRPTWTemplate->GetRequiredFuel(cityIdx, nearestChargingToCityIdx);
     return m_CurrentTankCapacity[carIdx] >= (fuelToTarget + fuelFromTargetToNearestCharging);
 }
 
 void CECVRPTWSolution::PrepareData(const std::vector<int>& initialAssignment)
 {
-    size_t vehicleCount = m_ECVRPTWTemplate.GetVehicleCount();
-    m_CurrentLoad = std::vector<int>(vehicleCount, m_ECVRPTWTemplate.GetCapacity());
+    size_t vehicleCount = m_ECVRPTWTemplate->GetVehicleCount();
+    m_CurrentLoad = std::vector<int>(vehicleCount, m_ECVRPTWTemplate->GetCapacity());
     m_CurrentPosition = std::vector<size_t>(vehicleCount, DEPOT_CITY_ID);
     m_Distance = std::vector<float>(vehicleCount, 0.f);
-    m_CurrentTankCapacity = std::vector<float>(vehicleCount, m_ECVRPTWTemplate.GetTankCapcity());
+    m_CurrentTankCapacity = std::vector<float>(vehicleCount, m_ECVRPTWTemplate->GetTankCapcity());
     m_CurrentTime = std::vector<float>(vehicleCount, 0.f);
 
     m_Solution = initialAssignment;
@@ -102,12 +102,12 @@ void CECVRPTWSolution::PrepareData(const std::vector<int>& initialAssignment)
 
 float CECVRPTWSolution::CalculateRefuelTime(float tankCapacity, float currentTankCapacity)
 {
-    return (tankCapacity - currentTankCapacity) / m_ECVRPTWTemplate.GetRefuelingRate();
+    return (tankCapacity - currentTankCapacity) / m_ECVRPTWTemplate->GetRefuelingRate();
 }
 
 void CECVRPTWSolution::MoveCarToDepoLoadAndRecharge(size_t carIdx, size_t depotIdx)
 {
-    auto& distMtx = m_ECVRPTWTemplate.GetDistInfoMtx();
+    auto& distMtx = m_ECVRPTWTemplate->GetDistInfoMtx();
     size_t& currentCityIdx = m_CurrentPosition[carIdx];
 
     //To depot
@@ -116,11 +116,11 @@ void CECVRPTWSolution::MoveCarToDepoLoadAndRecharge(size_t carIdx, size_t depotI
     m_CurrentTankCapacity[carIdx] -= distMtx[currentCityIdx][depotIdx].m_FuelConsumption;
 
     //Depot refuel
-    m_CurrentTime[carIdx] += CalculateRefuelTime(m_ECVRPTWTemplate.GetTankCapcity(), m_CurrentTankCapacity[carIdx]);
-    m_CurrentTankCapacity[carIdx] = m_ECVRPTWTemplate.GetTankCapcity();
+    m_CurrentTime[carIdx] += CalculateRefuelTime(m_ECVRPTWTemplate->GetTankCapcity(), m_CurrentTankCapacity[carIdx]);
+    m_CurrentTankCapacity[carIdx] = m_ECVRPTWTemplate->GetTankCapcity();
 
     //Depot car loading
-    m_CurrentLoad[carIdx] = m_ECVRPTWTemplate.GetCapacity();
+    m_CurrentLoad[carIdx] = m_ECVRPTWTemplate->GetCapacity();
 
     //Add depot visit to solution
     m_Solution.emplace(m_Solution.begin() + (int)m_CurrentSolutionIdx + 1, depotIdx);
@@ -129,8 +129,8 @@ void CECVRPTWSolution::MoveCarToDepoLoadAndRecharge(size_t carIdx, size_t depotI
 
 void CECVRPTWSolution::MoveCarToDepoLoadRechargeAndThenToCity(size_t carIdx, size_t depotIdx, size_t nextCityIdx)
 {
-    auto& distMtx = m_ECVRPTWTemplate.GetDistInfoMtx();
-    auto& cities = m_ECVRPTWTemplate.GetCities();
+    auto& distMtx = m_ECVRPTWTemplate->GetDistInfoMtx();
+    auto& cities = m_ECVRPTWTemplate->GetCities();
 
     size_t& currentCityIdx = m_CurrentPosition[carIdx];
 
@@ -140,11 +140,11 @@ void CECVRPTWSolution::MoveCarToDepoLoadRechargeAndThenToCity(size_t carIdx, siz
     m_CurrentTankCapacity[carIdx] -= distMtx[currentCityIdx][depotIdx].m_FuelConsumption;
 
     //Depot refuel
-    m_CurrentTime[carIdx] += CalculateRefuelTime(m_ECVRPTWTemplate.GetTankCapcity(), m_CurrentTankCapacity[carIdx]);
-    m_CurrentTankCapacity[carIdx] = m_ECVRPTWTemplate.GetTankCapcity();
+    m_CurrentTime[carIdx] += CalculateRefuelTime(m_ECVRPTWTemplate->GetTankCapcity(), m_CurrentTankCapacity[carIdx]);
+    m_CurrentTankCapacity[carIdx] = m_ECVRPTWTemplate->GetTankCapcity();
 
     //Depot car loading
-    m_CurrentLoad[carIdx] = m_ECVRPTWTemplate.GetCapacity();
+    m_CurrentLoad[carIdx] = m_ECVRPTWTemplate->GetCapacity();
 
     //To next city
     m_Distance[carIdx] += distMtx[depotIdx][nextCityIdx].m_Distance;
@@ -163,8 +163,8 @@ void CECVRPTWSolution::MoveCarToDepoLoadRechargeAndThenToCity(size_t carIdx, siz
 
 void CECVRPTWSolution::MoveCarToNextCity(size_t carIdx, size_t nextCityIdx)
 {
-    auto& distMtx = m_ECVRPTWTemplate.GetDistInfoMtx();
-    auto& cities = m_ECVRPTWTemplate.GetCities();
+    auto& distMtx = m_ECVRPTWTemplate->GetDistInfoMtx();
+    auto& cities = m_ECVRPTWTemplate->GetCities();
 
     size_t& currentCityIdx = m_CurrentPosition[carIdx];
     m_Distance[carIdx] += distMtx[currentCityIdx][nextCityIdx].m_Distance;
@@ -180,8 +180,8 @@ void CECVRPTWSolution::MoveCarToNextCity(size_t carIdx, size_t nextCityIdx)
 
 void CECVRPTWSolution::HandleTimeOnCity(size_t carIdx, size_t nextCityIdx)
 {
-    auto& cities = m_ECVRPTWTemplate.GetCities();
-    auto dayLength = m_ECVRPTWTemplate.GetMaxDueTime();
+    auto& cities = m_ECVRPTWTemplate->GetCities();
+    auto dayLength = m_ECVRPTWTemplate->GetMaxDueTime();
 
     if (std::fmod(m_CurrentTime[carIdx], dayLength) < cities[nextCityIdx].m_ReadyTime)
     {
@@ -197,14 +197,14 @@ void CECVRPTWSolution::HandleTimeOnCity(size_t carIdx, size_t nextCityIdx)
 
 void CECVRPTWSolution::MoveCarToNearestRechargeStation(size_t carIdx)
 {
-    size_t nearestChargingStationIdx = m_ECVRPTWTemplate.GetNearestChargingStationIdx(m_CurrentPosition[carIdx]);
+    size_t nearestChargingStationIdx = m_ECVRPTWTemplate->GetNearestChargingStationIdx(m_CurrentPosition[carIdx]);
     MoveCarToRechargeStation(carIdx, nearestChargingStationIdx);
 }
 
 void CECVRPTWSolution::MoveCarToRechargeStationTowardsCity(size_t carIdx, size_t nextCityIdx)
 {
-    auto& chargingStations = m_ECVRPTWTemplate.GetChargingStations();
-    auto& distMtx = m_ECVRPTWTemplate.GetDistInfoMtx();
+    auto& chargingStations = m_ECVRPTWTemplate->GetChargingStations();
+    auto& distMtx = m_ECVRPTWTemplate->GetDistInfoMtx();
     size_t currentCityIdx = m_CurrentPosition[carIdx];
 
     // this is simple approach but works as expected - get nearest to target, reachable station
@@ -232,17 +232,17 @@ void CECVRPTWSolution::MoveCarToRechargeStationTowardsCity(size_t carIdx, size_t
 
 void CECVRPTWSolution::MoveCarToRechargeStation(size_t carIdx, size_t stationIdx)
 {
-    auto& distMtx = m_ECVRPTWTemplate.GetDistInfoMtx();
+    auto& distMtx = m_ECVRPTWTemplate->GetDistInfoMtx();
 
     size_t& currentCityIdx = m_CurrentPosition[carIdx];
     m_Distance[carIdx] += distMtx[currentCityIdx][stationIdx].m_Distance;
     m_CurrentTime[carIdx] += distMtx[currentCityIdx][stationIdx].m_TravelTime;
-    m_CurrentTime[carIdx] += CalculateRefuelTime(m_ECVRPTWTemplate.GetTankCapcity(), m_CurrentTankCapacity[carIdx]);
-    m_CurrentTankCapacity[carIdx] = m_ECVRPTWTemplate.GetTankCapcity();
+    m_CurrentTime[carIdx] += CalculateRefuelTime(m_ECVRPTWTemplate->GetTankCapcity(), m_CurrentTankCapacity[carIdx]);
+    m_CurrentTankCapacity[carIdx] = m_ECVRPTWTemplate->GetTankCapcity();
     m_Solution.emplace(m_Solution.begin() + (int)m_CurrentSolutionIdx + 1, stationIdx);
     currentCityIdx = stationIdx;
     if (currentCityIdx == DEPOT_CITY_ID) // TODO - handle to not use index
     {
-        m_CurrentLoad[carIdx] = m_ECVRPTWTemplate.GetCapacity();
+        m_CurrentLoad[carIdx] = m_ECVRPTWTemplate->GetCapacity();
     }
 }

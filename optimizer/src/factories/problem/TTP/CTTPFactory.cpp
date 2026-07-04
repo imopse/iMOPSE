@@ -15,23 +15,16 @@ const std::string CTTPFactory::s_RentingRatioKey = "RENTING RATIO:";
 const std::string CTTPFactory::s_CitiesSectionKey = "NODE_COORD_SECTION	(INDEX, X, Y):";
 const std::string CTTPFactory::s_ItemsSectionKey = "ITEMS SECTION	(INDEX, PROFIT, WEIGHT, ASSIGNED NODE NUMBER):";
 
-CTTPTemplate *CTTPFactory::ttpTemplate = nullptr;
-
 CTTP1 *CTTPFactory::CreateTTP1(const char *problemDefinitionPath)
 {
     CTTP2 *ttp2 = CreateTTP2(problemDefinitionPath);
-    return new CTTP1(*ttp2);
+    return new CTTP1(ttp2);
 }
 
 CTTP2 *CTTPFactory::CreateTTP2(const char *problemDefinitionPath)
 {
-    ttpTemplate = ReadTTPTemplate(problemDefinitionPath);
-    return new CTTP2(*ttpTemplate);
-}
-
-void CTTPFactory::DeleteObjects()
-{
-    delete ttpTemplate;
+    auto* ttpTemplate = ReadTTPTemplate(problemDefinitionPath);
+    return new CTTP2(ttpTemplate);
 }
 
 CTTPTemplate *CTTPFactory::ReadTTPTemplate(const char *problemDefinitionPath)

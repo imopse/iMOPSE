@@ -14,12 +14,12 @@ const std::string CMSRAReader::s_ResourceTaskTransitionSectionKey = "ResourceTas
 
 CMSRAProblem* CMSRAReader::CreateMSRA(const char* problemDefinitionPath)
 {
-    CMSRAInstance problemTemplate;
+    auto* problemTemplate = new CMSRAInstance();
     CMSRAReader::ReadDefinition(problemDefinitionPath, problemTemplate);
     return new CMSRAProblem(problemTemplate);
 }
 
-bool CMSRAReader::ReadDefinition(const char* filePath, CMSRAInstance& problemTemplate)
+bool CMSRAReader::ReadDefinition(const char* filePath, CMSRAInstance* problemTemplate)
 {
 	std::ifstream readFileStream(filePath);
 
@@ -46,12 +46,12 @@ bool CMSRAReader::ReadDefinition(const char* filePath, CMSRAInstance& problemTem
 
 	readFileStream.close();
 
-	problemTemplate.m_ProblemName = instanceName.c_str();
-	problemTemplate.SetStageCount(stageCount);
-	problemTemplate.SetTasks(tasks);
-	problemTemplate.SetResources(resources);
-	problemTemplate.SetProbMtx(probMtx);
-	problemTemplate.SetResourceTaskTransition(resourceTaskTransition);
+	problemTemplate->m_ProblemName = instanceName.c_str();
+	problemTemplate->SetStageCount(stageCount);
+	problemTemplate->SetTasks(tasks);
+	problemTemplate->SetResources(resources);
+	problemTemplate->SetProbMtx(probMtx);
+	problemTemplate->SetResourceTaskTransition(resourceTaskTransition);
 
 	return true;
 }

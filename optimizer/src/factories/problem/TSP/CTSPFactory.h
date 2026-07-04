@@ -13,8 +13,6 @@ private:
     static const std::string s_DimensionKey;
     static const std::string s_CitiesSectionKey;
 
-    static CTSPTemplate *tspTemplate;
-
     static void ReadCities(std::ifstream &fileStream, int dimension, std::vector<CCity> &cities) {
         std::string line;
         if (!CReadUtils::GotoLineByKey(fileStream, s_CitiesSectionKey, line)) {
@@ -48,12 +46,8 @@ public:
     }
     
     static CTSP* CreateTSP(const char *problemDefinitionPath) {
-        tspTemplate = ReadCTSPTemplate(problemDefinitionPath);
+        auto* tspTemplate = ReadCTSPTemplate(problemDefinitionPath);
         tspTemplate->CalculateMaxDistance();
-        return new CTSP(*tspTemplate);
-    }
-
-    static void DeleteObjects() {
-        delete tspTemplate;
+        return new CTSP(tspTemplate);
     }
 };

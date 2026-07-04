@@ -11,15 +11,9 @@ const std::string CCVRPFactory::s_CitiesSectionKey = "NODE_COORD_SECTION";
 const std::string CCVRPFactory::s_DemandSectionKey = "DEMAND_SECTION";
 const std::string CCVRPFactory::s_DepotSectionKey = "DEPOT_SECTION";
 
-CCVRPTemplate *CCVRPFactory::cvrpTemplate = nullptr;
-
 CCVRP *CCVRPFactory::CreateCVRP(const char *problemDefinitionPath) {
-	cvrpTemplate = ReadCVRPTemplate(problemDefinitionPath);
-	return new CCVRP(*cvrpTemplate);
-}
-
-void CCVRPFactory::DeleteObjects() {
-	delete cvrpTemplate;
+	auto cvrpTemplate = ReadCVRPTemplate(problemDefinitionPath);
+	return new CCVRP(cvrpTemplate);
 }
 
 CCVRPTemplate *CCVRPFactory::ReadCVRPTemplate(const char *problemDefinitionPath) {

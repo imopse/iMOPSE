@@ -8,10 +8,6 @@
 .vs/
 **/.vs/
 
-# Visual Studio / CMake local files
-CMakeSettings.json
-optimizer/CMakeSettings.json
-
 # Build output
 **/out/
 **/build/
@@ -29,8 +25,9 @@ optimizer/CMakeSettings.json
 results/
 experiments/
 
-# Visual Studio user files
-*.suo
+# Visual Studio
 *.user
 *.VC.db
 *.VC.VC.opendb
+CMakeSettings.json
+optimizer/CMakeSettings.json

@@ -14,7 +14,7 @@
 #include <stdexcept>
 #include <vector>
 
-CBNTGAGP::CBNTGAGP(AProblem* problem, AInitialization* initialization, SConfigMap* cfg)`r`n    : m_Cfg(cfg), m_Problem(problem), m_Initialization(initialization)
+CBNTGAGP::CBNTGAGP(AProblem* problem, AInitialization* initialization, SConfigMap* cfg) : m_Cfg(cfg), m_Problem(problem), m_Initialization(initialization)
 {
     if (m_Cfg && m_Cfg->HasValue("Seed")) {
         int s = 0;
@@ -43,8 +43,8 @@ void CBNTGAGP::RunOptimization()
     CScheduler* sch = nullptr;
     bool isTAProblem = false;
 
-    if (auto* p = dynamic_cast<CMSRCPSP_TA*>(m_Problem)) { sch = &p->GetScheduler(); isTAProblem = true; }
-    if (auto* p = dynamic_cast<CMSRCPSP_TO*>(m_Problem)) { sch = &p->GetScheduler(); isTAProblem = false; }
+    if (auto* p = dynamic_cast<CMSRCPSP_TA*>(m_Problem)) { sch = p->GetScheduler(); isTAProblem = true; }
+    if (auto* p = dynamic_cast<CMSRCPSP_TO*>(m_Problem)) { sch = p->GetScheduler(); isTAProblem = false; }
 
     if (!sch) {
         throw std::runtime_error("bNTGA-GP works only with MSRCPSP_TA/MSRCPSP_TO problems.");

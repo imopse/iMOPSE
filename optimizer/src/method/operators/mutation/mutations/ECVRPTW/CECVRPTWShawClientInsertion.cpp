@@ -15,10 +15,10 @@ void CECVRPTWShawClientInsertion::Mutate(SProblemEncoding& problemEncoding, AInd
 	auto& genotype = child.m_Genotype.m_IntGenotype;
     auto genotypeCopy = genotype;
 	std::sort(genotypeCopy.begin(), genotypeCopy.end());
-	auto& problemTemplate = m_ProblemDefinition.GetECVRPTWTemplate();
-	auto& cities = problemTemplate.GetCities();
-	auto& distanceMatrix = problemTemplate.GetDistInfoMtx();
-	auto& allCustomers = problemTemplate.GetCustomers();
+	auto* problemTemplate = m_ProblemDefinition.GetECVRPTWTemplate();
+	auto& cities = problemTemplate->GetCities();
+	auto& distanceMatrix = problemTemplate->GetDistInfoMtx();
+	auto& allCustomers = problemTemplate->GetCustomers();
 
     std::vector<int> missingCustomers;
     std::set_difference(allCustomers.begin(), allCustomers.end(),

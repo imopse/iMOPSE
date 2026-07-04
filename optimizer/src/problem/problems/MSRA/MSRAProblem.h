@@ -9,7 +9,10 @@
 class CMSRAProblem : public AProblem
 {
 public:
-    explicit CMSRAProblem(CMSRAInstance& problemTemplate);
+    explicit CMSRAProblem(CMSRAInstance* problemTemplate);
+	~CMSRAProblem() {
+		delete m_ProblemTemplate;
+	}
 
     SProblemEncoding& GetProblemEncoding() override;
     void Evaluate(AIndividual& individual) override;
@@ -20,7 +23,7 @@ public:
     float FindBestGeneValueByClosestTask(const std::vector<float>& solution, const size_t geneIdx) const;
     float FindBestGeneValueByProb(const size_t geneIdx) const;
 
-    size_t GetStageCount() const { return m_ProblemTemplate.GetStageCount(); }
+    size_t GetStageCount() const { return m_ProblemTemplate->GetStageCount(); }
 
 private:
 
@@ -37,5 +40,5 @@ private:
     std::vector<float> m_MinObjectiveValues;
     std::vector<float> m_MaxObjectiveValues;
 
-	CMSRAInstance m_ProblemTemplate;
+	CMSRAInstance* m_ProblemTemplate;
 };

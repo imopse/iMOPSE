@@ -6,11 +6,11 @@
 
 class CTSP : public AProblem {
 private:
-    CTSPTemplate &m_CTSPTemplate;
+    CTSPTemplate* m_CTSPTemplate;
     SProblemEncoding m_ProblemEncoding;
 
 public:
-    CTSP(CTSPTemplate &tspTemplate) : m_CTSPTemplate(tspTemplate) {
+    CTSP(CTSPTemplate* tspTemplate) : m_CTSPTemplate(tspTemplate) {
         CreateProblemEncoding();
     }
 
@@ -19,10 +19,9 @@ public:
     }
 
     void Evaluate(AIndividual& individual) {
-        // Calculate the total distance of the tour
         float totalDistance = 0.f;
-        size_t citiesSize = m_CTSPTemplate.GetCitiesSize();
-        auto &distMtx = m_CTSPTemplate.GetDistMtx();
+        size_t citiesSize = m_CTSPTemplate->GetCitiesSize();
+        auto &distMtx = m_CTSPTemplate->GetDistMtx();
 
         for (size_t i = 0; i < citiesSize; ++i) {
             size_t cityIdx = individual.m_Genotype.m_IntGenotype[i];
@@ -31,7 +30,7 @@ public:
         }
 
         individual.m_Evaluation = { totalDistance };
-        individual.m_NormalizedEvaluation = { totalDistance / m_CTSPTemplate.m_MaxDistance };
+        individual.m_NormalizedEvaluation = { totalDistance / m_CTSPTemplate->m_MaxDistance };
     }
 
     void LogSolution(AIndividual& individual) override {
@@ -41,7 +40,7 @@ public:
     void LogAdditionalData() override {};
 
     void CreateProblemEncoding() {
-        size_t citiesSize = m_CTSPTemplate.GetCitiesSize();
+        size_t citiesSize = m_CTSPTemplate->GetCitiesSize();
 
         SEncodingSection citiesSection = SEncodingSection {
                 std::vector<SEncodingDescriptor>(citiesSize, SEncodingDescriptor{
@@ -50,6 +49,6 @@ public:
                 EEncodingType::PERMUTATION
         };
 
-        m_ProblemEncoding = SProblemEncoding{1, {citiesSection}, m_CTSPTemplate.GetDistMtx()};
+        m_ProblemEncoding = SProblemEncoding{1, {citiesSection}, m_CTSPTemplate->GetDistMtx()};
     }
 };

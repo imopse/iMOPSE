@@ -11,8 +11,8 @@ void CECVRPTWRandomClientInsertion::Mutate(SProblemEncoding& problemEncoding, AI
 	auto& genotype = child.m_Genotype.m_IntGenotype;
     auto genotypeCopy = genotype;
 	std::sort(genotypeCopy.begin(), genotypeCopy.end());
-	auto& problemTemplate = m_ProblemDefinition.GetECVRPTWTemplate();
-	auto& allCustomers = problemTemplate.GetCustomers();
+	auto* problemTemplate = m_ProblemDefinition.GetECVRPTWTemplate();
+	auto& allCustomers = problemTemplate->GetCustomers();
 
     std::vector<int> missingCustomers;
     std::set_difference(allCustomers.begin(), allCustomers.end(),

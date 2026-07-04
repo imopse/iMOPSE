@@ -12,7 +12,9 @@ public:
     {}
 
     SSOIndividual(const SSOIndividual &other) : AIndividual(other)
-    {};
+    {
+        m_Fitness = other.m_Fitness;
+    };
     
     float m_Fitness = 0;
 };

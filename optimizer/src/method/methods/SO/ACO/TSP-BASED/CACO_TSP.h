@@ -10,7 +10,7 @@ enum InitType {
 
 class CACO_TSP : public ASOMethod {
 public:
-    CACO_TSP( AProblem* evaluator, AInitialization* initialization, SConfigMap* configMap, std::vector<float>* objectiveWeights );
+    CACO_TSP(AProblem* evaluator, AInitialization* initialization, SConfigMap* configMap, std::vector<float>* objectiveWeights);
 
     ~CACO_TSP() {
         delete m_Problem;

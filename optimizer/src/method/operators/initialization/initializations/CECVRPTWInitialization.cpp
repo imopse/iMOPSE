@@ -12,7 +12,7 @@ SSOIndividual* CECVRPTWInitialization::CreateSOIndividual(SProblemEncoding &enco
     {
         genotype.m_IntGenotype[i] += toAdd;
     }
-    int vehicleCount = m_Problem.GetECVRPTWTemplate().GetVehicleCount() - 1;
+    int vehicleCount = m_Problem.GetECVRPTWTemplate()->GetVehicleCount() - 1;
     for (int i = 1; i <= vehicleCount; i++)
     {
         auto it = std::find(genotype.m_IntGenotype.begin(), genotype.m_IntGenotype.end(), maxCustomerIndex + i);
@@ -42,7 +42,7 @@ SMOIndividual* CECVRPTWInitialization::CreateMOIndividual(SProblemEncoding &enco
     {
         genotype.m_IntGenotype[i] += toAdd;
     }
-    int vehicleCount = m_Problem.GetECVRPTWTemplate().GetVehicleCount() - 1;
+    int vehicleCount = m_Problem.GetECVRPTWTemplate()->GetVehicleCount() - 1;
     for (int i = 1; i <= vehicleCount; i++)
     {
         auto it = std::find(genotype.m_IntGenotype.begin(), genotype.m_IntGenotype.end(), maxCustomerIndex + i);

@@ -32,6 +32,11 @@ float CRandom::GetFloat(float min, float max)
     return dist(rng);
 }
 
+float CRandom::GetNormalDistribution(float mean, float standardDeviation) {
+    std::normal_distribution<float> dist(mean, standardDeviation);
+    return dist(rng);
+}
+
 void CRandom::Shuffle(int start, int end, std::vector<int> &vector)
 {
     std::shuffle(vector.begin() + start, vector.begin() + end, rng);

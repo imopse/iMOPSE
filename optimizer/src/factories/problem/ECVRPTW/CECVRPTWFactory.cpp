@@ -13,15 +13,9 @@ const std::string CECVRPTWFactory::s_VelocityKey = "v";
 const std::string CECVRPTWFactory::s_VehicleCountKey = "n";
 const std::string CECVRPTWFactory::s_CitiesSectionKey = "StringID";
 
-CECVRPTWTemplate* CECVRPTWFactory::cvrpTemplate = nullptr;
-
 CECVRPTW* CECVRPTWFactory::CreateECVRPTW(const char* problemDefinitionPath) {
-    cvrpTemplate = ReadECVRPTWTemplate(problemDefinitionPath);
-    return new CECVRPTW(*cvrpTemplate);
-}
-
-void CECVRPTWFactory::DeleteObjects() {
-    delete cvrpTemplate;
+    auto* cvrpTemplate = ReadECVRPTWTemplate(problemDefinitionPath);
+    return new CECVRPTW(cvrpTemplate);
 }
 
 CECVRPTWTemplate* CECVRPTWFactory::ReadECVRPTWTemplate(const char* problemDefinitionPath) {

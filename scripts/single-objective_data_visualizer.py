@@ -2,10 +2,9 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# List of paths to results directories to create plots for
-paths = ['../optimizer/experiments/GA'] # Input paths
+paths = ['../optimizer/experiments/GA']
 
-number_of_runs = 1 # Input number of runs
+number_of_runs = 1
 
 def create_mean_values(path):
     all_runs_data = []

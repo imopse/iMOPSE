@@ -8,15 +8,17 @@
 class CMSRCPSP_TO : public AProblem
 {
 public:
-    explicit CMSRCPSP_TO(CScheduler& scheduler, size_t objCount);
-    ~CMSRCPSP_TO() override = default;
+    explicit CMSRCPSP_TO(CScheduler* scheduler, size_t objCount);
+    ~CMSRCPSP_TO()
+    {
+        delete m_Scheduler;
+    }
 
     SProblemEncoding& GetProblemEncoding() override;
     void Evaluate(AIndividual& individual) override;
     void LogSolution(AIndividual& individual) override;
     void LogAdditionalData() override {};
-    CScheduler& GetScheduler() { return m_Scheduler; }
-    const CScheduler& GetScheduler() const { return m_Scheduler; }
+    CScheduler* GetScheduler() { return m_Scheduler; }
 private:
     void CreateProblemEncoding();
 
@@ -26,5 +28,5 @@ private:
     std::vector<float> m_MaxObjectiveValues;
     std::vector<float> m_MinObjectiveValues;
 
-    CScheduler m_Scheduler;
+    CScheduler* m_Scheduler;
 };

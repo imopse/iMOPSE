@@ -4,14 +4,14 @@
 #include <iostream>
 #include <sstream>
 
-CECVRPTW::CECVRPTW(CECVRPTWTemplate& ecvrptwBase)
+CECVRPTW::CECVRPTW(CECVRPTWTemplate* ecvrptwBase)
     : m_ECVRPTWTemplate(ecvrptwBase)
 {
     CreateProblemEncoding();
 
     m_MaxObjectiveValues = {
-        m_ECVRPTWTemplate.GetMaxDistance(),
-        m_ECVRPTWTemplate.GetMaxDueTime() * (float)m_ECVRPTWTemplate.GetCustomers().size()
+        m_ECVRPTWTemplate->GetMaxDistance(),
+        m_ECVRPTWTemplate->GetMaxDueTime() * (float)m_ECVRPTWTemplate->GetCustomers().size()
     };
 
     m_MinObjectiveValues = {
@@ -44,11 +44,11 @@ void CECVRPTW::Evaluate(AIndividual& individual)
 
 void CECVRPTW::CreateProblemEncoding()
 {
-    auto& customers = m_ECVRPTWTemplate.GetCustomers();
+    auto& customers = m_ECVRPTWTemplate->GetCustomers();
 
     SEncodingSection citiesSection = SEncodingSection
     {
-        std::vector<SEncodingDescriptor>(customers.size() + m_ECVRPTWTemplate.GetVehicleCount() - 1,
+        std::vector<SEncodingDescriptor>(customers.size() + m_ECVRPTWTemplate->GetVehicleCount() - 1,
             SEncodingDescriptor{
                     (float)customers[0], (float)customers[customers.size()-1]
             }
@@ -75,7 +75,7 @@ void CECVRPTW::LogSolution(AIndividual& individual)
 void CECVRPTW::LogAdditionalData()
 {
     std::ostringstream pointsData;
-    auto& cityData = m_ECVRPTWTemplate.GetCities();
+    auto& cityData = m_ECVRPTWTemplate->GetCities();
     for (auto& city : cityData) {
         
         pointsData << city.m_PosX << ';' << city.m_PosY << ';' << (char)city.m_Type << std::endl;

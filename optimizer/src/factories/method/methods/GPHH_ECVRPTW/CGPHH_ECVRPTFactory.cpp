@@ -54,7 +54,7 @@ AMethod* CGPHH_ECVRPTWFactory::CreateGPHH(SConfigMap* configMap, AProblem* probl
 	auto* weights = new std::vector({ 1.0f });
 	
 	return new CGPHH_ECVRP(
-		problem,
+		dynamic_cast<CCVRP*>(problem),
 		initialization,
 		tournament,
 		crossover,

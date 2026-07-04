@@ -2,18 +2,18 @@
 
 #define TTP_SAVE_FIXED_GENES 1
 
-CTTP2::CTTP2(CTTPTemplate &ttpBase) : m_TTPTemplate(ttpBase)
+CTTP2::CTTP2(CTTPTemplate* ttpBase) : m_TTPTemplate(ttpBase)
 {
     CreateProblemEncoding();
 
     m_MaxObjectiveValues = {
-            m_TTPTemplate.GetMaxTravelTime(),
-            -m_TTPTemplate.GetMinProfit()
+            m_TTPTemplate->GetMaxTravelTime(),
+            -m_TTPTemplate->GetMinProfit()
     };
 
     m_MinObjectiveValues = {
-            m_TTPTemplate.GetMinTravelTime(),
-            -m_TTPTemplate.GetMaxProfit()
+            m_TTPTemplate->GetMinTravelTime(),
+            -m_TTPTemplate->GetMaxProfit()
     };
 }
 
@@ -25,16 +25,16 @@ SProblemEncoding &CTTP2::GetProblemEncoding()
 void CTTP2::Evaluate(AIndividual& individual)
 {
     // Build solution
-    auto &items = m_TTPTemplate.GetItems();
-    auto &cityItems = m_TTPTemplate.GetCityItems();
-    auto &distMtx = m_TTPTemplate.GetDistMtx();
-    int capacity = m_TTPTemplate.GetCapacity();
+    auto &items = m_TTPTemplate->GetItems();
+    auto &cityItems = m_TTPTemplate->GetCityItems();
+    auto &distMtx = m_TTPTemplate->GetDistMtx();
+    int capacity = m_TTPTemplate->GetCapacity();
 
-    float minSpeed = m_TTPTemplate.GetMinSpeed();
-    float maxSpeed = m_TTPTemplate.GetMaxSpeed();
+    float minSpeed = m_TTPTemplate->GetMinSpeed();
+    float maxSpeed = m_TTPTemplate->GetMaxSpeed();
 
-    size_t itemsSize = m_TTPTemplate.GetItemsSize();
-    size_t citiesSize = m_TTPTemplate.GetCitiesSize();
+    size_t itemsSize = m_TTPTemplate->GetItemsSize();
+    size_t citiesSize = m_TTPTemplate->GetCitiesSize();
     std::vector<bool> selection(itemsSize, false);
     int currWeight = 0;
 
@@ -55,7 +55,7 @@ void CTTP2::Evaluate(AIndividual& individual)
 
     // Ry ratio
     {
-        const auto &itemsRatio = m_TTPTemplate.GetProfitRatioSortedItems();
+        const auto &itemsRatio = m_TTPTemplate->GetProfitRatioSortedItems();
         size_t i = 0;
         while (i < itemsSize)
         {
@@ -125,10 +125,10 @@ void CTTP2::LogSolution(AIndividual& individual)
 
 void CTTP2::PickMostValItemsFromTheEnd(AIndividual& individual) const
 {
-    const auto &items = m_TTPTemplate.GetItems();
-    const auto &cityItems = m_TTPTemplate.GetCityItems();
-    int capacity = m_TTPTemplate.GetCapacity();
-    size_t citiesSize = m_TTPTemplate.GetCitiesSize();
+    const auto &items = m_TTPTemplate->GetItems();
+    const auto &cityItems = m_TTPTemplate->GetCityItems();
+    int capacity = m_TTPTemplate->GetCapacity();
+    size_t citiesSize = m_TTPTemplate->GetCitiesSize();
 
     int currWeight = 0;
 
@@ -155,8 +155,8 @@ void CTTP2::PickMostValItemsFromTheEnd(AIndividual& individual) const
 
 void CTTP2::CreateProblemEncoding()
 {
-    size_t citiesSize = m_TTPTemplate.GetCitiesSize();
-    size_t itemsSize = m_TTPTemplate.GetItemsSize();
+    size_t citiesSize = m_TTPTemplate->GetCitiesSize();
+    size_t itemsSize = m_TTPTemplate->GetItemsSize();
 
     SEncodingSection citiesSection = SEncodingSection
             {
@@ -174,6 +174,6 @@ void CTTP2::CreateProblemEncoding()
                     EEncodingType::BINARY
             };
 
-    m_ProblemEncoding = SProblemEncoding{2, {citiesSection, knapsackSection}, m_TTPTemplate.GetDistMtx()};
+    m_ProblemEncoding = SProblemEncoding{2, {citiesSection, knapsackSection}, m_TTPTemplate->GetDistMtx()};
 }
 

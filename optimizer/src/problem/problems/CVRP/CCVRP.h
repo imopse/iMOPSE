@@ -6,9 +6,11 @@
 
 class CCVRP : public AProblem {
 public:
-    explicit CCVRP(CCVRPTemplate& cvrpBase);
+    explicit CCVRP(CCVRPTemplate* cvrpBase);
 
-    ~CCVRP() override = default;
+    ~CCVRP() {
+        delete m_CVRPTemplate;
+    }
 
     SProblemEncoding& GetProblemEncoding() override;
 
@@ -16,15 +18,15 @@ public:
     void LogSolution(AIndividual& individual) override;
     void LogAdditionalData() override {};
     
-    float GetOptimalValue() override;
+    float GetOptimalValue();
 
-    CCVRPTemplate& GetCVRPTemplate() { return m_CVRPTemplate; }
+    CCVRPTemplate* GetCVRPTemplate() { return m_CVRPTemplate; }
     size_t GetNearestDepotIdx(size_t cityIdx);
 
 protected:
     std::vector<size_t> m_UpperBounds;
     SProblemEncoding m_ProblemEncoding;
-    CCVRPTemplate& m_CVRPTemplate;
+    CCVRPTemplate* m_CVRPTemplate;
     std::vector<float> m_MaxObjectiveValues;
     std::vector<float> m_MinObjectiveValues;
 

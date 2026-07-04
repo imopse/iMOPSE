@@ -22,6 +22,8 @@
 #include "method/methods/MO/BNTGA/CBNTGA.h"
 #include "method/methods/MO/SPEA2/CSPEA2.h"
 #include "method/methods/MO/NTGA2_ALNS/CNTGA2_ALNS.h"
+#include "method/methods/SO/LSHADE/CLSHADE.h"
+#include "method/methods/SO/LDEGR/LDEGR.h"
 
 AMethod* CMethodFactory::CreateMethod( const char* optimizerConfigPath, AProblem* problem )
 {
@@ -70,6 +72,20 @@ AMethod* CMethodFactory::CreateMethod( const char* optimizerConfigPath, AProblem
 		);
 	if (methodName == "PSO")
 		return new CPSO(
+				problem,
+				initialization,
+				configMap,
+				CMethodFactory::ProcessObjectiveWeights(configMap)
+		);
+	if (methodName == "LSHADE")
+		return new CLSHADE(
+				problem,
+				initialization,
+				configMap,
+				CMethodFactory::ProcessObjectiveWeights(configMap)
+		);
+	if (methodName == "LDEGR")
+		return new CLDEGR(
 				problem,
 				initialization,
 				configMap,

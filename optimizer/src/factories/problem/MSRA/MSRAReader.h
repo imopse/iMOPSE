@@ -10,7 +10,7 @@ public:
     static CMSRAProblem* CreateMSRA(const char* problemDefinitionPath);
 
 private:
-    static bool ReadDefinition(const char* filePath, CMSRAInstance& problemTemplate);
+    static bool ReadDefinition(const char* filePath, CMSRAInstance* problemTemplate);
     static void ReadTasks(std::ifstream& fileStream, int taskCount, std::vector<STask>& tasks);
     static void ReadResources(std::ifstream& fileStream, int resourceCount, std::vector<SResource>& resources);
     static void ReadProbabilityMtx(std::ifstream& fileStream, int resourceCount, int taskCount, std::vector<std::vector<float>>& probMtx);

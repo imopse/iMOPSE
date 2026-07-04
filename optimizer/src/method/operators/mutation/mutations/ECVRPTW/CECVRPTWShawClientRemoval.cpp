@@ -10,7 +10,7 @@ CECVRPTWShawClientRemoval::CECVRPTWShawClientRemoval(CECVRPTW& problemDefinition
     : m_ProblemDefinition(problemDefinition)
 {
     // TODO - verify whether "vehicle count - 1" should be in parenthesis
-    size_t indicesCount = m_ProblemDefinition.GetProblemEncoding().m_Encoding[0].m_SectionDescription.size() - m_ProblemDefinition.GetECVRPTWTemplate().GetVehicleCount() - 1;
+    size_t indicesCount = m_ProblemDefinition.GetProblemEncoding().m_Encoding[0].m_SectionDescription.size() - m_ProblemDefinition.GetECVRPTWTemplate()->GetVehicleCount() - 1;
     m_CustomerIndexes.reserve(indicesCount);
 }
 
@@ -18,16 +18,16 @@ void CECVRPTWShawClientRemoval::Mutate(SProblemEncoding& problemEncoding, AIndiv
     m_CustomerIndexes.clear();
 
     // TODO - verify whether "vehicle count - 1" should be in parenthesis
-	int customersToRemove = CRandom::GetInt(1, problemEncoding.m_Encoding[0].m_SectionDescription.size() - m_ProblemDefinition.GetECVRPTWTemplate().GetVehicleCount() - 1);
+	int customersToRemove = CRandom::GetInt(1, problemEncoding.m_Encoding[0].m_SectionDescription.size() - m_ProblemDefinition.GetECVRPTWTemplate()->GetVehicleCount() - 1);
 	int firstCustomerIdx = CRandom::GetInt(1, problemEncoding.m_Encoding[0].m_SectionDescription.size());
 	auto& genotype = child.m_Genotype.m_IntGenotype;
 	while (child.m_Genotype.m_IntGenotype[firstCustomerIdx] == VEHICLE_DELIMITER) {
 		firstCustomerIdx = CRandom::GetInt(1, problemEncoding.m_Encoding[0].m_SectionDescription.size());
 	}
 
-	auto& problemTemplate = m_ProblemDefinition.GetECVRPTWTemplate();
-	auto& cities = problemTemplate.GetCities();
-	auto& distanceMatrix = problemTemplate.GetDistInfoMtx();
+	auto* problemTemplate = m_ProblemDefinition.GetECVRPTWTemplate();
+	auto& cities = problemTemplate->GetCities();
+	auto& distanceMatrix = problemTemplate->GetDistInfoMtx();
 
     m_CustomerIndexes.push_back(genotype[firstCustomerIdx]);
 

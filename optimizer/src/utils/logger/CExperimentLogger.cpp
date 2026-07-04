@@ -110,7 +110,7 @@ void CExperimentLogger::OpenFileForWriting(const char* filePath, std::ofstream& 
     }
 }
 
-bool CExperimentLogger::WriteSchedulerToFile(const CScheduler& schedule, const AIndividual& solution)
+bool CExperimentLogger::WriteSchedulerToFile(const CScheduler* schedule, const AIndividual& solution)
 {
     // TODO - generic logger should not contain Scheduler logic
     char archive_filename[256];
@@ -121,7 +121,7 @@ bool CExperimentLogger::WriteSchedulerToFile(const CScheduler& schedule, const A
     arch_file << "Time;Resource assignments (resource ID - task ID) " << std::endl;
 
     std::vector<int> startTimes = std::vector<int>();
-    for (CTask task : schedule.GetTasks())
+    for (CTask task : schedule->GetTasks())
     {
         int startTime = task.GetStart();
         if (!std::count(startTimes.begin(), startTimes.end(), startTime))
@@ -132,17 +132,17 @@ bool CExperimentLogger::WriteSchedulerToFile(const CScheduler& schedule, const A
 
     for (int startTime : startTimes)
     {
-        arch_file << startTime + 1 << " ";
+        arch_file << startTime + 1 << ";";
 
         int taskId = 1;
 
-        for (CTask task : schedule.GetTasks())
+        for (CTask task : schedule->GetTasks())
         {
             if (task.GetStart() == startTime)
             {
                 TResourceID resourceID = task.GetResourceID();
 
-                arch_file << resourceID << "-" << taskId << " ";
+                arch_file << resourceID << "-" << taskId;
             }
 
             taskId++;

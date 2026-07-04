@@ -10,7 +10,7 @@ using std::cout;
 using std::endl;
 
 CGPHH_ECVRP::CGPHH_ECVRP(
-		AProblem* evaluator,
+		CCVRP* evaluator,
 		AInitialization* initialization,
 		CFitnessTournament* fitnessTournament,
 		ACrossover* crossover,

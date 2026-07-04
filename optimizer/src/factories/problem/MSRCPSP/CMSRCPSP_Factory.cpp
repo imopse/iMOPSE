@@ -9,30 +9,37 @@ const std::string CMSRCPSP_Factory::s_ResourcesKey = "Resources:";
 const std::string CMSRCPSP_Factory::s_ResourcesSectionKey = "ResourceID";
 const std::string CMSRCPSP_Factory::s_TasksSectionKey = "TaskID";
 
-CScheduler *CMSRCPSP_Factory::scheduler = nullptr;
-
 CMSRCPSP_TA *CMSRCPSP_Factory::CreateMSRCPSP_TA(const char *problemConfigurationPath, size_t objCount)
 {
-    scheduler = CreateScheduler(problemConfigurationPath);
+    auto* scheduler = CreateScheduler(problemConfigurationPath);
 
-    return new CMSRCPSP_TA(*scheduler, objCount);
+    return new CMSRCPSP_TA(scheduler, objCount);
+}
+
+CMSRCPSP_TA_FLOAT *CMSRCPSP_Factory::CreateMSRCPSP_TA_FLOAT(const char *problemConfigurationPath, size_t objCount)
+{
+    auto* scheduler = CreateScheduler(problemConfigurationPath);
+
+    return new CMSRCPSP_TA_FLOAT(scheduler, objCount);
 }
 
 CMSRCPSP_TO* CMSRCPSP_Factory::CreateMSRCPSP_TO(const char* problemConfigurationPath, size_t objCount)
 {
-    scheduler = CreateScheduler(problemConfigurationPath);
+    auto* scheduler = CreateScheduler(problemConfigurationPath);
 
-    return new CMSRCPSP_TO(*scheduler, objCount);
+    return new CMSRCPSP_TO(scheduler, objCount);
 }
 
-void CMSRCPSP_Factory::DeleteObjects()
+CMSRCPSP_TO_FLOAT* CMSRCPSP_Factory::CreateMSRCPSP_TO_FLOAT(const char* problemConfigurationPath, size_t objCount)
 {
-    delete scheduler;
+    auto* scheduler = CreateScheduler(problemConfigurationPath);
+
+    return new CMSRCPSP_TO_FLOAT(scheduler, objCount);
 }
 
 CScheduler *CMSRCPSP_Factory::CreateScheduler(const char *problemConfigurationPath)
 {
-    scheduler = new CScheduler();
+    auto* scheduler = new CScheduler();
 
     std::ifstream readFileStream(problemConfigurationPath);
     

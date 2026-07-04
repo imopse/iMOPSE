@@ -6,12 +6,13 @@
 #include "../../../operators/selection/selections/CFitnessTournament.h"
 #include "constructive/IGPHHConstructive.h"
 #include "method/methods/SO/ASOMethod.h"
+#include "problem/problems/CVRP/CCVRP.h"
 
 class CGPHH_ECVRP : public ASOMethod
 {
 public:
     CGPHH_ECVRP(
-        AProblem* evaluator,
+        CCVRP* evaluator,
         AInitialization* initialization,
         CFitnessTournament* fitnessTournament,
         ACrossover* crossover,
@@ -41,7 +42,7 @@ public:
         m_Population.clear();
     }
 private:
-    AProblem* m_Problem;
+    CCVRP* m_Problem;
     AInitialization* m_Initialization;
     CFitnessTournament* m_FitnessTournament;
     ACrossover* m_Crossover;

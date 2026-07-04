@@ -30,7 +30,7 @@ booktitle: Parallel Problem Solving from Nature – PPSN XVIII: 18th Internation
 pages: 170–184
 
 
-### Key Features
+### Key Elements
 - **State-of-the-art Optimization Methods**:
   - Multi-Objective Evolutionary Algorithm Based on Decomposition (MOEAD)
   - Non-dominated Sorting Genetic Algorithm II (NSGAII)
@@ -49,38 +49,6 @@ pages: 170–184
 - **Comprehensive Tool Suite**: iMOPSE provides pre-configured problem instances and method setups, complemented by an extensive array of tools for data collection, visualization, and analysis, making it highly effective for research and result interpretation.
 - **Extensive Customization**: Offers numerous customization options to facilitate research into diverse optimization methods and scenarios.
 - **User-Friendly Interface**: Features an intuitive interface with straightforward input parameters and configuration files, making it accessible to a wide audience of users.
-
-# Compile project
-To start working with iMOPSE, clone the repository, it consists of two C++ projects `optimizer` and `paretoAnalyzer`, both of them contain CMakeLists.txt files.
-In this subsection we present a few example methods to compile C++ project.
-## using CMake
-- Verify CMake and Make 
-  Verify if CMake and Make are installed on your system. If not, you will need to install them. Visit the [CMake Website](https://cmake.org) and the [GNU Make Manual](https://www.gnu.org/software/make/manual/make.html#Installing-Make) for installation instructions.
-- Enter optimizer directory, create new `build` directory and enter it
-```bash
-cd optimizer
-mkdir build
-cd build
-```
-- Run CMake
-```bash
-cmake ..
-```
-- Compile the project
-```bash
-make
-```
-- Run executable
-```bash
-./imopse
-```
-Expected output should be: `Usage: <pathToExecutable> <MethodConfigPath> <ProblemName> <ProblemDefinitionPath> <OutputDirectory> [ExecutionsCount] [Seed]`
-
-## using Clion IDE
-- Open project in CLion.
-- In one of project directories find `CMakeLists.txt`, right-click it and select `Load CMake Project` option.
-- CLion will automatically build the project.
-- After building the run button will be available in the top-right corner. Expected output should be: `Usage: <pathToExecutable> <MethodConfigPath> <ProblemName> <ProblemDefinitionPath> [ExecutionsCount] [Seed]`
 
 # Optimizer
 Optimizer is the main iMOPSE component responsible for problem optimization with usage of metaheuristic algorithms.
@@ -240,7 +208,6 @@ Thanks to all the contributors who have invested their time and expertise in dev
 - **Michał Antkiewicz** (2021 - Now)
 - **Konrad Gmyrek** (2023 - Now)
 - **Łukasz Olech** (2023 - Now)
-- **Kinga Paliszek-Saładyga** (2025 - 2026)
 - **Adam Paliszek-Saładyga** (2025 - Now)
 
 ## Past Collaborators
@@ -262,3 +229,4 @@ Thanks to all the contributors who have invested their time and expertise in dev
 - **Łukasz Podlodowski** (2011 - 2012)
 - **Aleksandra Stecka** (2024 - 2025)
 - **Adrian Żak** (2024 - 2025)
+- **Kinga Paliszek-Saładyga** (2025 - 2026)

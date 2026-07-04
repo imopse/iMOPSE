@@ -111,6 +111,14 @@ void CInitialization::InitGenotype(SProblemEncoding &encoding, SGenotype &genoty
                                 []()
                                 { return CRandom::GetBool(); });
             }
+            case EEncodingType::FLOAT:
+            {
+                for (const SEncodingDescriptor &encDesc: encodingSection.m_SectionDescription)
+                {
+                    genotype.m_FloatGenotype.push_back(CRandom::GetFloat(encDesc.m_MinValue, encDesc.m_MaxValue));
+                }
+                break;
+            }
         }
     }
 }

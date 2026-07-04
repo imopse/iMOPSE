@@ -2,22 +2,20 @@ import subprocess
 import threading
 import argparse
 
-path_to_executable = "./imopse" # Input correct path
+path_to_executable = "./imopse"
 
 configurations_to_run = [
     "../../configurations/methods/NTGA2/NTGA2_ORIGINAL.cfg MSRCPSP_TA2 ../../configurations/problems/MSRCPSP/Regular/100_5_20_9_D3.def ../experiments/NTGA2/ 10",
     "../../configurations/methods/NSGAII/NSGAII_MSRCPSP.cfg MSRCPSP_TA2 ../../configurations/problems/MSRCPSP/Regular/100_5_20_9_D3.def ../experiments/NSGAII/ 10"
-] # Input configurations to run
+]
 
 def run_executable(config_string, silent):
     command = f"{path_to_executable} {config_string}"
 
     print(f"Starting task for configuration '{config_string}'...")
 
-    # Run the command and capture the output
     result = subprocess.run(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
-    # Check if there was an error
     if result.returncode != 0 or not silent:
         print("\033[90m" + result.stdout.rstrip() + "\033[0m")
 

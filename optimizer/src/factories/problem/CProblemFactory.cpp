@@ -12,8 +12,10 @@ AProblem* CProblemFactory::CreateProblem(const char* problemName, const char* pr
 {
     if (strcmp(problemName, "MSRCPSP_TA") == 0) return CMSRCPSP_Factory::CreateMSRCPSP_TA(problemConfigurationPath, 5);
     if (strcmp(problemName, "MSRCPSP_TA2") == 0) return CMSRCPSP_Factory::CreateMSRCPSP_TA(problemConfigurationPath, 2);
+    if (strcmp(problemName, "MSRCPSP_TA_FLOAT") == 0) return CMSRCPSP_Factory::CreateMSRCPSP_TA_FLOAT(problemConfigurationPath, 1);
     if (strcmp(problemName, "MSRCPSP_TO") == 0) return CMSRCPSP_Factory::CreateMSRCPSP_TO(problemConfigurationPath, 5);
     if (strcmp(problemName, "MSRCPSP_TO2") == 0) return CMSRCPSP_Factory::CreateMSRCPSP_TO(problemConfigurationPath, 2);
+    if (strcmp(problemName, "MSRCPSP_TO_FLOAT") == 0) return CMSRCPSP_Factory::CreateMSRCPSP_TO_FLOAT(problemConfigurationPath, 1);
     if (strcmp(problemName, "TSP") == 0) return CTSPFactory::CreateTSP(problemConfigurationPath);
     if (strcmp(problemName, "TTP1") == 0) return CTTPFactory::CreateTTP1(problemConfigurationPath);
     if (strcmp(problemName, "TTP2") == 0) return CTTPFactory::CreateTTP2(problemConfigurationPath);
@@ -22,12 +24,4 @@ AProblem* CProblemFactory::CreateProblem(const char* problemName, const char* pr
     if (strcmp(problemName, "ECVRPTW") == 0) return CECVRPTWFactory::CreateECVRPTW(problemConfigurationPath);
     
     throw std::runtime_error("Problem name: " + std::string(problemName) + " not supported");
-}
-
-void CProblemFactory::DeleteObjects()
-{
-    CMSRCPSP_Factory::DeleteObjects();
-    CTSPFactory::DeleteObjects();
-    CTTPFactory::DeleteObjects();
-    CCVRPFactory::DeleteObjects();
 }

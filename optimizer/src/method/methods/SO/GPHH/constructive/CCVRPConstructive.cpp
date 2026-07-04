@@ -8,11 +8,11 @@ void CCVRPConstructive::BuildSolution(CGPHHIndividual& individual, AProblem& pro
     CCVRP* cvrp = dynamic_cast<CCVRP*>(&problem);
     if (!cvrp) return;
 
-    CCVRPTemplate& cvrpTemplate = cvrp->GetCVRPTemplate();
-    const auto& cities = cvrpTemplate.GetCities();
-    const auto& distMtx = cvrpTemplate.GetDistMtx();
-    const auto& depots = cvrpTemplate.GetDepots();
-    int capacity = cvrpTemplate.GetCapacity();
+    auto* cvrpTemplate = cvrp->GetCVRPTemplate();
+    const auto& cities = cvrpTemplate->GetCities();
+    const auto& distMtx = cvrpTemplate->GetDistMtx();
+    const auto& depots = cvrpTemplate->GetDepots();
+    int capacity = cvrpTemplate->GetCapacity();
 
     individual.FlattenTree();
 
@@ -32,7 +32,7 @@ void CCVRPConstructive::BuildSolution(CGPHHIndividual& individual, AProblem& pro
     std::vector<float> nccCache(cities.size(), 0.0f);
     std::vector<size_t> nccPointer(cities.size(), 0);
     for (int idx : unvisited) {
-        const auto& nearestNeighbors = cvrpTemplate.GetNearestNeighborsCache(idx);
+        const auto& nearestNeighbors = cvrpTemplate->GetNearestNeighborsCache(idx);
         for (size_t i = 0; i < nearestNeighbors.size(); ++i) {
             if (isUnvisited[nearestNeighbors[i]]) {
                 nccCache[idx] = distMtx[idx][nearestNeighbors[i]];
@@ -61,7 +61,7 @@ void CCVRPConstructive::BuildSolution(CGPHHIndividual& individual, AProblem& pro
         unvisited.erase(std::remove(unvisited.begin(), unvisited.end(), bestCandidate), unvisited.end());
 
         for (int idx : unvisited) {
-            const auto& nearestNeighbors = cvrpTemplate.GetNearestNeighborsCache(idx);
+            const auto& nearestNeighbors = cvrpTemplate->GetNearestNeighborsCache(idx);
             size_t& ptr = nccPointer[idx];
             if (ptr >= nearestNeighbors.size() || !isUnvisited[nearestNeighbors[ptr]]) {
                 nccCache[idx] = 0.0f;
