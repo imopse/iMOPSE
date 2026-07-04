@@ -8,8 +8,6 @@
 #include "MSRA/MSRAReader.h"
 #include "ECVRPTW/CECVRPTWFactory.h"
 
-// Define the static method 'CreateProblem' in the 'CProblemFactory' class
-// This method creates instances of different problem types based on the provided problem name
 AProblem* CProblemFactory::CreateProblem(const char* problemName, const char* problemConfigurationPath)
 {
     if (strcmp(problemName, "MSRCPSP_TA") == 0) return CMSRCPSP_Factory::CreateMSRCPSP_TA(problemConfigurationPath, 5);
@@ -22,24 +20,14 @@ AProblem* CProblemFactory::CreateProblem(const char* problemName, const char* pr
     if (strcmp(problemName, "CVRP") == 0) return CCVRPFactory::CreateCVRP(problemConfigurationPath);
     if (strcmp(problemName, "MSRA") == 0) return CMSRAReader::CreateMSRA(problemConfigurationPath);
     if (strcmp(problemName, "ECVRPTW") == 0) return CECVRPTWFactory::CreateECVRPTW(problemConfigurationPath);
-
-    // If none of the above conditions are met, throw a runtime error indicating the problem name is not supported
+    
     throw std::runtime_error("Problem name: " + std::string(problemName) + " not supported");
 }
 
-// Define the static method 'DeleteObjects' in the 'CProblemFactory' class
-// This method is responsible for cleaning up and deleting objects created by the factory
 void CProblemFactory::DeleteObjects()
 {
-    // Call the DeleteObjects method of the CMSRCPSP_TA_Factory to clean up its objects
     CMSRCPSP_Factory::DeleteObjects();
-
-    // Call the DeleteObjects method of the CTSPFactory to clean up its objects
     CTSPFactory::DeleteObjects();
-    
-    // Call the DeleteObjects method of the CTTPFactory to clean up its objects
     CTTPFactory::DeleteObjects();
-
-    // Call the DeleteObjects method of the CCVRPFactory to clean up its objects
     CCVRPFactory::DeleteObjects();
 }

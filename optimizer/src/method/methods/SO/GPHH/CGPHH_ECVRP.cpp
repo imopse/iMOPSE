@@ -1,8 +1,6 @@
 #include "CGPHH_ECVRP.h"
 #include "../utils/aggregatedFitness/CAggregatedFitness.h"
-#include "../utils/experiment/CSOExperimentUtils.h"
 #include "../../../../utils/logger/ErrorUtils.h"
-#include "../../../../utils/logger/CExperimentLogger.h"
 
 #include <iostream>
 #include <chrono>
