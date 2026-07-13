@@ -17,8 +17,7 @@ Thanks to all the contributors who have invested their time and expertise in dev
 - **Michał Antkiewicz** (2021 - Now)
 - **Konrad Gmyrek** (2023 - Now)
 - **Łukasz Olech** (2024 - Now)
-- **Aleksandra Stecka** (2024 - Now)
-- **Adrian Żak** (2024 - Now)
+- **Adam Paliszek-Saładyga** (2025 - Now)
 
 
 ## Past Collaborators
@@ -38,3 +37,6 @@ Thanks to all the contributors who have invested their time and expertise in dev
 - **Łukasz Podlodowski** (2011 - 2012)
 - **Kacper Małkowski** (2024)
 - **Jakub Korycki** (2024)
+- **Aleksandra Stecka** (2024)
+- **Adrian Żak** (2024)
+- **Kinga Paliszek-Saładyga** (2025 - 2026)

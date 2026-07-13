@@ -1,29 +1,13 @@
 title: iMOPSE
-description: Documentation for the iMOPSE project.
+description: Documentation
 remote_theme: just-the-docs/just-the-docs
 
-# Enable Jekyll to look for Markdown files in 'docs' folder
+plugins:
+  - jekyll-remote-theme
+
+color_scheme: light
+
 collections:
   docs:
     output: true
     permalink: /:collection/:path/
-
-# Navigation
-just_the_docs:
-  navigation:
-    - title: "Home"
-      url: "/"
-    - title: "Compile Project"
-      url: "/docs/compile_project/"
-    - title: "Optimizer"
-      url: "/docs/optimizer/"
-    - title: "Pareto Analyzer"
-      url: "/docs/pareto_analyzer/"
-    - title: "Additional Tools"
-      url: "/docs/additional_tools/"
-    - title: "Publications"
-      url: "/docs/publications/"
-    - title: "Example of Use"
-      url: "/docs/example_of_use/"
-    - title: "Support & Contributors"
-      url: "/docs/support_contributors/"
