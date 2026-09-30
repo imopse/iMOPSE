@@ -57,7 +57,7 @@ AMutation *CMutationFactory::Create(SConfigMap *configMap, std::string key, APro
 
     if (strcmp(opName, "RandomBit") == 0)
     {
-        if (encodingTypes.find(EEncodingType::ASSOCIATION) != encodingTypes.end() && encodingTypes.find(EEncodingType::PERMUTATION) != encodingTypes.end())
+        if (encodingTypes.find(EEncodingType::ASSOCIATION) == encodingTypes.end() && encodingTypes.find(EEncodingType::PERMUTATION) == encodingTypes.end())
         {
             return nullptr;
         }
@@ -69,7 +69,7 @@ AMutation *CMutationFactory::Create(SConfigMap *configMap, std::string key, APro
     }
     else if (strcmp(opName, "CVRP_Reverse") == 0)
     {
-        if (encodingTypes.find(EEncodingType::PERMUTATION) != encodingTypes.end())
+        if (encodingTypes.find(EEncodingType::PERMUTATION) == encodingTypes.end())
         {
             return nullptr;
         }
@@ -81,7 +81,7 @@ AMutation *CMutationFactory::Create(SConfigMap *configMap, std::string key, APro
     }
     else if (strcmp(opName, "TTP_Reverse") == 0)
     {
-        if (encodingTypes.find(EEncodingType::PERMUTATION) != encodingTypes.end())
+        if (encodingTypes.find(EEncodingType::PERMUTATION) == encodingTypes.end())
         {
             return nullptr;
         }
@@ -93,7 +93,7 @@ AMutation *CMutationFactory::Create(SConfigMap *configMap, std::string key, APro
     }
     else if (strcmp(opName, "TTP_Swap") == 0)
     {
-        if (encodingTypes.find(EEncodingType::PERMUTATION) != encodingTypes.end())
+        if (encodingTypes.find(EEncodingType::PERMUTATION) == encodingTypes.end())
         {
             return nullptr;
         }
@@ -105,7 +105,7 @@ AMutation *CMutationFactory::Create(SConfigMap *configMap, std::string key, APro
     }
     else if (strcmp(opName, "TTP_Flip") == 0)
     {
-        if (encodingTypes.find(EEncodingType::PERMUTATION) != encodingTypes.end())
+        if (encodingTypes.find(EEncodingType::PERMUTATION) == encodingTypes.end())
         {
             return nullptr;
         }
@@ -117,7 +117,7 @@ AMutation *CMutationFactory::Create(SConfigMap *configMap, std::string key, APro
     }
     else if (strcmp(opName, "TTP_SingleFlip") == 0)
     {
-        if (encodingTypes.find(EEncodingType::PERMUTATION) != encodingTypes.end())
+        if (encodingTypes.find(EEncodingType::PERMUTATION) == encodingTypes.end())
         {
             return nullptr;
         }
@@ -129,7 +129,7 @@ AMutation *CMutationFactory::Create(SConfigMap *configMap, std::string key, APro
     }
     else if (strcmp(opName, "TTP_Reverse_Flip") == 0)
     {
-        if (encodingTypes.find(EEncodingType::PERMUTATION) != encodingTypes.end())
+        if (encodingTypes.find(EEncodingType::PERMUTATION) == encodingTypes.end())
         {
             return nullptr;
         }
@@ -142,7 +142,7 @@ AMutation *CMutationFactory::Create(SConfigMap *configMap, std::string key, APro
     }
     else if (strcmp(opName, "TTP_Reverse_SingleFlip") == 0)
     {
-        if (encodingTypes.find(EEncodingType::PERMUTATION) != encodingTypes.end())
+        if (encodingTypes.find(EEncodingType::PERMUTATION) == encodingTypes.end())
         {
             return nullptr;
         }
@@ -155,7 +155,7 @@ AMutation *CMutationFactory::Create(SConfigMap *configMap, std::string key, APro
     }
     else if (strcmp(opName, "TTP_Swap_Flip") == 0)
     {
-        if (encodingTypes.find(EEncodingType::PERMUTATION) != encodingTypes.end())
+        if (encodingTypes.find(EEncodingType::PERMUTATION) == encodingTypes.end())
         {
             return nullptr;
         }
@@ -168,7 +168,7 @@ AMutation *CMutationFactory::Create(SConfigMap *configMap, std::string key, APro
     }
     else if (strcmp(opName, "TTP_Swap_SingleFlip") == 0)
     {
-        if (encodingTypes.find(EEncodingType::PERMUTATION) != encodingTypes.end())
+        if (encodingTypes.find(EEncodingType::PERMUTATION) == encodingTypes.end())
         {
             return nullptr;
         }
@@ -181,7 +181,7 @@ AMutation *CMutationFactory::Create(SConfigMap *configMap, std::string key, APro
     }
     else if (strcmp(opName, "TTP_FullOpt2") == 0)
     {
-        if (encodingTypes.find(EEncodingType::PERMUTATION) != encodingTypes.end())
+        if (encodingTypes.find(EEncodingType::PERMUTATION) == encodingTypes.end())
         {
             return nullptr;
         }
@@ -192,7 +192,7 @@ AMutation *CMutationFactory::Create(SConfigMap *configMap, std::string key, APro
     }
     else if (strcmp(opName, "TTP_RandomSingleOpt2") == 0)
     {
-        if (encodingTypes.find(EEncodingType::PERMUTATION) != encodingTypes.end())
+        if (encodingTypes.find(EEncodingType::PERMUTATION) == encodingTypes.end())
         {
             return nullptr;
         }
@@ -203,7 +203,7 @@ AMutation *CMutationFactory::Create(SConfigMap *configMap, std::string key, APro
     }
     else if (strcmp(opName, "TTP_PickItems") == 0)
     {
-        if (encodingTypes.find(EEncodingType::PERMUTATION) != encodingTypes.end())
+        if (encodingTypes.find(EEncodingType::PERMUTATION) == encodingTypes.end())
         {
             return nullptr;
         }
@@ -215,7 +215,7 @@ AMutation *CMutationFactory::Create(SConfigMap *configMap, std::string key, APro
     }
     else if (strcmp(opName, "TTP_DropItems") == 0)
     {
-        if (encodingTypes.find(EEncodingType::PERMUTATION) != encodingTypes.end())
+        if (encodingTypes.find(EEncodingType::PERMUTATION) == encodingTypes.end())
         {
             return nullptr;
         }
@@ -227,7 +227,7 @@ AMutation *CMutationFactory::Create(SConfigMap *configMap, std::string key, APro
     }
     else if (strcmp(opName, "TTP_ForceLastItems") == 0)
     {
-        if (encodingTypes.find(EEncodingType::PERMUTATION) != encodingTypes.end())
+        if (encodingTypes.find(EEncodingType::PERMUTATION) == encodingTypes.end())
         {
             return nullptr;
         }
