@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <limits>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include "Precompute.hpp"
 #include "../alloc/ResourceAllocator.hpp"
@@ -140,8 +141,8 @@ namespace {
             auto it = g_resIndexById->find(r.id);
             if (it != g_resIndexById->end()) {
                 const int ri = it->second;
-                const size_t idx =
-                    (size_t)taskIx * (size_t)g_matchedLevelResCount + (size_t)ri;
+                const std::size_t idx =
+                    (std::size_t)taskIx * (std::size_t)g_matchedLevelResCount + (std::size_t)ri;
 
                 if (idx < g_matchedLevelByTaskRes->size()) {
                     return (*g_matchedLevelByTaskRes)[idx];
@@ -216,8 +217,8 @@ namespace {
         const int resIx = resourceIndexCached(r);
         if (resIx < 0 || resIx >= g_pairFutureBranchFitResCount) return false;
 
-        const size_t flatIx =
-            (size_t)taskIx * (size_t)g_pairFutureBranchFitResCount + (size_t)resIx;
+        const std::size_t flatIx =
+            (std::size_t)taskIx * (std::size_t)g_pairFutureBranchFitResCount + (std::size_t)resIx;
 
         if (flatIx >= g_pairFutureBranchFitStamp.size()) return false;
         if (g_pairFutureBranchFitStamp[flatIx] != g_pairCurrentStamp) return false;
@@ -940,7 +941,7 @@ void buildTaskEvalStepPrecomputed(
     int now,
     const std::vector<int>& readyTaskIdx)
 {
-    const size_t taskCount = I.tasks.size();
+    const std::size_t taskCount = I.tasks.size();
 
     if (g_taskStepFeatures.size() != taskCount) {
         g_taskStepFeatures.resize(taskCount);
@@ -985,8 +986,8 @@ void buildPairEvalStepPrecomputed(
     int now,
     const std::vector<int>& readyTaskIdx
 ) {
-    const size_t taskCount = I.tasks.size();
-    const size_t resCount = I.resources.size();
+    const std::size_t taskCount = I.tasks.size();
+    const std::size_t resCount = I.resources.size();
 
     if (g_pairBaseTaskFeatures.size() != taskCount) {
         g_pairBaseTaskFeatures.resize(taskCount);
@@ -1008,7 +1009,7 @@ void buildPairEvalStepPrecomputed(
     if (g_needResFutureBranchFit) {
         g_pairFutureBranchFitResCount = (int)resCount;
 
-        const size_t pairCount = taskCount * resCount;
+        const std::size_t pairCount = taskCount * resCount;
 
         if (g_pairFutureBranchFitCache.size() != pairCount) {
             g_pairFutureBranchFitCache.resize(pairCount);
@@ -1040,8 +1041,8 @@ void buildPairEvalStepPrecomputed(
                 if (ri < 0 || ri >= (int)I.resources.size()) return;
 
                 const Resource& rr = I.resources[ri];
-                const size_t flatIx =
-                    (size_t)ix * (size_t)g_pairFutureBranchFitResCount + (size_t)ri;
+                const std::size_t flatIx =
+                    (std::size_t)ix * (std::size_t)g_pairFutureBranchFitResCount + (std::size_t)ri;
 
                 g_pairFutureBranchFitCache[flatIx] =
                     futureBranchFitRaw(I, ix, t, rr);

@@ -4,6 +4,7 @@
 #include <stack>
 #include "CTask.h"
 #include "method/individual/AIndividual.h"
+#include <cstddef>
 
 class CScheduler
 {
@@ -25,12 +26,12 @@ public:
     const CTask* GetTaskById(TTaskID taskId) const;
     const CResource* GetResourceById(TResourceID resourceId) const;
 
-    void Assign(size_t taskIndex, TResourceID resourceId);
+    void Assign(std::size_t taskIndex, TResourceID resourceId);
     void BuildTimestamps_TA();
     void BuildTimestamps_TO(std::vector<int>& tasksIndexes);
 
     void BuildTimestampForTask_TA(CTask &task);
-    void BuildTimestampForTask_TO(size_t taskIndex);
+    void BuildTimestampForTask_TO(std::size_t taskIndex);
 
     void Clear();
     void Reset();
@@ -61,7 +62,7 @@ private:
     std::vector<CTask> m_Tasks;
     std::vector<CResource> m_Resources;
 
-    TTime GetBestCapableResourceId(size_t taskIndex, TTime earliestTime);
-    std::vector<size_t> GetTasksIndexes(std::vector<float>& priorities);
-    void AssignTask(size_t taskIndex);
+    TTime GetBestCapableResourceId(std::size_t taskIndex, TTime earliestTime);
+    std::vector<std::size_t> GetTasksIndexes(std::vector<float>& priorities);
+    void AssignTask(std::size_t taskIndex);
 };

@@ -1,6 +1,7 @@
 
 #include "utils/fileReader/CReadUtils.h"
 #include <fstream>
+#include <cstddef>
 #include "CMSRCPSP_Factory.h"
 
 const std::string CMSRCPSP_Factory::s_Delimiter = " ";
@@ -9,28 +10,28 @@ const std::string CMSRCPSP_Factory::s_ResourcesKey = "Resources:";
 const std::string CMSRCPSP_Factory::s_ResourcesSectionKey = "ResourceID";
 const std::string CMSRCPSP_Factory::s_TasksSectionKey = "TaskID";
 
-CMSRCPSP_TA *CMSRCPSP_Factory::CreateMSRCPSP_TA(const char *problemConfigurationPath, size_t objCount)
+CMSRCPSP_TA *CMSRCPSP_Factory::CreateMSRCPSP_TA(const char *problemConfigurationPath, std::size_t objCount)
 {
     auto* scheduler = CreateScheduler(problemConfigurationPath);
 
     return new CMSRCPSP_TA(scheduler, objCount);
 }
 
-CMSRCPSP_TA_FLOAT *CMSRCPSP_Factory::CreateMSRCPSP_TA_FLOAT(const char *problemConfigurationPath, size_t objCount)
+CMSRCPSP_TA_FLOAT *CMSRCPSP_Factory::CreateMSRCPSP_TA_FLOAT(const char *problemConfigurationPath, std::size_t objCount)
 {
     auto* scheduler = CreateScheduler(problemConfigurationPath);
 
     return new CMSRCPSP_TA_FLOAT(scheduler, objCount);
 }
 
-CMSRCPSP_TO* CMSRCPSP_Factory::CreateMSRCPSP_TO(const char* problemConfigurationPath, size_t objCount)
+CMSRCPSP_TO* CMSRCPSP_Factory::CreateMSRCPSP_TO(const char* problemConfigurationPath, std::size_t objCount)
 {
     auto* scheduler = CreateScheduler(problemConfigurationPath);
 
     return new CMSRCPSP_TO(scheduler, objCount);
 }
 
-CMSRCPSP_TO_FLOAT* CMSRCPSP_Factory::CreateMSRCPSP_TO_FLOAT(const char* problemConfigurationPath, size_t objCount)
+CMSRCPSP_TO_FLOAT* CMSRCPSP_Factory::CreateMSRCPSP_TO_FLOAT(const char* problemConfigurationPath, std::size_t objCount)
 {
     auto* scheduler = CreateScheduler(problemConfigurationPath);
 
@@ -73,7 +74,7 @@ CScheduler *CMSRCPSP_Factory::CreateScheduler(const char *problemConfigurationPa
     {
         for (TTaskID predecessorTaskId: task.GetPredecessors())
         {
-            tasks[(size_t) predecessorTaskId - 1].SetHasSuccessors(true);
+            tasks[(std::size_t) predecessorTaskId - 1].SetHasSuccessors(true);
         }
     }
 
@@ -99,7 +100,7 @@ void CMSRCPSP_Factory::ReadResources(std::basic_ifstream<char>& fileStream, int 
             auto const vec = CReadUtils::SplitLine(line);
 
             std::vector<SSkill> skills;
-            for (size_t i = 2; i + 1 < vec.size(); i += 2)
+            for (std::size_t i = 2; i + 1 < vec.size(); i += 2)
             {
                 skills.emplace_back(std::stoi(vec[i].substr(1, vec[i].length() - 1)), std::stoi(vec[i + 1]));
             }
@@ -122,7 +123,7 @@ void CMSRCPSP_Factory::ReadTasks(std::basic_ifstream<char>& fileStream, int task
         {
             auto const vec = CReadUtils::SplitLine(line);
 
-            size_t tokenIndex = 2;
+            std::size_t tokenIndex = 2;
             std::vector<SSkill> skills;
             while (tokenIndex + 1 < vec.size() && vec[tokenIndex].substr(0, 1) == "Q")
             {

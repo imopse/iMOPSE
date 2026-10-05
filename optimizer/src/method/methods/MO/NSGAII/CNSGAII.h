@@ -5,6 +5,7 @@
 #include "../../../individual/MO/SMOIndividual.h"
 #include "../../../operators/selection/selections/CRankedTournament.h"
 #include "method/methods/MO/AMOMethod.h"
+#include <cstddef>
 
 class CNSGAII : public AMOMethod
 {
@@ -57,9 +58,9 @@ private:
     std::vector<SMOIndividual*> m_NextPopulation;
     std::vector<SMOIndividual*> m_Archive;
 
-    size_t m_PopulationSize = 0;
-    size_t m_GenerationLimit = 0;
+    std::size_t m_PopulationSize = 0;
+    std::size_t m_GenerationLimit = 0;
 
     void EvolveToNextGeneration();
-    void CalcCrowdingDistance(std::vector<SMOIndividual *> &population, std::vector<size_t> &indices);
+    void CalcCrowdingDistance(std::vector<SMOIndividual *> &population, std::vector<std::size_t> &indices);
 };

@@ -1,6 +1,7 @@
 #include "CECVRPTWShawClientInsertion.h"
 #include "problem/problems/ECVRPTW/CECVRPTW.h"
 #include "utils/random/CRandom.h"
+#include <cstddef>
 
 #define DEMANDWEIGHT 0.1
 #define TIMEWINDOWWEIGHT 0.6
@@ -30,7 +31,7 @@ void CECVRPTWShawClientInsertion::Mutate(SProblemEncoding& problemEncoding, AInd
     {
 		auto& customerToCompare = cities[missingCustomers[i]];
 		float minDistance = std::numeric_limits<float>::max();
-		size_t customerWithMinDistanceIdx = -1;
+		std::size_t customerWithMinDistanceIdx = -1;
 		for (int j = 0; j < genotype.size(); j++)
         {
 			if (genotype[j] != VEHICLE_DELIMITER)

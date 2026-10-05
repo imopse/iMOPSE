@@ -4,6 +4,7 @@
 #include "../../../configMap/SConfigMap.h"
 #include "../../../individual/SO/SParticle.h"
 #include "method/methods/SO/ASOMethod.h"
+#include <cstddef>
 
 class CPSO : public ASOMethod
 {
@@ -37,8 +38,8 @@ private:
     AInitialization* m_Initialization;
     std::vector<float>* m_ObjectiveWeights;
     
-    size_t m_IterationLimit = 0;
-    size_t m_SwarmSize = 0;
+    std::size_t m_IterationLimit = 0;
+    std::size_t m_SwarmSize = 0;
     float m_InertiaWeight = 0.0f;
     float m_CognitiveCoefficient = 0.0f;
     float m_SocialCoefficient = 0.0f;

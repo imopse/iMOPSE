@@ -1,5 +1,7 @@
 #include "MSRAProblem.h"
 #include <algorithm>
+#include <climits>
+#include <cstddef>
 
 CMSRAProblem::CMSRAProblem(CMSRAInstance* problemTemplate)
     : m_ProblemTemplate(problemTemplate)
@@ -31,20 +33,20 @@ float CMSRAProblem::GetUnassignGeneValue() const
     return (float)m_ProblemTemplate->GetTasks().size();
 }
 
-float CMSRAProblem::FindBestGeneValueByClosestTask(const std::vector<float>& solution, const size_t geneIdx) const
+float CMSRAProblem::FindBestGeneValueByClosestTask(const std::vector<float>& solution, const std::size_t geneIdx) const
 {
-    size_t stageCount = m_ProblemTemplate->GetStageCount();
-    size_t taskCount = m_ProblemTemplate->GetTasks().size();
-    size_t resourceIdx = geneIdx / stageCount;
-    size_t resourceFirstGeneIdx = resourceIdx * stageCount;
-    size_t prevTask = (geneIdx > resourceFirstGeneIdx) ? (size_t)solution[geneIdx - 1] : taskCount;
+    std::size_t stageCount = m_ProblemTemplate->GetStageCount();
+    std::size_t taskCount = m_ProblemTemplate->GetTasks().size();
+    std::size_t resourceIdx = geneIdx / stageCount;
+    std::size_t resourceFirstGeneIdx = resourceIdx * stageCount;
+    std::size_t prevTask = (geneIdx > resourceFirstGeneIdx) ? (std::size_t)solution[geneIdx - 1] : taskCount;
 
     const auto& resourceTaskTransition = m_ProblemTemplate->GetResourceTaskTransition();
     const auto& taskTransition = resourceTaskTransition[resourceIdx];
 
     int minTransitionTime = INT_MAX;
-    size_t closestTask = taskCount;
-    for (size_t t = 0; t < taskCount; ++t)
+    std::size_t closestTask = taskCount;
+    for (std::size_t t = 0; t < taskCount; ++t)
     {
         int transitionTime = taskTransition[prevTask][t];
         if (transitionTime < minTransitionTime)
@@ -56,18 +58,18 @@ float CMSRAProblem::FindBestGeneValueByClosestTask(const std::vector<float>& sol
     return (float)closestTask;
 }
 
-float CMSRAProblem::FindBestGeneValueByProb(const size_t geneIdx) const
+float CMSRAProblem::FindBestGeneValueByProb(const std::size_t geneIdx) const
 {
-    size_t stageCount = m_ProblemTemplate->GetStageCount();
-    size_t taskCount = m_ProblemTemplate->GetTasks().size();
-    size_t resourceIdx = geneIdx / stageCount;
+    std::size_t stageCount = m_ProblemTemplate->GetStageCount();
+    std::size_t taskCount = m_ProblemTemplate->GetTasks().size();
+    std::size_t resourceIdx = geneIdx / stageCount;
 
     const auto& probMtx = m_ProblemTemplate->GetProbMtx();
     const auto& resourceSuccProbMtx = probMtx[resourceIdx];
 
     float maxSuccProb = 0.f;
-    size_t bestTask = taskCount;
-    for (size_t t = 0; t < taskCount; ++t)
+    std::size_t bestTask = taskCount;
+    for (std::size_t t = 0; t < taskCount; ++t)
     {
         float succProb = resourceSuccProbMtx[t];
         if (succProb > maxSuccProb)
@@ -84,20 +86,20 @@ void CMSRAProblem::EvaluateWithoutFix(AIndividual& individual)
     const auto& resources = m_ProblemTemplate->GetResources();
     const auto& tasks = m_ProblemTemplate->GetTasks();
     const auto& probMtx = m_ProblemTemplate->GetProbMtx();
-    size_t resourceCount = resources.size();
-    size_t taskCount = tasks.size();
+    std::size_t resourceCount = resources.size();
+    std::size_t taskCount = tasks.size();
     std::vector<int> usedAvailability(resourceCount, 0);
     std::vector<float> taskPersistProb(taskCount, 1.f);
-    size_t stageCount = m_ProblemTemplate->GetStageCount();
+    std::size_t stageCount = m_ProblemTemplate->GetStageCount();
 
-    for (size_t r = 0; r < resourceCount; ++r)
+    for (std::size_t r = 0; r < resourceCount; ++r)
     {
-        size_t resourceGenes = (r * stageCount);
-        size_t lastResourceTask = taskCount;
+        std::size_t resourceGenes = (r * stageCount);
+        std::size_t lastResourceTask = taskCount;
         int lastResourceWorkStage = -1;
-        for (size_t s = 0; s < stageCount; ++s)
+        for (std::size_t s = 0; s < stageCount; ++s)
         {
-            size_t taskIdx = (size_t)individual.m_Genotype.m_FloatGenotype[resourceGenes + s];
+            std::size_t taskIdx = (std::size_t)individual.m_Genotype.m_FloatGenotype[resourceGenes + s];
             if (CanResourceWorkOnTask(r, taskIdx, s, taskCount, lastResourceTask, lastResourceWorkStage))
             {
                 if (usedAvailability[r] < resources[r].m_AvailableAmount)
@@ -118,12 +120,12 @@ void CMSRAProblem::EvaluateWithoutFix(AIndividual& individual)
     }
 
     float totalThreat = 0.f;
-    for (size_t t = 0; t < taskPersistProb.size(); ++t)
+    for (std::size_t t = 0; t < taskPersistProb.size(); ++t)
     {
         totalThreat += (taskPersistProb[t] * tasks[t].m_ThreatValue);
     }
     float totalCost = 0.f;
-    for (size_t r = 0; r < resourceCount; ++r)
+    for (std::size_t r = 0; r < resourceCount; ++r)
     {
         totalCost += float(usedAvailability[r] * resources[r].m_UnitCost);
     }
@@ -141,20 +143,20 @@ void CMSRAProblem::EvaluateWithFix(AIndividual& individual)
     const auto& resources = m_ProblemTemplate->GetResources();
     const auto& tasks = m_ProblemTemplate->GetTasks();
     const auto& probMtx = m_ProblemTemplate->GetProbMtx();
-    size_t resourceCount = resources.size();
-    size_t taskCount = tasks.size();
+    std::size_t resourceCount = resources.size();
+    std::size_t taskCount = tasks.size();
     std::vector<int> usedAvailability(resourceCount, 0);
     std::vector<float> taskPersistProb(taskCount, 1.f);
-    size_t stageCount = m_ProblemTemplate->GetStageCount();
+    std::size_t stageCount = m_ProblemTemplate->GetStageCount();
 
-    for (size_t r = 0; r < resourceCount; ++r)
+    for (std::size_t r = 0; r < resourceCount; ++r)
     {
-        size_t resourceGenes = (r * stageCount);
-        size_t lastResourceTask = taskCount;
+        std::size_t resourceGenes = (r * stageCount);
+        std::size_t lastResourceTask = taskCount;
         int lastResourceWorkStage = -1;
-        for (size_t s = 0; s < stageCount; ++s)
+        for (std::size_t s = 0; s < stageCount; ++s)
         {
-            size_t taskIdx = (size_t)individual.m_Genotype.m_FloatGenotype[resourceGenes + s];
+            std::size_t taskIdx = (std::size_t)individual.m_Genotype.m_FloatGenotype[resourceGenes + s];
             if (CanResourceWorkOnTask(r, taskIdx, s, taskCount, lastResourceTask, lastResourceWorkStage))
             {
                 if (usedAvailability[r] < resources[r].m_AvailableAmount)
@@ -179,12 +181,12 @@ void CMSRAProblem::EvaluateWithFix(AIndividual& individual)
     }
 
     float totalThreat = 0.f;
-    for (size_t t = 0; t < taskPersistProb.size(); ++t)
+    for (std::size_t t = 0; t < taskPersistProb.size(); ++t)
     {
         totalThreat += (taskPersistProb[t] * tasks[t].m_ThreatValue);
     }
     float totalCost = 0.f;
-    for (size_t r = 0; r < resourceCount; ++r)
+    for (std::size_t r = 0; r < resourceCount; ++r)
     {
         totalCost += float(usedAvailability[r] * resources[r].m_UnitCost);
     }
@@ -197,7 +199,7 @@ void CMSRAProblem::EvaluateWithFix(AIndividual& individual)
     }
 }
 
-float CMSRAProblem::CalcMinEvalValue(size_t objIdx) const
+float CMSRAProblem::CalcMinEvalValue(std::size_t objIdx) const
 {
 	switch (objIdx)
 	{
@@ -214,7 +216,7 @@ float CMSRAProblem::CalcMinEvalValue(size_t objIdx) const
 	}
 }
 
-float CMSRAProblem::CalcMaxEvalValue(size_t objIdx) const
+float CMSRAProblem::CalcMaxEvalValue(std::size_t objIdx) const
 {
 	switch (objIdx)
 	{
@@ -244,14 +246,14 @@ float CMSRAProblem::CalcMaxEvalValue(size_t objIdx) const
 
 void CMSRAProblem::PrepareEncoding()
 {
-	size_t resourceCount = m_ProblemTemplate->GetResources().size();
-	size_t stageCount = m_ProblemTemplate->GetStageCount();
-	size_t taskCount = m_ProblemTemplate->GetTasks().size();
-	size_t genotypeSize = resourceCount * stageCount;
+	std::size_t resourceCount = m_ProblemTemplate->GetResources().size();
+	std::size_t stageCount = m_ProblemTemplate->GetStageCount();
+	std::size_t taskCount = m_ProblemTemplate->GetTasks().size();
+	std::size_t genotypeSize = resourceCount * stageCount;
 
 	SEncodingSection associationSection;
 	associationSection.m_SectionType = EEncodingType::ASSOCIATION;
-	for (size_t i = 0; i < genotypeSize; ++i)
+	for (std::size_t i = 0; i < genotypeSize; ++i)
 	{
 		// Upper bound +1 as there is an extra option to do nothing
 		associationSection.m_SectionDescription.push_back({ (float)0, (float)(taskCount + 1) });
@@ -259,7 +261,7 @@ void CMSRAProblem::PrepareEncoding()
 	m_ProblemEncoding = SProblemEncoding{2, {associationSection}};
 }
 
-bool CMSRAProblem::CanResourceWorkOnTask(size_t resourceIdx, size_t taskIdx, size_t stage, size_t taskCount, size_t lastResourceTask, int lastResourceWorkStage) const
+bool CMSRAProblem::CanResourceWorkOnTask(std::size_t resourceIdx, std::size_t taskIdx, std::size_t stage, std::size_t taskCount, std::size_t lastResourceTask, int lastResourceWorkStage) const
 {
 	if (taskIdx < taskCount)
 	{

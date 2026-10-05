@@ -2,6 +2,7 @@
 #include "CNTGA2.h"
 #include "../utils/clustering/CNonDominatedSorting.h"
 #include "../../../../utils/logger/ErrorUtils.h"
+#include <cstddef>
 
 CNTGA2::CNTGA2(  
         AProblem* evaluator,
@@ -37,7 +38,7 @@ void CNTGA2::RunOptimization()
 {
     int generation = 0;
 
-    for (size_t i = 0; i < m_PopulationSize; ++i)
+    for (std::size_t i = 0; i < m_PopulationSize; ++i)
     {
         SProblemEncoding& problemEncoding = m_Problem->GetProblemEncoding();
         auto* newInd = m_Initialization->CreateMOIndividual(problemEncoding);
@@ -60,10 +61,10 @@ void CNTGA2::RunOptimization()
             parentsVector.insert(parentsVector.end(), m_Population.begin(), m_Population.end());
 
             CNonDominatedSorting nonDominatedSorting;
-            std::vector<std::vector<size_t>> combinedClusters;
+            std::vector<std::vector<std::size_t>> combinedClusters;
             nonDominatedSorting.Cluster(parentsVector, combinedClusters);
 
-            for (size_t i = 0; i < m_PopulationSize; i += 2)
+            for (std::size_t i = 0; i < m_PopulationSize; i += 2)
             {
                 auto *firstParent = m_RankedTournament->Select(m_Population);
                 auto *secondParent = m_RankedTournament->Select(m_Population);

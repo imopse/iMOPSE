@@ -1,6 +1,7 @@
 #include <algorithm>
 #include "GenericMutationOperations.h"
 #include "utils/random/CRandom.h"
+#include <cstddef>
 
 void GenericMutationOperations::InverseRandomPermutationSubsection(std::vector<int>& genotype)
 {
@@ -20,7 +21,7 @@ void GenericMutationOperations::InverseRandomPermutationSubsection(std::vector<i
 
 void GenericMutationOperations::RandomlySwapGenes(std::vector<int>& genotype, float prob)
 {
-    for (size_t i = 0; i < genotype.size(); ++i)
+    for (std::size_t i = 0; i < genotype.size(); ++i)
     {
         if (CRandom::GetFloat(0, 1) < prob)
         {
@@ -41,7 +42,7 @@ void GenericMutationOperations::FlipSingleRandomBit(std::vector<bool>& genotype)
 
 void GenericMutationOperations::RandomlyFlipBits(std::vector<bool>& genotype, float prob)
 {
-    for (size_t i = 0; i < genotype.size(); ++i)
+    for (std::size_t i = 0; i < genotype.size(); ++i)
     {
         if (CRandom::GetFloat(0, 1) < prob)
         {
@@ -52,7 +53,7 @@ void GenericMutationOperations::RandomlyFlipBits(std::vector<bool>& genotype, fl
 
 void GenericMutationOperations::RandomlySetBitsValue(std::vector<bool>& genotype, float prob, bool val)
 {
-    for (size_t i = 0; i < genotype.size(); ++i)
+    for (std::size_t i = 0; i < genotype.size(); ++i)
     {
         if (CRandom::GetFloat(0, 1) < prob)
         {

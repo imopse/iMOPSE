@@ -2,6 +2,7 @@
 #include <iostream>
 #include <algorithm>
 #include <limits>
+#include <cstddef>
 
 CCVRP::CCVRP(CCVRPTemplate* cvrpBase) : m_CVRPTemplate(cvrpBase) {
     CreateProblemEncoding();
@@ -19,9 +20,9 @@ SProblemEncoding &CCVRP::GetProblemEncoding() {
     return m_ProblemEncoding;
 }
 
-size_t CCVRP::GetNearestDepotIdx(const size_t cityIdx) {
+std::size_t CCVRP::GetNearestDepotIdx(const std::size_t cityIdx) {
     float minDist = FLT_MAX;
-    size_t chosenIdx = 0;
+    std::size_t chosenIdx = 0;
     auto& distMtx = m_CVRPTemplate->GetDistMtx();
     auto& depotIndexes = m_CVRPTemplate->GetDepots();
     auto& cities = m_CVRPTemplate->GetCities();
@@ -50,11 +51,11 @@ void CCVRP::Evaluate(AIndividual& individual) {
     int current_load = capacity;
     current_load -= cities[individual.m_Genotype.m_IntGenotype[0]].m_demand;
     float distance = distMtx[GetNearestDepotIdx(individual.m_Genotype.m_IntGenotype[0])][individual.m_Genotype.m_IntGenotype[0]];
-    size_t lastCityIdx = individual.m_Genotype.m_IntGenotype[0];
+    std::size_t lastCityIdx = individual.m_Genotype.m_IntGenotype[0];
 
-    for (size_t i = 0; i < individual.m_Genotype.m_IntGenotype.size() - 1; ++i) {
-        size_t cityIdx = individual.m_Genotype.m_IntGenotype[i];
-        size_t nextCityIdx = individual.m_Genotype.m_IntGenotype[i+1];
+    for (std::size_t i = 0; i < individual.m_Genotype.m_IntGenotype.size() - 1; ++i) {
+        std::size_t cityIdx = individual.m_Genotype.m_IntGenotype[i];
+        std::size_t nextCityIdx = individual.m_Genotype.m_IntGenotype[i+1];
         if (current_load < cities[nextCityIdx].m_demand) {
             distance += distMtx[cityIdx][GetNearestDepotIdx(cityIdx)] + distMtx[GetNearestDepotIdx(cityIdx)][nextCityIdx];
             current_load = capacity;
@@ -72,7 +73,7 @@ void CCVRP::Evaluate(AIndividual& individual) {
 float CCVRP::GetOptimalValue() { return m_CVRPTemplate->GetOptimalValue(); }
 
 void CCVRP::CreateProblemEncoding() {
-    size_t citiesSize = m_CVRPTemplate->GetCitiesSize();
+    std::size_t citiesSize = m_CVRPTemplate->GetCitiesSize();
     SEncodingSection citiesSection = { std::vector<SEncodingDescriptor>(citiesSize, SEncodingDescriptor{0.0f, (float)(citiesSize - 1)}), EEncodingType::PERMUTATION };
     m_ProblemEncoding = SProblemEncoding{ 1, {citiesSection}, m_CVRPTemplate->GetDistMtx() };
 }

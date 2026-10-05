@@ -8,6 +8,7 @@
 #include "method/operators/selection/selections/CGapSelectionByRandomDim.h"
 #include "method/multiOperator/CAdaptiveOperatorManager.h"
 #include "method/methods/MO/AMOMethod.h"
+#include <cstddef>
 
 class CFANGA : public AMOMethod
 {
@@ -66,8 +67,8 @@ private:
     std::vector<SMOIndividual*> m_Archive;
 
     int m_Generation = 0;
-    size_t m_PopulationSize = 0;
-    size_t m_GenerationLimit = 0;
+    std::size_t m_PopulationSize = 0;
+    std::size_t m_GenerationLimit = 0;
     
     CAdaptiveOperatorManager m_AdaptiveOperatorManager;
 

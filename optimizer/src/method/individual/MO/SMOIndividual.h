@@ -5,6 +5,7 @@
 #include <optional>
 #include "../AIndividual.h"
 #include "method/multiOperator/SAtomicOperatorData.h"
+#include <cstddef>
 
 class SMOIndividual : public AIndividual
 {
@@ -59,7 +60,7 @@ public:
         return true;
     }
 
-    size_t GetSelected() const
+    std::size_t GetSelected() const
     {
         return m_Selected;
     }
@@ -69,12 +70,12 @@ public:
         m_Selected += 1;
     }
 
-    size_t m_Rank = 0;
+    std::size_t m_Rank = 0;
     float m_CrowdingDistance = 0.0f;
     std::vector<float> m_MetaInfo;
-    std::optional<size_t> m_MutationIdx = {};
-    std::vector<size_t> m_MutationCounters;
+    std::optional<std::size_t> m_MutationIdx = {};
+    std::vector<std::size_t> m_MutationCounters;
     std::vector<SAtomicOperatorData> m_OperatorsData;
 private:
-    size_t m_Selected = 0;
+    std::size_t m_Selected = 0;
 };

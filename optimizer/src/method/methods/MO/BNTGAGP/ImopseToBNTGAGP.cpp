@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <vector>
 #include <unordered_map>
+#include <cstddef>
 
 static std::string skillName(unsigned typeId) {
     return "Q" + std::to_string(typeId);
@@ -26,7 +27,7 @@ Instance BNTGAGPAdapter::FromScheduler(const CScheduler& sch) {
     }
 
     const auto& tasks = sch.GetTasks();
-    for (size_t ti = 0; ti < tasks.size(); ++ti) {
+    for (std::size_t ti = 0; ti < tasks.size(); ++ti) {
         const auto& t = tasks[ti];
 
         Task tt;

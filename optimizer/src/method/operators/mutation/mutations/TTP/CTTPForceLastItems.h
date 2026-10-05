@@ -1,6 +1,7 @@
 #pragma once
 
 #include "method/operators/mutation/AMutation.h"
+#include <cstddef>
 
 class CTTP2;
 
@@ -14,7 +15,7 @@ public:
 
     void Mutate(SProblemEncoding& problemEncoding, AIndividual& child) override;
 
-    size_t GetParamCount() const override { return 0; }
+    std::size_t GetParamCount() const override { return 0; }
     float* GetParamValue(int paramIdx) override { return nullptr; }
 
 private:

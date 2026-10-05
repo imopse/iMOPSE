@@ -5,6 +5,7 @@
 #include <iostream>
 #include <chrono>
 #include <algorithm>
+#include <cstddef>
 
 using std::cout;
 using std::endl;
@@ -50,7 +51,7 @@ void CGPHH_ECVRP::RunOptimization()
 	
 	int generation = 0;
 
-	for (size_t i = 0; i < m_PopulationSize; ++i)
+	for (std::size_t i = 0; i < m_PopulationSize; ++i)
 	{
 		CreateIndividual();
 	}
@@ -108,7 +109,7 @@ void CGPHH_ECVRP::EvolveToNextGeneration()
 	std::vector<SSOIndividual*> children;
 	children.reserve(m_PopulationSize);
 
-	for (size_t i = 0; i < m_PopulationSize; i += 2)
+	for (std::size_t i = 0; i < m_PopulationSize; i += 2)
 	{
 		auto* firstParent = m_FitnessTournament->Select(m_Population);
 		auto* secondParent = m_FitnessTournament->Select(m_Population);
@@ -147,7 +148,7 @@ void CGPHH_ECVRP::EvolveToNextGeneration()
 				return a->m_Fitness > b->m_Fitness;
 			});
 
-		for (size_t i = 0; i < elites.size() && i < children.size(); ++i) {
+		for (std::size_t i = 0; i < elites.size() && i < children.size(); ++i) {
 			delete children[i];
 			children[i] = elites[i];
 		}

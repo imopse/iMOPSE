@@ -1,9 +1,10 @@
 #pragma once
 #include <vector>
+#include <cstddef>
 
 struct SResource
 {
-	size_t m_Id;
+	std::size_t m_Id;
 	int m_AvailableAmount;
     int m_UnitCost;
 };

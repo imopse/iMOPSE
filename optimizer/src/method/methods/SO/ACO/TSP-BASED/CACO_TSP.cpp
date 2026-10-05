@@ -5,6 +5,7 @@
 #include <fstream>
 #include <filesystem>
 #include <iostream>
+#include <cstddef>
 #include "CACO_TSP.h"
 #include "method/methods/SO/utils/aggregatedFitness/CAggregatedFitness.h"
 
@@ -29,7 +30,7 @@ CACO_TSP::CACO_TSP(AProblem *problem, AInitialization *initialization, SConfigMa
 
     m_Population.reserve(m_PopulationSize);
 
-    size_t numberOfCities = m_Problem->GetProblemEncoding().m_Encoding[0].m_SectionDescription.size();
+    std::size_t numberOfCities = m_Problem->GetProblemEncoding().m_Encoding[0].m_SectionDescription.size();
     m_PheromoneMap = std::vector<std::vector<float>>(numberOfCities, std::vector<float>(numberOfCities, 0.0));
 
     m_DistanceMatrix = m_Problem->GetProblemEncoding().m_additionalProblemData;
@@ -174,7 +175,7 @@ SSOIndividual* CACO_TSP::GetRandomAnt(){
 }
 
 void CACO_TSP::RandomAnts() {
-    for (size_t i = 0; i < m_PopulationSize; ++i) {
+    for (std::size_t i = 0; i < m_PopulationSize; ++i) {
         auto newAnt= GetRandomAnt();
         m_Population.push_back(newAnt);
     }
@@ -255,7 +256,7 @@ void CACO_TSP::RunAnts() {
     }
     m_Population.clear();
     
-    for (size_t i = 0; i < m_PopulationSize; ++i) {
+    for (std::size_t i = 0; i < m_PopulationSize; ++i) {
         AntMarch();
     }
 }
@@ -267,7 +268,7 @@ void CACO_TSP::Reset(){
     }
     m_Population.clear();
     
-    size_t numberOfCities = m_Problem->GetProblemEncoding().m_Encoding[0].m_SectionDescription.size();
+    std::size_t numberOfCities = m_Problem->GetProblemEncoding().m_Encoding[0].m_SectionDescription.size();
     m_PheromoneMap = std::vector<std::vector<float>>(numberOfCities, std::vector<float>(numberOfCities, 0.0));
 
     m_DistanceMatrix = m_Problem->GetProblemEncoding().m_additionalProblemData;

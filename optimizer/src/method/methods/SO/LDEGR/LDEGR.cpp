@@ -8,6 +8,7 @@
 #include <cmath>
 #include <iostream>
 #include <chrono>
+#include <cstddef>
 
 CLDEGR::CLDEGR(
         AProblem* evaluator, 
@@ -52,7 +53,7 @@ void CLDEGR::RunOptimization()
 void CLDEGR::CreateInitialPopulation()
 {
     SProblemEncoding &enc = m_Problem->GetProblemEncoding();
-    m_Population.reserve((size_t)m_PopulationSizeInit);
+    m_Population.reserve((std::size_t)m_PopulationSizeInit);
     for (int i = 0; i < m_PopulationSizeInit; ++i)
     {
         auto *newInd = m_Initialization->CreateSOIndividual(enc);
@@ -158,12 +159,12 @@ void CLDEGR::UpdateSuccessMemory()
     for (float df : m_DeltaFitness) sumW += df;
     std::vector<float> w(m_DeltaFitness.size());
     if (sumW > 0) {
-        for (size_t i = 0; i < w.size(); ++i)
+        for (std::size_t i = 0; i < w.size(); ++i)
             w[i] = m_DeltaFitness[i] / sumW;
     }
 
     float numF = 0, denF = 0, numCR = 0, denCR = 0;
-    for (size_t i = 0; i < m_SF.size(); ++i) {
+    for (std::size_t i = 0; i < m_SF.size(); ++i) {
         numF  += w[i] * m_SF[i] * m_SF[i];
         denF  += w[i] * m_SF[i];
         numCR += w[i] * m_SCR[i] * m_SCR[i];
@@ -196,12 +197,12 @@ void CLDEGR::UpdatePopulationSize()
 
 void CLDEGR::MaintainArchiveSize()
 {
-    size_t limit = m_Population.size() * 2;
+    std::size_t limit = m_Population.size() * 2;
     if (m_Archive.size() <= limit) return;
-    size_t toRemove = m_Archive.size() - limit;
+    std::size_t toRemove = m_Archive.size() - limit;
     std::nth_element(m_Archive.begin(), m_Archive.begin() + toRemove, m_Archive.end(), [](auto *a, auto *b){
         return a->m_Fitness < b->m_Fitness;
     });
-    for (size_t i = 0; i < toRemove; ++i) delete m_Archive[i];
+    for (std::size_t i = 0; i < toRemove; ++i) delete m_Archive[i];
     m_Archive.erase(m_Archive.begin(), m_Archive.begin() + toRemove);
 }

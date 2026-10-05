@@ -1,21 +1,22 @@
 #include "CNonDominatedSorting.h"
+#include <cstddef>
 
-void CNonDominatedSorting::Cluster(std::vector<SMOIndividual *> &population, std::vector<std::vector<size_t>> &clusters)
+void CNonDominatedSorting::Cluster(std::vector<SMOIndividual *> &population, std::vector<std::vector<std::size_t>> &clusters)
 {
-    size_t popSize = population.size();
+    std::size_t popSize = population.size();
     std::vector<SSolution> solutions;
     solutions.reserve(popSize);
-    for (size_t i = 0; i < popSize; ++i)
+    for (std::size_t i = 0; i < popSize; ++i)
     {
         solutions.emplace_back(i);
     }
 
     // clusters == fronts
-    clusters.push_back(std::vector<size_t>());
+    clusters.push_back(std::vector<std::size_t>());
 
-    for (size_t p = 0; p < popSize; ++p)
+    for (std::size_t p = 0; p < popSize; ++p)
     {
-        for (size_t q = 0; q < popSize; ++q)
+        for (std::size_t q = 0; q < popSize; ++q)
         {
             if (p != q)
             {
@@ -35,11 +36,11 @@ void CNonDominatedSorting::Cluster(std::vector<SMOIndividual *> &population, std
         }
     }
 
-    size_t rank = 1;
+    std::size_t rank = 1;
     while (!clusters[rank - 1].empty())
     {
-        clusters.push_back(std::vector<size_t>());
-        for (size_t solutionIdx: clusters[rank - 1])
+        clusters.push_back(std::vector<std::size_t>());
+        for (std::size_t solutionIdx: clusters[rank - 1])
         {
             for (SSolution *dominatedSolution: solutions[solutionIdx].m_DominatedSolutions)
             {
@@ -57,16 +58,16 @@ void CNonDominatedSorting::Cluster(std::vector<SMOIndividual *> &population, std
     clusters.pop_back();
 
     // Assign ranks to population
-    for (size_t c = 0; c < clusters.size(); ++c)
+    for (std::size_t c = 0; c < clusters.size(); ++c)
     {
-        for (size_t i = 0; i < clusters[c].size(); ++i)
+        for (std::size_t i = 0; i < clusters[c].size(); ++i)
         {
             population[clusters[c][i]]->m_Rank = c;
         }
     }
 }
 
-CNonDominatedSorting::SSolution::SSolution(size_t i)
+CNonDominatedSorting::SSolution::SSolution(std::size_t i)
         : m_Idx(i), m_DominationCounter(0)
 {
 }

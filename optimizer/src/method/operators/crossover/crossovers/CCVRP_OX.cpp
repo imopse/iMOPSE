@@ -2,6 +2,7 @@
 #include <algorithm>
 #include "CCVRP_OX.h"
 #include <climits>
+#include <cstddef>
 
 void CCVRP_OX::FixChild(AIndividual &child)
 {
@@ -24,7 +25,7 @@ void CCVRP_OX::FixChild(AIndividual &child)
     }
 
     int ii = 0;
-    for (size_t i = 0; i < childGenes.size(); ++i)
+    for (std::size_t i = 0; i < childGenes.size(); ++i)
     {
         int gene = childGenes[i];
 
@@ -34,7 +35,7 @@ void CCVRP_OX::FixChild(AIndividual &child)
 
             if (it != all_genes.end())
             {
-                size_t index = std::distance(childGenes.begin(), it);
+                std::size_t index = std::distance(childGenes.begin(), it);
                 child.m_Genotype.m_IntGenotype[i] = missing_genes[ii];
                 ii++;
             }
@@ -56,7 +57,7 @@ void CCVRP_OX::Crossover(const SProblemEncoding& problemEncoding, AIndividual &f
  {
     for (const SEncodingSection &encoding: problemEncoding.m_Encoding)
     {
-        const size_t sectionSize = encoding.m_SectionDescription.size();
+        const std::size_t sectionSize = encoding.m_SectionDescription.size();
         const auto &secondParentGenes = secondParent.m_Genotype;
         const auto &firstParentGenes = firstParent.m_Genotype;
 

@@ -3,6 +3,7 @@
 #include <limits>
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <string>
 #include "../alloc/ResourceAllocator.hpp"
 #include "../rules/GPTreeRule.hpp"
@@ -125,7 +126,7 @@ namespace {
         g_staticCache.staticTaskResCount.assign(n, 0.0);
         g_staticCache.staticAvgResCost.assign(n, std::numeric_limits<double>::infinity());
         g_staticCache.demandCapableResIdxPerTask.assign(n, {});
-        g_staticCache.matchedLevelByTaskRes.assign((size_t)n * I.resources.size(), 0);
+        g_staticCache.matchedLevelByTaskRes.assign((std::size_t)n * I.resources.size(), 0);
         g_staticCache.reservePressureWeightPerTask.assign(n, 0.0);
         g_staticCache.criticalReserveWeightPerTask.assign(n, 0.0);
         g_staticCache.familyIdByTask.assign(n, -1);
@@ -156,7 +157,7 @@ namespace {
 
             for (int ti = 0; ti < n; ++ti) {
                 const Task& t = I.tasks[ti];
-                const size_t base = (size_t)ti * (size_t)resCount;
+                const std::size_t base = (std::size_t)ti * (std::size_t)resCount;
 
                 for (int ri = 0; ri < resCount; ++ri) {
                     const Resource& r = I.resources[ri];
@@ -177,7 +178,7 @@ namespace {
                         }
                     }
 
-                    g_staticCache.matchedLevelByTaskRes[base + (size_t)ri] = matched;
+                    g_staticCache.matchedLevelByTaskRes[base + (std::size_t)ri] = matched;
                 }
             }
         }
@@ -228,7 +229,7 @@ namespace {
 
         {
             std::unordered_map<std::string, int> familyIndex;
-            familyIndex.reserve((size_t)n * 2);
+            familyIndex.reserve((std::size_t)n * 2);
 
             for (int ui = 0; ui < n; ++ui) {
                 const Task& u = I.tasks[ui];
@@ -247,7 +248,7 @@ namespace {
 
             g_staticCache.familyCount = std::max(1, (int)familyIndex.size());
             g_staticCache.familyPressureByResFamilyInit.assign(
-                I.resources.size() * (size_t)g_staticCache.familyCount,
+                I.resources.size() * (std::size_t)g_staticCache.familyCount,
                 0.0
             );
         }
@@ -342,7 +343,7 @@ namespace {
                     g_staticCache.reservePressureByResInit[ri] += reserveW;
                     g_staticCache.criticalReserveByResInit[ri] += criticalReserveW;
                     g_staticCache.familyPressureByResFamilyInit[
-                        (size_t)ri * (size_t)g_staticCache.familyCount + (size_t)famId
+                        (std::size_t)ri * (std::size_t)g_staticCache.familyCount + (std::size_t)famId
                     ] += reserveW;
                 }
                 continue;
@@ -358,7 +359,7 @@ namespace {
                     g_staticCache.reservePressureByResInit[ri] += reserveW;
                     g_staticCache.criticalReserveByResInit[ri] += criticalReserveW;
                     g_staticCache.familyPressureByResFamilyInit[
-                        (size_t)ri * (size_t)g_staticCache.familyCount + (size_t)famId
+                        (std::size_t)ri * (std::size_t)g_staticCache.familyCount + (std::size_t)famId
                     ] += reserveW;
                 }
             }
@@ -371,7 +372,7 @@ namespace {
                     g_staticCache.reservePressureByResInit[ri] += reserveW;
                     g_staticCache.criticalReserveByResInit[ri] += criticalReserveW;
                     g_staticCache.familyPressureByResFamilyInit[
-                        (size_t)ri * (size_t)g_staticCache.familyCount + (size_t)famId
+                        (std::size_t)ri * (std::size_t)g_staticCache.familyCount + (std::size_t)famId
                     ] += reserveW;
                 }
             }
@@ -486,7 +487,7 @@ namespace {
             g_lookupCache.resIndex[I.resources[i].id] = i;
         }
 
-        for (size_t ri = 0; ri < I.resources.size(); ++ri) {
+        for (std::size_t ri = 0; ri < I.resources.size(); ++ri) {
             const auto& r = I.resources[ri];
 
             for (const auto& kv : r.skills) {
@@ -655,12 +656,12 @@ ScheduleResult Scheduler::withResources(Instance& I,
     const std::size_t staticSig = getSchedulerStaticSignature(I);
     if (!g_staticCache.ready ||
         g_staticCache.signature != staticSig ||
-        g_staticCache.baseIndeg.size() != (size_t)n ||
+        g_staticCache.baseIndeg.size() != (std::size_t)n ||
         g_staticCache.reservePressureByResInit.size() != I.resources.size() ||
         g_staticCache.matchedLevelByTaskRes.size() !=
-        (size_t)n * I.resources.size() ||
+        (std::size_t)n * I.resources.size() ||
         g_staticCache.familyPressureByResFamilyInit.size() !=
-        I.resources.size() * (size_t)std::max(1, g_staticCache.familyCount)) {
+        I.resources.size() * (std::size_t)std::max(1, g_staticCache.familyCount)) {
         rebuildSchedulerStaticCache(I);
     }
 
@@ -721,9 +722,9 @@ ScheduleResult Scheduler::withResources(Instance& I,
     std::vector<Running> running; running.reserve(n);
 
     auto processFinishedAtNow = [&]() {
-        size_t write = 0;
+        std::size_t write = 0;
 
-        for (size_t i = 0; i < running.size(); ++i) {
+        for (std::size_t i = 0; i < running.size(); ++i) {
             const auto& rt = running[i];
 
             if (rt.finish == now) {
@@ -962,14 +963,14 @@ ScheduleResult Scheduler::withResources(Instance& I,
                 familyBestFamByRes.assign(resCount, -1);
 
                 for (int ri = 0; ri < resCount; ++ri) {
-                    const size_t base = (size_t)ri * (size_t)familyCount;
+                    const std::size_t base = (std::size_t)ri * (std::size_t)familyCount;
 
                     double best1 = 0.0;
                     double best2 = 0.0;
                     int bestFam = -1;
 
                     for (int f = 0; f < familyCount; ++f) {
-                        const double v = familyPressureByResFamily[base + (size_t)f];
+                        const double v = familyPressureByResFamily[base + (std::size_t)f];
 
                         if (v > best1) {
                             best2 = best1;
@@ -1118,10 +1119,10 @@ ScheduleResult Scheduler::withResources(Instance& I,
                                 double familyMismatchExcludingTask = 0.0;
                                 if (needResFamilyMismatch && familyCount > 0) {
                                     const int famId = familyIdByTask[ix];
-                                    const size_t base = (size_t)ri * (size_t)familyCount;
+                                    const std::size_t base = (std::size_t)ri * (std::size_t)familyCount;
 
                                     double currentFamilyPressure =
-                                        familyPressureByResFamily[base + (size_t)famId]
+                                        familyPressureByResFamily[base + (std::size_t)famId]
                                         - reservePressureWeightPerTask[ix];
                                     if (currentFamilyPressure < 0.0)
                                         currentFamilyPressure = 0.0;
@@ -1185,10 +1186,10 @@ ScheduleResult Scheduler::withResources(Instance& I,
                                 double familyMismatchExcludingTask = 0.0;
                                 if (needResFamilyMismatch && familyCount > 0) {
                                     const int famId = familyIdByTask[ix];
-                                    const size_t base = (size_t)ri * (size_t)familyCount;
+                                    const std::size_t base = (std::size_t)ri * (std::size_t)familyCount;
 
                                     double currentFamilyPressure =
-                                        familyPressureByResFamily[base + (size_t)famId]
+                                        familyPressureByResFamily[base + (std::size_t)famId]
                                         - reservePressureWeightPerTask[ix];
                                     if (currentFamilyPressure < 0.0)
                                         currentFamilyPressure = 0.0;
@@ -1346,10 +1347,10 @@ ScheduleResult Scheduler::withResources(Instance& I,
                                 double familyMismatchExcludingTask = 0.0;
                                 if (needResFamilyMismatch && familyCount > 0) {
                                     const int famId = familyIdByTask[ix];
-                                    const size_t base = (size_t)ri * (size_t)familyCount;
+                                    const std::size_t base = (std::size_t)ri * (std::size_t)familyCount;
 
                                     double currentFamilyPressure =
-                                        familyPressureByResFamily[base + (size_t)famId]
+                                        familyPressureByResFamily[base + (std::size_t)famId]
                                         - reservePressureWeightPerTask[ix];
                                     if (currentFamilyPressure < 0.0)
                                         currentFamilyPressure = 0.0;
@@ -1413,10 +1414,10 @@ ScheduleResult Scheduler::withResources(Instance& I,
                                 double familyMismatchExcludingTask = 0.0;
                                 if (needResFamilyMismatch && familyCount > 0) {
                                     const int famId = familyIdByTask[ix];
-                                    const size_t base = (size_t)ri * (size_t)familyCount;
+                                    const std::size_t base = (std::size_t)ri * (std::size_t)familyCount;
 
                                     double currentFamilyPressure =
-                                        familyPressureByResFamily[base + (size_t)famId]
+                                        familyPressureByResFamily[base + (std::size_t)famId]
                                         - reservePressureWeightPerTask[ix];
                                     if (currentFamilyPressure < 0.0)
                                         currentFamilyPressure = 0.0;
@@ -1613,8 +1614,8 @@ ScheduleResult Scheduler::withResources(Instance& I,
                         if (reservePressureByRes[ri] < 0.0) reservePressureByRes[ri] = 0.0;
 
                         if (familyCount > 0) {
-                            const size_t idx =
-                                (size_t)ri * (size_t)familyCount + (size_t)scheduledFamId;
+                            const std::size_t idx =
+                                (std::size_t)ri * (std::size_t)familyCount + (std::size_t)scheduledFamId;
                             familyPressureByResFamily[idx] -= scheduledReserveWeight;
                             if (familyPressureByResFamily[idx] < 0.0) {
                                 familyPressureByResFamily[idx] = 0.0;

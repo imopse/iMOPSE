@@ -1,5 +1,6 @@
 #include "CTTPRandomSingleOpt2.h"
 #include <algorithm>
+#include <cstddef>
 #include "utils/random/CRandom.h"
 #include "problem/problems/TTP/CTTP2.h"
 
@@ -7,14 +8,14 @@ void CTTPRandomSingleOpt2::Mutate(SProblemEncoding& problemEncoding, AIndividual
 {
     // Route Greedy Search
     std::vector<int>& genotype = child.m_Genotype.m_IntGenotype;
-    size_t citiesSize = genotype.size();
+    std::size_t citiesSize = genotype.size();
     const auto& distMtx = m_ProblemDefinition.GetDistMtx();
     int randStartIdx = CRandom::GetInt(0, int(citiesSize) - 1);
 
-    const size_t i = size_t(randStartIdx);
+    const std::size_t i = std::size_t(randStartIdx);
     const int geneI = genotype[i];
     const int geneIplus = genotype[(i + 1) % citiesSize];
-    for (size_t j = i + 1; j < citiesSize; ++j)
+    for (std::size_t j = i + 1; j < citiesSize; ++j)
     {
         const int geneJ = genotype[j];
         const int geneJplus = genotype[(j + 1) % citiesSize];

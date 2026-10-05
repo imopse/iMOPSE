@@ -3,6 +3,7 @@
 #include "CTTPTemplate.h"
 #include "../../AProblem.h"
 #include "../../../method/individual/SGenotype.h"
+#include <cstddef>
 
 class CTTP2 : public AProblem
 {
@@ -22,8 +23,8 @@ public:
 
 protected:
 
-    std::vector<std::vector<size_t>> m_CityItems;
-    std::vector<size_t> m_UpperBounds;
+    std::vector<std::vector<std::size_t>> m_CityItems;
+    std::vector<std::size_t> m_UpperBounds;
     SProblemEncoding m_ProblemEncoding;
     CTTPTemplate* m_TTPTemplate;
     std::vector<float> m_MaxObjectiveValues;

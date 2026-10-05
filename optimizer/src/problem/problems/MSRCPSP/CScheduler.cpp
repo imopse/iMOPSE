@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <limits>
 #include <stack>
+#include <cstddef>
 
 void CScheduler::SetCapableResources(const std::vector<std::vector<TResourceID>>& capableResources)
 {
@@ -29,7 +30,7 @@ const CResource* CScheduler::GetResourceById(TResourceID resourceId) const
     return resourceId <= m_Resources.size() ? &m_Resources[resourceId - 1] : nullptr;
 }
 
-void CScheduler::Assign(size_t taskIndex, TResourceID resourceId)
+void CScheduler::Assign(std::size_t taskIndex, TResourceID resourceId)
 {
     m_Tasks[taskIndex].SetResourceID(resourceId);
 }
@@ -43,13 +44,13 @@ void CScheduler::BuildTimestamps_TA()
     }
 
     // Reset tasks start
-    for (size_t i = 0; i < m_Tasks.size(); ++i)
+    for (std::size_t i = 0; i < m_Tasks.size(); ++i)
     {
         m_Tasks[i].SetStart(-1);
     }
 
     // Assign tasks with relation requirements
-    for (size_t i = 0; i < m_Tasks.size(); ++i)
+    for (std::size_t i = 0; i < m_Tasks.size(); ++i)
     {
         if (m_Tasks[i].GetHasSuccessors())
         {
@@ -58,7 +59,7 @@ void CScheduler::BuildTimestamps_TA()
     }
 
     // Assign rest of the tasks
-    for (size_t i = 0; i < m_Tasks.size(); ++i)
+    for (std::size_t i = 0; i < m_Tasks.size(); ++i)
     {
         if (!m_Tasks[i].GetHasSuccessors())
         {
@@ -75,18 +76,18 @@ void CScheduler::BuildTimestamps_TO(std::vector<int>& tasksIndexes)
         resource.SetWorkingTime(0);
     }
 
-    for (size_t i = 0; i < m_Tasks.size(); ++i)
+    for (std::size_t i = 0; i < m_Tasks.size(); ++i)
     {
         m_Tasks[i].SetStart(-1);
     }
 
-    for (size_t i = 0; i < tasksIndexes.size(); ++i)
+    for (std::size_t i = 0; i < tasksIndexes.size(); ++i)
     {
         AssignTask(tasksIndexes[i]);
     }
 }
 
-void CScheduler::AssignTask(size_t taskIndex)
+void CScheduler::AssignTask(std::size_t taskIndex)
 {
     if (m_Tasks[taskIndex].GetStart() == -1)
     {
@@ -104,14 +105,14 @@ void CScheduler::AssignTask(size_t taskIndex)
 
 void CScheduler::BuildTimestampForTask_TA(CTask &task)
 {
-    CResource &resource = m_Resources[(size_t) task.GetResourceID() - 1];
+    CResource &resource = m_Resources[(std::size_t) task.GetResourceID() - 1];
     TTime start = std::max(GetEarliestTime(task), resource.GetFinish());
     task.SetStart(start);
     resource.SetFinish(start + task.GetDuration());
     resource.AddWorkingTime(task.GetDuration());
 }
 
-void CScheduler::BuildTimestampForTask_TO(size_t taskIndex)
+void CScheduler::BuildTimestampForTask_TO(std::size_t taskIndex)
 {
     CTask& task = m_Tasks[taskIndex];
     TTime earliestTime = GetEarliestTime(task);
@@ -126,7 +127,7 @@ void CScheduler::BuildTimestampForTask_TO(size_t taskIndex)
     resource.AddWorkingTime(task.GetDuration());
 }
 
-TResourceID CScheduler::GetBestCapableResourceId(size_t taskIndex, TTime earliestTime)
+TResourceID CScheduler::GetBestCapableResourceId(std::size_t taskIndex, TTime earliestTime)
 {
     CTask& task = m_Tasks[taskIndex];
 
@@ -148,13 +149,13 @@ TResourceID CScheduler::GetBestCapableResourceId(size_t taskIndex, TTime earlies
     return bestCapableResourceId;
 }
 
-std::vector<size_t> CScheduler::GetTasksIndexes(std::vector<float>& priorities)
+std::vector<std::size_t> CScheduler::GetTasksIndexes(std::vector<float>& priorities)
 {
-    std::vector<size_t> tasksIndexes(priorities.size());
+    std::vector<std::size_t> tasksIndexes(priorities.size());
     std::iota(tasksIndexes.begin(), tasksIndexes.end(), 0);
 
     std::stable_sort(tasksIndexes.begin(), tasksIndexes.end(),
-        [&priorities](size_t i1, size_t i2) {return priorities[i1] > priorities[i2]; });
+        [&priorities](std::size_t i1, std::size_t i2) {return priorities[i1] > priorities[i2]; });
 
     return tasksIndexes;
 }
@@ -200,7 +201,7 @@ float CScheduler::EvaluateCost()
         TResourceID resourceId = task.GetResourceID();
         if (resourceId > 0)
         {
-            CResource &resource = m_Resources[(size_t) task.GetResourceID() - 1];
+            CResource &resource = m_Resources[(std::size_t) task.GetResourceID() - 1];
             cost += resource.GetSalary() * task.GetDuration();
         }
     }
@@ -220,7 +221,7 @@ float CScheduler::EvaluateAvgCashFlowDev()
     }
 
     // Init time stamps with 0
-    std::vector<float> cashFlows((size_t) duration, 0.f);
+    std::vector<float> cashFlows((std::size_t) duration, 0.f);
     float totalCashFlow = 0.f;
     for (const CTask &task: m_Tasks)
     {
@@ -229,7 +230,7 @@ float CScheduler::EvaluateAvgCashFlowDev()
             TResourceID resourceId = task.GetResourceID();
             if (resourceId > 0)
             {
-                CResource &resource = m_Resources[(size_t) task.GetResourceID() - 1];
+                CResource &resource = m_Resources[(std::size_t) task.GetResourceID() - 1];
                 float resourceSalary = resource.GetSalary();
                 for (TTime i = task.GetStart(); i < task.GetExpectedFinish(); ++i)
                 {
@@ -261,7 +262,7 @@ float CScheduler::EvaluateSkillOveruse()
         TResourceID resourceId = task.GetResourceID();
         if (resourceId > 0)
         {
-            CResource &resource = m_Resources[(size_t) task.GetResourceID() - 1];
+            CResource &resource = m_Resources[(std::size_t) task.GetResourceID() - 1];
             for (const SSkill &reqSkill: task.GetRequiredSkills())
             {
                 TSkillLevel resSkillLevel = 0;
@@ -305,7 +306,7 @@ TTime CScheduler::GetEarliestTime(const CTask &task) const
 
     for (TTaskID predId: task.GetPredecessors())
     {
-        TTime expectedFinish = m_Tasks[(size_t) predId - 1].GetExpectedFinish();
+        TTime expectedFinish = m_Tasks[(std::size_t) predId - 1].GetExpectedFinish();
         if (expectedFinish > earliestTime)
         {
             earliestTime = expectedFinish;

@@ -12,12 +12,13 @@
 #include "GPTree.hpp"
 #include "Precompute.hpp"
 #include "Normalization.hpp"
+#include <cstddef>
 
 class CScheduler;
 
 struct GPEA_Params {
-    size_t   popSize = 40;
-    size_t   generations = 100;
+    std::size_t   popSize = 40;
+    std::size_t   generations = 100;
     double   pCrossover = 0.9;
     double   pMutParam = 0.1;
     double   pMutStruct = 0.05;
@@ -28,7 +29,7 @@ struct GPEA_Params {
     bool     useSinglePairTree = false;
 
     bool     logNodeDistribution = false;
-    size_t   nodeStatsEvery = 25;
+    std::size_t   nodeStatsEvery = 25;
     bool     nodeStatsUseArchive = false;
 };
 
@@ -40,7 +41,7 @@ struct GP_Individual {
     double cost = 0.0;
     double msNorm = 0.0;
     double costNorm = 0.0;
-    size_t selectedCount = 0;
+    std::size_t selectedCount = 0;
 };
 
 class TreeEA {

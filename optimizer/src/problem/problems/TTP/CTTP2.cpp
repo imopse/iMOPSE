@@ -1,4 +1,5 @@
 #include "CTTP2.h"
+#include <cstddef>
 
 #define TTP_SAVE_FIXED_GENES 1
 
@@ -33,14 +34,14 @@ void CTTP2::Evaluate(AIndividual& individual)
     float minSpeed = m_TTPTemplate->GetMinSpeed();
     float maxSpeed = m_TTPTemplate->GetMaxSpeed();
 
-    size_t itemsSize = m_TTPTemplate->GetItemsSize();
-    size_t citiesSize = m_TTPTemplate->GetCitiesSize();
+    std::size_t itemsSize = m_TTPTemplate->GetItemsSize();
+    std::size_t citiesSize = m_TTPTemplate->GetCitiesSize();
     std::vector<bool> selection(itemsSize, false);
     int currWeight = 0;
 
     // // Left to Right - different fixing heuristic
     // {
-    //     size_t i = 0;
+    //     std::size_t i = 0;
     //     while (i < itemsSize)
     //     {
     //         int w = items[i].m_Weight;
@@ -56,10 +57,10 @@ void CTTP2::Evaluate(AIndividual& individual)
     // Ry ratio
     {
         const auto &itemsRatio = m_TTPTemplate->GetProfitRatioSortedItems();
-        size_t i = 0;
+        std::size_t i = 0;
         while (i < itemsSize)
         {
-            size_t itemIdx = itemsRatio[i];
+            std::size_t itemIdx = itemsRatio[i];
             int w = items[itemIdx].m_Weight;
             if (individual.m_Genotype.m_BoolGenotype[itemIdx] > 0 && currWeight + w <= capacity)
             {
@@ -83,13 +84,13 @@ void CTTP2::Evaluate(AIndividual& individual)
     int currentProfit = 0;
 
     // For each city
-    for (size_t i = 0; i < citiesSize; ++i)
+    for (std::size_t i = 0; i < citiesSize; ++i)
     {
-        size_t cityIdx = individual.m_Genotype.m_IntGenotype[i];
-        size_t nextCityIdx = individual.m_Genotype.m_IntGenotype[(i + 1) % citiesSize];
+        std::size_t cityIdx = individual.m_Genotype.m_IntGenotype[i];
+        std::size_t nextCityIdx = individual.m_Genotype.m_IntGenotype[(i + 1) % citiesSize];
 
-        const std::vector<size_t> &itemsInCity = cityItems[cityIdx];
-        for (const size_t &itemIdx: itemsInCity)
+        const std::vector<std::size_t> &itemsInCity = cityItems[cityIdx];
+        for (const std::size_t &itemIdx: itemsInCity)
         {
             if (selection[itemIdx])
             {
@@ -128,16 +129,16 @@ void CTTP2::PickMostValItemsFromTheEnd(AIndividual& individual) const
     const auto &items = m_TTPTemplate->GetItems();
     const auto &cityItems = m_TTPTemplate->GetCityItems();
     int capacity = m_TTPTemplate->GetCapacity();
-    size_t citiesSize = m_TTPTemplate->GetCitiesSize();
+    std::size_t citiesSize = m_TTPTemplate->GetCitiesSize();
 
     int currWeight = 0;
 
     // For each city from the end
     for (int i = (citiesSize - 1); i >= 0; --i)
     {
-        size_t cityIdx = individual.m_Genotype.m_IntGenotype[i];
-        const std::vector<size_t> &itemsInCity = cityItems[cityIdx];
-        for (const size_t &itemIdx: itemsInCity)
+        std::size_t cityIdx = individual.m_Genotype.m_IntGenotype[i];
+        const std::vector<std::size_t> &itemsInCity = cityItems[cityIdx];
+        for (const std::size_t &itemIdx: itemsInCity)
         {
             int itemWeight = items[itemIdx].m_Weight;
             if (currWeight + itemWeight <= capacity)
@@ -155,8 +156,8 @@ void CTTP2::PickMostValItemsFromTheEnd(AIndividual& individual) const
 
 void CTTP2::CreateProblemEncoding()
 {
-    size_t citiesSize = m_TTPTemplate->GetCitiesSize();
-    size_t itemsSize = m_TTPTemplate->GetItemsSize();
+    std::size_t citiesSize = m_TTPTemplate->GetCitiesSize();
+    std::size_t itemsSize = m_TTPTemplate->GetItemsSize();
 
     SEncodingSection citiesSection = SEncodingSection
             {

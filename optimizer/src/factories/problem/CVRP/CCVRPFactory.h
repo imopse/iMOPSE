@@ -3,6 +3,7 @@
 #include "../../../problem/problems/CVRP/CCVRP.h"
 #include <fstream>
 #include <vector>
+#include <cstddef>
 
 class CCVRPFactory {
 public:
@@ -17,5 +18,5 @@ private:
     
     static CCVRPTemplate *ReadCVRPTemplate(const char *problemDefinitionPath);
     static void ReadCitiesAndDemand(std::ifstream& fileStream, int dimension, std::vector<SCityCVRP>& cities) ;
-    static void ReadDepot(std::ifstream& fileStream, std::vector<size_t>& depotIndexes) ;
+    static void ReadDepot(std::ifstream& fileStream, std::vector<std::size_t>& depotIndexes) ;
 };

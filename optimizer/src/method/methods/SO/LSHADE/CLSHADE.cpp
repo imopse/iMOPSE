@@ -6,6 +6,7 @@
 #include <numeric>
 #include <cmath>
 #include <iostream>
+#include <cstddef>
 
 CLSHADE::CLSHADE(
         AProblem* evaluator, 
@@ -52,7 +53,7 @@ void CLSHADE::RunOptimization()
 void CLSHADE::CreateInitialPopulation()
 {
     SProblemEncoding& problemEncoding = m_Problem->GetProblemEncoding();
-    m_Population.reserve((size_t)m_PopulationSizeInit);
+    m_Population.reserve((std::size_t)m_PopulationSizeInit);
     for (int i = 0; i < m_PopulationSizeInit; i++)
     {
         auto* newInd = m_Initialization->CreateSOIndividual(problemEncoding);
@@ -209,7 +210,7 @@ void CLSHADE::UpdateSuccessMemory()
     }
     
     if (sumWeights > 0) {
-        for (size_t i = 0; i < m_DeltaFitness.size(); ++i) {
+        for (std::size_t i = 0; i < m_DeltaFitness.size(); ++i) {
             weights[i] = m_DeltaFitness[i] / sumWeights;
         }
     }
@@ -217,7 +218,7 @@ void CLSHADE::UpdateSuccessMemory()
     float numeratorF = 0.0, denominatorF = 0.0;
     float numeratorCR = 0.0, denominatorCR = 0.0;
     
-    for (size_t i = 0; i < m_SF.size(); ++i) {
+    for (std::size_t i = 0; i < m_SF.size(); ++i) {
         numeratorF += weights[i] * (m_SF[i] * m_SF[i]);
         denominatorF += weights[i] * m_SF[i];
 

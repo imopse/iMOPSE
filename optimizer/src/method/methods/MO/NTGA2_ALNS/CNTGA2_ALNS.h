@@ -5,6 +5,7 @@
 #include "../../../operators/selection/selections/CRankedTournament.h"
 #include "../../../operators/selection/selections/CGapSelectionByRandomDim.h"
 #include "method/methods/MO/AMOMethod.h"
+#include <cstddef>
 
 class CNTGA2_ALNS : public AMOMethod
 {
@@ -75,8 +76,8 @@ private:
     std::vector<SMOIndividual*> m_Archive;
 
     int m_Generation = 0;
-    size_t m_PopulationSize = 0;
-    size_t m_GenerationLimit = 0;
+    std::size_t m_PopulationSize = 0;
+    std::size_t m_GenerationLimit = 0;
     
     int m_GapSelectionPercent = 0;
     int m_ALNSProbabilityPercent = 0;

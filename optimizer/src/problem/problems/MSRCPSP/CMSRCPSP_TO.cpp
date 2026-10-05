@@ -1,7 +1,8 @@
 #include "CMSRCPSP_TO.h"
 #include "../../../utils/logger/CExperimentLogger.h"
+#include <cstddef>
 
-CMSRCPSP_TO::CMSRCPSP_TO(CScheduler* scheduler, size_t objCount)
+CMSRCPSP_TO::CMSRCPSP_TO(CScheduler* scheduler, std::size_t objCount)
         : m_Scheduler(scheduler)
         , m_ObjCount(objCount)
 {
@@ -70,7 +71,7 @@ void CMSRCPSP_TO::CreateProblemEncoding()
         m_CapableResources.push_back(capableResourceIds);
     }
 
-    size_t tasksSize = tasks.size();
+    std::size_t tasksSize = tasks.size();
     SEncodingSection permutationSection = SEncodingSection
     {
         std::vector<SEncodingDescriptor>(tasksSize, SEncodingDescriptor{

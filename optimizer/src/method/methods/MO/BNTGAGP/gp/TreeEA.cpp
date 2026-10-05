@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstddef>
 #include <cstring>
 #include <limits>
 #include <unordered_map>
@@ -86,12 +87,12 @@ namespace {
         return v;
     }
 
-    static const std::unordered_map<int, size_t>& loggedFeatureIndex() {
-        static const std::unordered_map<int, size_t> idx = []() {
-            std::unordered_map<int, size_t> m;
+    static const std::unordered_map<int, std::size_t>& loggedFeatureIndex() {
+        static const std::unordered_map<int, std::size_t> idx = []() {
+            std::unordered_map<int, std::size_t> m;
             const auto& feats = loggedFeatureOrder();
             m.reserve(feats.size());
-            for (size_t i = 0; i < feats.size(); ++i) {
+            for (std::size_t i = 0; i < feats.size(); ++i) {
                 m.emplace((int)feats[i], i);
             }
             return m;
@@ -138,8 +139,8 @@ namespace {
 
     static void accumulateTreeFeatureCounts(
         const GPTree& t,
-        std::vector<size_t>& counts,
-        size_t& totalNodes)
+        std::vector<std::size_t>& counts,
+        std::size_t& totalNodes)
     {
         totalNodes += t.nodes.size();
 
@@ -159,7 +160,7 @@ namespace {
 
     static void writeNodeDistributionSnapshot(
         const std::vector<GP_Individual>& pool,
-        size_t generation,
+        std::size_t generation,
         bool useSinglePairTree,
         const char* sourceName,
         bool overwrite)
@@ -169,8 +170,8 @@ namespace {
         }
 
         const auto& feats = loggedFeatureOrder();
-        std::vector<size_t> counts(feats.size(), 0);
-        size_t totalNodes = 0;
+        std::vector<std::size_t> counts(feats.size(), 0);
+        std::size_t totalNodes = 0;
 
         for (const auto& ind : pool) {
             accumulateTreeFeatureCounts(ind.taskTree, counts, totalNodes);
@@ -204,7 +205,7 @@ namespace {
             << "," << pool.size()
             << "," << totalNodes;
 
-        for (size_t c : counts) {
+        for (std::size_t c : counts) {
             out << "," << c;
         }
         out << "\n";
@@ -313,10 +314,10 @@ GP_Individual TreeEA::evaluate(const GP_Individual& src) const {
 
     if (imopseSch_ && imopseIsTA_) {
         CScheduler& sch = *imopseSch_;
-        const size_t n = sch.GetTasks().size();
+        const std::size_t n = sch.GetTasks().size();
 
         sch.Reset();
-        for (size_t i = 0; i < n; ++i) {
+        for (std::size_t i = 0; i < n; ++i) {
             const TResourceID resId =
                 (TResourceID)sim.assignedResByImopseTaskIndex.at(i);
             sch.Assign(i, resId);
@@ -421,7 +422,7 @@ void TreeEA::clampDepth(GPTree& t, int maxDepth, bool isResTree) {
     q.push_back(t.root);
     d[t.root] = 0;
 
-    for (size_t i = 0; i < q.size(); ++i) {
+    for (std::size_t i = 0; i < q.size(); ++i) {
         const int u = q[i];
         const int du = d[u];
         GPNode& n = t.nodes[u];
@@ -663,12 +664,12 @@ void TreeEA::copyToArchiveWithFiltering(const std::vector<GP_Individual>& indivi
     std::vector<const GP_Individual*> filteredIndividuals;
     filteredIndividuals.reserve(individuals.size());
 
-    for (size_t p = 0; p < individuals.size(); ++p)
+    for (std::size_t p = 0; p < individuals.size(); ++p)
     {
         const GP_Individual* newInd = &individuals[p];
         bool isDominated = false;
 
-        size_t i = 0;
+        std::size_t i = 0;
         while (!isDominated && i < individuals.size())
         {
             if (p != i)
@@ -745,20 +746,20 @@ std::vector<std::pair<int, int>> TreeEA::selectParentsBNTGA(int populationSize)
             return objNorm(a, objectiveId) < objNorm(b, objectiveId);
         });
 
-    const size_t n = archive_.size();
+    const std::size_t n = archive_.size();
     std::vector<double> gapValues(n, 0.0);
 
     gapValues[0] = std::numeric_limits<double>::max();
     gapValues[n - 1] = std::numeric_limits<double>::max();
 
-    for (size_t i = 1; i < n - 1; ++i)
+    for (std::size_t i = 1; i < n - 1; ++i)
     {
         const double iValue = objNorm(archive_[i], objectiveId);
         gapValues[i] = std::max(iValue - objNorm(archive_[i - 1], objectiveId),
             objNorm(archive_[i + 1], objectiveId) - iValue);
     }
 
-    for (size_t i = 0; i < n; ++i)
+    for (std::size_t i = 0; i < n; ++i)
     {
         gapValues[i] = gapValues[i] / (double)(archive_[i].selectedCount + 1);
     }
@@ -766,20 +767,20 @@ std::vector<std::pair<int, int>> TreeEA::selectParentsBNTGA(int populationSize)
     auto selectParentIdxByTournament = [&]() -> int
         {
             int parentIdx = randInt(0, (int)n - 1);
-            double bestGap = gapValues[(size_t)parentIdx];
+            double bestGap = gapValues[(std::size_t)parentIdx];
             for (int i = 1; i < P.tournamentK; ++i)
             {
                 int randomIdx = randInt(0, (int)n - 1);
-                if (gapValues[(size_t)randomIdx] > bestGap)
+                if (gapValues[(std::size_t)randomIdx] > bestGap)
                 {
-                    bestGap = gapValues[(size_t)randomIdx];
+                    bestGap = gapValues[(std::size_t)randomIdx];
                     parentIdx = randomIdx;
                 }
             }
             return parentIdx;
         };
 
-    selectedParents.reserve((size_t)populationSize / 2);
+    selectedParents.reserve((std::size_t)populationSize / 2);
     for (int i = 0; i < populationSize; i += 2)
     {
         const int firstParentIdx = selectParentIdxByTournament();
@@ -798,8 +799,8 @@ std::vector<std::pair<int, int>> TreeEA::selectParentsBNTGA(int populationSize)
             secondParentIdx = firstParentIdx + (randInt(0, 1) == 0 ? 1 : -1);
         }
 
-        archive_[(size_t)firstParentIdx].selectedCount += 1;
-        archive_[(size_t)secondParentIdx].selectedCount += 1;
+        archive_[(std::size_t)firstParentIdx].selectedCount += 1;
+        archive_[(std::size_t)secondParentIdx].selectedCount += 1;
 
         selectedParents.emplace_back(firstParentIdx, secondParentIdx);
     }
@@ -815,7 +816,7 @@ void TreeEA::run() {
     archive_.reserve(P.popSize * 2);
     copyToArchiveWithFiltering(pop);
 
-    auto logNodeSnapshot = [&](size_t generation, bool overwrite) {
+    auto logNodeSnapshot = [&](std::size_t generation, bool overwrite) {
         if (!P.logNodeDistribution) {
             return;
         }
@@ -833,7 +834,7 @@ void TreeEA::run() {
 
     logNodeSnapshot(0, true);
 
-    for (size_t gen = 0; gen < P.generations; ++gen) {
+    for (std::size_t gen = 0; gen < P.generations; ++gen) {
         std::vector<GP_Individual> offspring;
         offspring.reserve(P.popSize);
 
@@ -901,7 +902,7 @@ void TreeEA::run() {
         copyToArchiveWithFiltering(offspring);
         pop.swap(offspring);
 
-        const size_t currentGeneration = gen + 1;
+        const std::size_t currentGeneration = gen + 1;
         if (P.logNodeDistribution) {
             const bool hitStep =
                 (P.nodeStatsEvery > 0) &&

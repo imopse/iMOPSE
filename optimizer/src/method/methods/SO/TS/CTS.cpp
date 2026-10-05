@@ -1,6 +1,7 @@
 #include "CTS.h"
 #include "../utils/aggregatedFitness/CAggregatedFitness.h"
 #include "../../../../utils/logger/ErrorUtils.h"
+#include <cstddef>
 
 CTS::CTS(AProblem* evaluator, AInitialization* initialization, SConfigMap* configMap, std::vector<float>* objectiveWeights)
 {
@@ -66,7 +67,7 @@ bool CTS::IsTabu(const std::shared_ptr<SSOIndividual> candidate)
     {
         // Check similarity for m_FloatGenotype
         int floatSimilarityCount = 0;
-        for (size_t i = 0; i < candidate->m_Genotype.m_FloatGenotype.size(); i++)
+        for (std::size_t i = 0; i < candidate->m_Genotype.m_FloatGenotype.size(); i++)
         {
             if (std::fabs(candidate->m_Genotype.m_FloatGenotype[i] - tabuSolution->m_Genotype.m_FloatGenotype[i]) < 0.01)
             {
@@ -78,7 +79,7 @@ bool CTS::IsTabu(const std::shared_ptr<SSOIndividual> candidate)
 
         // Check similarity for m_IntGenotype
         int intSimilarityCount = 0;
-        for (size_t i = 0; i < candidate->m_Genotype.m_IntGenotype.size(); i++)
+        for (std::size_t i = 0; i < candidate->m_Genotype.m_IntGenotype.size(); i++)
         {
             if (candidate->m_Genotype.m_IntGenotype[i] == tabuSolution->m_Genotype.m_IntGenotype[i])
             {
@@ -90,7 +91,7 @@ bool CTS::IsTabu(const std::shared_ptr<SSOIndividual> candidate)
 
         // Check similarity for m_BoolGenotype
         int boolSimilarityCount = 0;
-        for (size_t i = 0; i < candidate->m_Genotype.m_BoolGenotype.size(); i++)
+        for (std::size_t i = 0; i < candidate->m_Genotype.m_BoolGenotype.size(); i++)
         {
             if (candidate->m_Genotype.m_BoolGenotype[i] == tabuSolution->m_Genotype.m_BoolGenotype[i])
             {

@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <sys/stat.h> // Library for file system statistics
+#include <cstddef>
 #include <regex>
 
 bool CReadUtils::fileExists(const char *path)
@@ -13,7 +14,7 @@ bool CReadUtils::fileExists(const char *path)
 bool CReadUtils::ReadKeyValueString(const std::string &line, const std::string &delimiter, std::string &keyString,
                                     std::string &valueString)
 {
-    size_t delimiterPos = line.find(delimiter);
+    std::size_t delimiterPos = line.find(delimiter);
     if (delimiterPos > 0 && delimiterPos < line.length())
     {
         keyString = line.substr(0, delimiterPos);
@@ -24,7 +25,7 @@ bool CReadUtils::ReadKeyValueString(const std::string &line, const std::string &
 }
 
 bool CReadUtils::GotoReadSizeByKey(std::ifstream &fileStream, const std::string &lineKey, const std::string &delimiter,
-                                   size_t &val)
+                                   std::size_t &val)
 {
     std::string line;
     if (CReadUtils::GotoLineByKey(fileStream, lineKey, line))
@@ -97,14 +98,14 @@ bool CReadUtils::GotoLineByKey(std::ifstream &fileStream, const std::string &lin
 }
 
 bool CReadUtils::ReadSizeByKey(const std::string &line, const std::string &lineKey, const std::string &delimiter,
-                               size_t &val)
+                               std::size_t &val)
 {
     int integerVal = 0;
     if (ReadIntegerByKey(line, lineKey, delimiter, integerVal))
     {
         if (integerVal >= 0)
         {
-            val = (size_t) integerVal;
+            val = (std::size_t) integerVal;
             return true;
         }
     }
@@ -116,7 +117,7 @@ bool CReadUtils::ReadIntegerByKey(const std::string &line, const std::string &li
 {
     if (line.rfind(lineKey, 0) == 0)
     {
-        size_t delimiterPos = line.find(delimiter);
+        std::size_t delimiterPos = line.find(delimiter);
         if (delimiterPos >= 0)
         {
             std::string stringVal = line.substr(delimiterPos + 1, line.length() - delimiterPos);
@@ -132,7 +133,7 @@ bool CReadUtils::ReadFloatByKey(const std::string &line, const std::string &line
 {
     if (line.rfind(lineKey, 0) == 0)
     {
-        size_t delimiterPos = line.find(delimiter);
+        std::size_t delimiterPos = line.find(delimiter);
         if (delimiterPos >= 0)
         {
             std::string stringVal = line.substr(delimiterPos + 1, line.length() - delimiterPos);
@@ -148,7 +149,7 @@ bool CReadUtils::ReadStringByKey(const std::string &line, const std::string &lin
 {
     if (line.rfind(lineKey, 0) == 0)
     {
-        size_t delimiterPos = line.find(delimiter);
+        std::size_t delimiterPos = line.find(delimiter);
         if (delimiterPos >= 0)
         {
             val = line.substr(delimiterPos + 1, line.length() - delimiterPos);

@@ -2,6 +2,7 @@
 
 #include "../../../configMap/SConfigMap.h"
 #include "method/methods/MO/AMOMethod.h"
+#include <cstddef>
 
 class CSPEA2 : public AMOMethod
 {
@@ -50,11 +51,11 @@ private:
     std::vector<SMOIndividual*> m_NextPopulation;
     std::vector<SMOIndividual*> m_Archive;
     
-    using TNeighborhood = std::vector<std::pair<size_t, float>>;
+    using TNeighborhood = std::vector<std::pair<std::size_t, float>>;
 
-    size_t m_PopulationSize = 0;
-    size_t m_GenerationLimit = 0;
-    size_t m_ArchiveSize = 0;
+    std::size_t m_PopulationSize = 0;
+    std::size_t m_GenerationLimit = 0;
+    std::size_t m_ArchiveSize = 0;
     
     void EvolveToNextGeneration();
     void BuildNeighborhood(std::vector<SMOIndividual *>& individuals, std::vector<TNeighborhood>& neighborhood);
@@ -62,8 +63,8 @@ private:
     void UpdateDensity(std::vector<SMOIndividual *> &individuals, const std::vector<TNeighborhood> &neighborhood);
     void EnviroSelection(std::vector<SMOIndividual *> &individuals);
     void SplitByDomination(std::vector<SMOIndividual *> &individuals, std::vector<const SMOIndividual *> &dominatedIndividuals, std::vector<const SMOIndividual *> &nonDominatedIndividuals);
-    void TruncateByDistance(std::vector<const SMOIndividual *> &filteredIndividuals, size_t maxSize);
-    size_t Spea2TournamentSelection(const std::vector<SMOIndividual *> &population);
+    void TruncateByDistance(std::vector<const SMOIndividual *> &filteredIndividuals, std::size_t maxSize);
+    std::size_t Spea2TournamentSelection(const std::vector<SMOIndividual *> &population);
     void UpdateFineGrainedFitness(std::vector<SMOIndividual *> &individuals, const std::vector<TNeighborhood> &neighborhood);
     void UpdateRawFitness(std::vector<SMOIndividual *> &individuals);
 };

@@ -1,6 +1,7 @@
 
 
 #include <cstring>
+#include <cstddef>
 #include "SConfigMap.h"
 
 bool SConfigMap::AddLine(const std::string &keyString, const std::string &valueString)
@@ -31,7 +32,7 @@ bool SConfigMap::TakeValue(const std::string &paramKey, int &outValue)
     return false;
 }
 
-bool SConfigMap::TakeValue(const std::string &paramKey, size_t &outValue)
+bool SConfigMap::TakeValue(const std::string &paramKey, std::size_t &outValue)
 {
     const auto &it = m_ConfigMap.find(paramKey);
     if (it != m_ConfigMap.end())

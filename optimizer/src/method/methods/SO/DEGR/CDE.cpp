@@ -1,5 +1,6 @@
 #include "CDE.h"
 #include <numeric>
+#include <cstddef>
 
 #include "../../../../utils/random/CRandom.h"
 #include "../utils/aggregatedFitness/CAggregatedFitness.h"
@@ -29,7 +30,7 @@ void CDE::RunOptimization()
 {
     int generation = 0;
 
-    for (size_t i = 0; i < m_PopulationSize; ++i)
+    for (std::size_t i = 0; i < m_PopulationSize; ++i)
     {
         CreateIndividual();
     }
@@ -87,20 +88,20 @@ void CDE::EvolveToNextGeneration()
 
 void CDE::DifferentialEvolutionStep(SGenotype& donor, const SGenotype& gens1, const SGenotype& gens2, const SGenotype& gens3)
 {
-    size_t sectionStartIndex = 0;
+    std::size_t sectionStartIndex = 0;
     for (const auto& encodingSection: m_Problem->GetProblemEncoding().m_Encoding)
     {
         const auto& sectionDesc = encodingSection.m_SectionDescription;
-        const size_t sectionSize = sectionDesc.size();
+        const std::size_t sectionSize = sectionDesc.size();
         switch (encodingSection.m_SectionType)
         {
             case EEncodingType::ASSOCIATION:
             {
-                for (size_t j = 0; j < encodingSection.m_SectionDescription.size(); ++j)
+                for (std::size_t j = 0; j < encodingSection.m_SectionDescription.size(); ++j)
                 {
                     if (CRandom::GetFloat(0, 1) < m_Cr)
                     {
-                        size_t g = sectionStartIndex + j;
+                        std::size_t g = sectionStartIndex + j;
                         donor.m_FloatGenotype[g] = gens1.m_FloatGenotype[g] + m_F * (gens2.m_FloatGenotype[g] - gens3.m_FloatGenotype[g]);
                         // Check constraints, use random if out of bounds
                         if (donor.m_FloatGenotype[g] < sectionDesc[j].m_MinValue || donor.m_FloatGenotype[g] >= sectionDesc[j].m_MaxValue)

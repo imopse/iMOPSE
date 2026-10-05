@@ -2,6 +2,7 @@
 #include "CGA.h"
 #include "../utils/aggregatedFitness/CAggregatedFitness.h"
 #include "../../../../utils/logger/ErrorUtils.h"
+#include <cstddef>
 
 CGA::CGA(
         AProblem* evaluator,
@@ -32,7 +33,7 @@ void CGA::RunOptimization()
 {
     int generation = 0;
 
-    for (size_t i = 0; i < m_PopulationSize; ++i)
+    for (std::size_t i = 0; i < m_PopulationSize; ++i)
     {
         CreateIndividual();
     }
@@ -66,7 +67,7 @@ void CGA::EvolveToNextGeneration()
     std::vector<SSOIndividual *> children;
     children.reserve(m_PopulationSize);
 
-    for (size_t i = 0; i < m_PopulationSize; i += 2)
+    for (std::size_t i = 0; i < m_PopulationSize; i += 2)
     {
         auto* firstParent = m_FitnessTournament->Select(m_Population);
         auto* secondParent = m_FitnessTournament->Select(m_Population);

@@ -4,6 +4,7 @@
 #include "method/multiOperator/operatorSelectors/CUCBMultiOperator.h"
 #include "method/multiOperator/operatorSelectors/CUCB2MultiOperator.h"
 #include "factories/method/operators/mutation/CMutationFactory.h"
+#include <cstddef>
 
 CAdaptiveOperatorManager::CAdaptiveOperatorManager(SConfigMap* configMap, AProblem* problem,
                                                    const std::vector<SMOIndividual*>& population, const std::vector<SMOIndividual*>& archive)
@@ -33,8 +34,8 @@ void CAdaptiveOperatorManager::Reset()
 {
     m_MultiMutation->ResetAllOperatorData();
 
-    m_VariantsAccCredit = std::vector<size_t>(m_TotalDataCount, 0);
-    m_VariantsAccCalls = std::vector<size_t>(m_TotalDataCount, 0);
+    m_VariantsAccCredit = std::vector<std::size_t>(m_TotalDataCount, 0);
+    m_VariantsAccCalls = std::vector<std::size_t>(m_TotalDataCount, 0);
 }
 
 void CAdaptiveOperatorManager::LocalAdaptiveMutation(SMOIndividual* individual, SMOIndividual* parent, SMOIndividual* otherParent)
@@ -53,11 +54,11 @@ void CAdaptiveOperatorManager::LocalAdaptiveMutation(SMOIndividual* individual, 
 //        }
     }
 
-    for (size_t i = 0; i < m_OperatorIdToDataIdx.size(); ++i)
+    for (std::size_t i = 0; i < m_OperatorIdToDataIdx.size(); ++i)
     {
         float credits = 0.f;
         float calls = 0.f;
-        for (size_t dataIdx : m_OperatorIdToDataIdx[i])
+        for (std::size_t dataIdx : m_OperatorIdToDataIdx[i])
         {
             // Apply memory decay and gather counters from all variants
             credits += (individual->m_OperatorsData[dataIdx].m_Credits *= decayFactor);
@@ -70,15 +71,15 @@ void CAdaptiveOperatorManager::LocalAdaptiveMutation(SMOIndividual* individual, 
     }
 
     CAtomicOperator<AMutation>* atomicMutation = m_MultiMutation->SelectOperator();
-    size_t operatorId = atomicMutation->GetId();
+    std::size_t operatorId = atomicMutation->GetId();
     AMutation* mutation = atomicMutation->Get();
     const auto& operatorDataIds = m_OperatorIdToDataIdx[operatorId];
-    size_t variantDataIdx = 0;
+    std::size_t variantDataIdx = 0;
 
     float selProb = 0.f;
     if (operatorDataIds.size() > 1)
     {
-        for (size_t i = 0; i < operatorDataIds.size(); ++i)
+        for (std::size_t i = 0; i < operatorDataIds.size(); ++i)
         {
             const auto& variantData = individual->m_OperatorsData[operatorDataIds[i]];
             m_SecondaryMultiMutation->GetOperatorData(i) = variantData;
@@ -178,7 +179,7 @@ void CAdaptiveOperatorManager::LocalAdaptiveMutation(SMOIndividual* individual, 
 
 void CAdaptiveOperatorManager::CreateMutationDataMapping()
 {
-    size_t dataIdx = 0;
+    std::size_t dataIdx = 0;
     for (const auto& mutation : m_MultiMutation->GetAtomicOperators())
     {
         switch(mutation.Get()->GetParamCount())
@@ -196,14 +197,14 @@ void CAdaptiveOperatorManager::CreateMutationDataMapping()
     }
     m_TotalDataCount = dataIdx;
 
-    m_VariantsAccCredit = std::vector<size_t>(m_TotalDataCount, 0);
-    m_VariantsAccCalls = std::vector<size_t>(m_TotalDataCount, 0);
+    m_VariantsAccCredit = std::vector<std::size_t>(m_TotalDataCount, 0);
+    m_VariantsAccCalls = std::vector<std::size_t>(m_TotalDataCount, 0);
 }
 
 void CAdaptiveOperatorManager::LogOperatorStatsToCSV(int generation, CCSV<float>& csv) const
 {
     int fet = (generation + 1) * int(m_Population.size());
-//    for (size_t i = 0; i < m_MultiMutation->GetOperatorCount(); ++i)
+//    for (std::size_t i = 0; i < m_MultiMutation->GetOperatorCount(); ++i)
 //    {
 //        std::vector<float> newRow = { (float)generation, float(fet), (float)i };
 //        newRow.push_back((float)m_MultiMutation->GetOperatorData(i).m_Credits);
@@ -212,7 +213,7 @@ void CAdaptiveOperatorManager::LogOperatorStatsToCSV(int generation, CCSV<float>
 //        csv.AddRow(std::move(newRow));
 //    }
 
-    for (size_t i = 0; i < m_TotalDataCount; ++i)
+    for (std::size_t i = 0; i < m_TotalDataCount; ++i)
     {
         std::vector<float> newRow = { (float)generation, float(fet), (float)i };
         // TODO - update this whole logging, for now we use temp vector
@@ -265,7 +266,7 @@ void CAdaptiveOperatorManager::ResetAllArchiveOperatorDataButAccCalls()
     {
         if (!individual->m_OperatorsData.empty())
         {
-            for (size_t i = 0; i < m_MultiMutation->GetOperatorCount(); ++i)
+            for (std::size_t i = 0; i < m_MultiMutation->GetOperatorCount(); ++i)
             {
                 individual->m_OperatorsData[i].m_Credits = 0;
                 individual->m_OperatorsData[i].m_Calls = 0;
@@ -380,8 +381,8 @@ float CAdaptiveOperatorManager::CalcFitnessImprovementRateVer1(SMOIndividual* ne
     // Simple weighted sum
     float newValue = 0.f;
     float oldValue = 0.f;
-    const size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
-    for (size_t i = 0; i < objCount; ++i)
+    const std::size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
+    for (std::size_t i = 0; i < objCount; ++i)
     {
         newValue += newIndividual->m_NormalizedEvaluation[i];
         oldValue += oldIndividual->m_NormalizedEvaluation[i];
@@ -397,8 +398,8 @@ float CAdaptiveOperatorManager::CalcFitnessImprovementRateVer3(SMOIndividual* ne
     // Simple weighted sum
     float newValue = 0.f;
     float oldValue = 0.f;
-    const size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
-    for (size_t i = 0; i < objCount; ++i)
+    const std::size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
+    for (std::size_t i = 0; i < objCount; ++i)
     {
         newValue += newIndividual->m_NormalizedEvaluation[i] * (oldIndividual->m_NormalizedEvaluation[i] - 1.0f);
         oldValue += oldIndividual->m_NormalizedEvaluation[i] * (oldIndividual->m_NormalizedEvaluation[i] - 1.0f);
@@ -415,8 +416,8 @@ float CAdaptiveOperatorManager::CalcFitnessImprovementRateVer4(SMOIndividual* ne
     // Simple weighted sum
     float newValue = 0.f;
     float oldValue = 0.f;
-    const size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
-    for (size_t i = 0; i < objCount; ++i)
+    const std::size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
+    for (std::size_t i = 0; i < objCount; ++i)
     {
         newValue += (newIndividual->m_NormalizedEvaluation[i] - 1.f) * (oldIndividual->m_NormalizedEvaluation[i] - 1.0f);
         oldValue += (oldIndividual->m_NormalizedEvaluation[i] - 1.f) * (oldIndividual->m_NormalizedEvaluation[i] - 1.0f);
@@ -433,17 +434,17 @@ float CAdaptiveOperatorManager::CalcFitnessImprovementRateVer5(SMOIndividual* ne
     // Simple weighted sum
     float newValue = 0.f;
     float oldValue = 0.f;
-    const size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
+    const std::size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
 
     // calc vec normal
     float s = 0.f;
-    for (size_t i = 0; i < objCount; ++i)
+    for (std::size_t i = 0; i < objCount; ++i)
     {
         s += powf(oldIndividual->m_NormalizedEvaluation[i], 2);
     }
     s = sqrtf(s);
 
-    for (size_t i = 0; i < objCount; ++i)
+    for (std::size_t i = 0; i < objCount; ++i)
     {
         newValue += newIndividual->m_NormalizedEvaluation[i] * (1.f - oldIndividual->m_NormalizedEvaluation[i]) * s;
         oldValue += oldIndividual->m_NormalizedEvaluation[i] * (1.f - oldIndividual->m_NormalizedEvaluation[i]) * s;

@@ -6,6 +6,7 @@
 #include <cstddef>
 #include "Resource.hpp"
 #include "Task.hpp"
+#include <cstddef>
 
 struct Instance {
     std::vector<Resource> resources;
@@ -20,7 +21,7 @@ struct Instance {
 
     void buildIndex() {
         idToIndex.clear();
-        for (size_t i = 0; i < tasks.size(); ++i) {
+        for (std::size_t i = 0; i < tasks.size(); ++i) {
             idToIndex[tasks[i].id] = int(i);
         }
     }
