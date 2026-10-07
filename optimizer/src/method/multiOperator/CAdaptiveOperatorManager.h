@@ -1,5 +1,6 @@
 #include "method/multiOperator/AMultiOperator.h"
 #include "method/operators/mutation/AMutation.h"
+#include <cstddef>
 
 struct SConfigMap;
 class AProblem;
@@ -17,7 +18,7 @@ public:
 
     void LocalAdaptiveMutation(SMOIndividual* individual, SMOIndividual* parent, SMOIndividual* otherParent);
     void LogOperatorStatsToCSV(int generation, CCSV<float>& csv) const;
-    size_t GetOperatorDataCount() const { return m_TotalDataCount; }
+    std::size_t GetOperatorDataCount() const { return m_TotalDataCount; }
 
 private:
     AMultiOperator<AMutation>* m_MultiMutation = nullptr;
@@ -32,12 +33,12 @@ private:
     const std::vector<SMOIndividual*>& m_Archive;
 
 
-    std::vector<std::vector<size_t>> m_OperatorIdToDataIdx;
-    size_t m_TotalDataCount = 0;
+    std::vector<std::vector<std::size_t>> m_OperatorIdToDataIdx;
+    std::size_t m_TotalDataCount = 0;
 
     // TODO - temp
-    std::vector<size_t> m_VariantsAccCredit;
-    std::vector<size_t> m_VariantsAccCalls;
+    std::vector<std::size_t> m_VariantsAccCredit;
+    std::vector<std::size_t> m_VariantsAccCalls;
 
     // TODO - keep all operator data (and variants) in individual
 

@@ -1,5 +1,6 @@
 #include "CConfigFactory.h"
 #include "../../../utils/fileReader/CReadUtils.h"
+#include <cstddef>
 
 SConfigMap *CConfigFactory::CreateConfigMap(const char *path)
 {
@@ -19,7 +20,7 @@ SConfigMap *CConfigFactory::CreateConfigMap(const char *path)
         }
 
         // Trim leading whitespace to check for comments
-        size_t firstNonSpace = line.find_first_not_of(" \t");
+        std::size_t firstNonSpace = line.find_first_not_of(" \t");
         if (firstNonSpace == std::string::npos)
         {
             // Line contains only whitespace - skip it

@@ -1,4 +1,5 @@
 #include "CCVRPTemplate.h"
+#include <cstddef>
 
 SCityCVRP::SCityCVRP(const int& id, const float& x, const float& y, const int& demand)
 {
@@ -20,7 +21,7 @@ void CCVRPTemplate::Clear()
 	m_NearestNeighborsCache.clear();
 }
 
-void CCVRPTemplate::SetData(const std::vector<SCityCVRP>& cities, int capacity,int trucks,const std::vector<size_t>& depotIndexes)
+void CCVRPTemplate::SetData(const std::vector<SCityCVRP>& cities, int capacity,int trucks,const std::vector<std::size_t>& depotIndexes)
 {
 	Clear();
 
@@ -36,11 +37,11 @@ void CCVRPTemplate::SetData(const std::vector<SCityCVRP>& cities, int capacity,i
 
 float CCVRPTemplate::GetMinDistance() const {
 	float dist = 0.f;
-	size_t dim = m_DistanceMatrix.size();
-	for (size_t i = 0; i < dim; ++i)
+	std::size_t dim = m_DistanceMatrix.size();
+	for (std::size_t i = 0; i < dim; ++i)
 	{
 		float minDist = FLT_MAX;
-		for (size_t j = 0; j < dim; ++j)
+		for (std::size_t j = 0; j < dim; ++j)
 		{
 			if (i != j)
 			{
@@ -59,11 +60,11 @@ float CCVRPTemplate::GetMaxDistance() const {
 
 void CCVRPTemplate::CalculateContextData()
 {
-	size_t dim = m_Cities.size();
+	std::size_t dim = m_Cities.size();
 	m_DistanceMatrix = std::vector<std::vector<float>>(dim, std::vector<float>(dim, 0.f));
-	for (size_t i = 0; i < dim; ++i)
+	for (std::size_t i = 0; i < dim; ++i)
 	{
-		for (size_t j = i + 1; j < dim; ++j)
+		for (std::size_t j = i + 1; j < dim; ++j)
 		{
 			// Use ceil distance
 			float dist = ceilf(sqrtf(powf(m_Cities[i].m_PosX - m_Cities[j].m_PosX, 2) + powf(m_Cities[i].m_PosY - m_Cities[j].m_PosY, 2)));
@@ -73,10 +74,10 @@ void CCVRPTemplate::CalculateContextData()
 
 	// Calculate minimum distance vector
 	m_MinDistanceVec = std::vector<float>(dim, 0.f);
-	for (size_t i = 0; i < dim; ++i)
+	for (std::size_t i = 0; i < dim; ++i)
 	{
 		float minDist = FLT_MAX;
-		for (size_t j = 0; j < dim; ++j)
+		for (std::size_t j = 0; j < dim; ++j)
 		{
 			if (i != j)
 			{
@@ -89,18 +90,18 @@ void CCVRPTemplate::CalculateContextData()
 
 void CCVRPTemplate::CalculateNearestDepotCache()
 {
-	size_t dim = m_Cities.size();
+	std::size_t dim = m_Cities.size();
 	m_NearestDepotCache.resize(dim);
 	
 	// Pre-compute nearest depot for each city
-	for (size_t cityIdx = 0; cityIdx < dim; ++cityIdx)
+	for (std::size_t cityIdx = 0; cityIdx < dim; ++cityIdx)
 	{
 		float minDist = FLT_MAX;
-		size_t chosenIdx = 0;
+		std::size_t chosenIdx = 0;
 		
 		for (const auto depotId : m_DepotIndexes)
 		{
-			for (size_t i = 0; i < m_Cities.size(); ++i)
+			for (std::size_t i = 0; i < m_Cities.size(); ++i)
 			{
 				if (m_Cities[i].m_ID == depotId)
 				{
@@ -119,16 +120,16 @@ void CCVRPTemplate::CalculateNearestDepotCache()
 
 void CCVRPTemplate::CalculateNearestNeighborsCache()
 {
-	size_t dim = m_Cities.size();
+	std::size_t dim = m_Cities.size();
 	m_NearestNeighborsCache.resize(dim);
 	
 	// For each city, store sorted list of all other cities by distance
-	for (size_t i = 0; i < dim; ++i)
+	for (std::size_t i = 0; i < dim; ++i)
 	{
-		std::vector<std::pair<float, size_t>> distances;
+		std::vector<std::pair<float, std::size_t>> distances;
 		distances.reserve(dim - 1);
 		
-		for (size_t j = 0; j < dim; ++j)
+		for (std::size_t j = 0; j < dim; ++j)
 		{
 			if (i != j)
 			{

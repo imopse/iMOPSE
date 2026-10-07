@@ -1,6 +1,7 @@
 #include <vector>
 #include <cmath>
 #include "CCity.h"
+#include <cstddef>
 
 class CTSPTemplate {
 public:
@@ -9,11 +10,11 @@ public:
     float m_MaxDistance = 0;
 
     void CalculateDistanceMatrix() {
-        size_t numCities = m_Cities.size();
+        std::size_t numCities = m_Cities.size();
         m_DistanceMatrix.resize(numCities, std::vector<float>(numCities, 0.f));
 
-        for (size_t i = 0; i < numCities; i++) {
-            for (size_t j = 0; j < numCities; j++) {
+        for (std::size_t i = 0; i < numCities; i++) {
+            for (std::size_t j = 0; j < numCities; j++) {
                 if (i != j) {
                     m_DistanceMatrix[i][j] = CalculateDistance(m_Cities[i], m_Cities[j]);
                 }
@@ -34,7 +35,7 @@ public:
         return m_Cities;
     }
 
-    size_t GetCitiesSize() const {
+    std::size_t GetCitiesSize() const {
         return m_Cities.size();
     }
 

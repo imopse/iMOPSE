@@ -4,11 +4,12 @@
 #include "CScheduler.h"
 #include "../../AProblem.h"
 #include "../../../method/individual/SGenotype.h"
+#include <cstddef>
 
 class CMSRCPSP_TO_FLOAT : public AProblem
 {
 public:
-    explicit CMSRCPSP_TO_FLOAT(CScheduler* scheduler, size_t objCount);
+    explicit CMSRCPSP_TO_FLOAT(CScheduler* scheduler, std::size_t objCount);
     ~CMSRCPSP_TO_FLOAT()
     {
         delete m_Scheduler;
@@ -22,7 +23,7 @@ public:
 private:
     void CreateProblemEncoding();
 
-    size_t m_ObjCount;
+    std::size_t m_ObjCount;
     std::vector<std::vector<TResourceID>> m_CapableResources;
     SProblemEncoding m_ProblemEncoding;
     std::vector<float> m_MaxObjectiveValues;

@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstddef>
 #include <stdexcept>
 #include <vector>
 
@@ -64,8 +65,8 @@ void CBNTGAGP::RunOptimization()
     P.tournamentK = 2;
     P.useSinglePairTree = (GetInt(cfg, "UseSinglePairTree", 0) != 0);
 
-    P.popSize = (size_t)GetInt(cfg, "PopulationSize", (int)P.popSize);
-    P.generations = (size_t)GetInt(cfg, "Generations", (int)P.generations);
+    P.popSize = (std::size_t)GetInt(cfg, "PopulationSize", (int)P.popSize);
+    P.generations = (std::size_t)GetInt(cfg, "Generations", (int)P.generations);
     P.pCrossover = GetDouble(cfg, "CrossoverProb", P.pCrossover);
 
     P.pMutParam = GetDouble(cfg, "MutationProbParam", P.pMutParam);
@@ -82,7 +83,7 @@ void CBNTGAGP::RunOptimization()
     P.tournamentK = GetInt(cfg, "TournamentSize", P.tournamentK);
 
     P.logNodeDistribution = (GetInt(cfg, "LogNodeDistribution", 0) != 0);
-    P.nodeStatsEvery = (size_t)GetInt(cfg, "NodeStatsEvery", 25);
+    P.nodeStatsEvery = (std::size_t)GetInt(cfg, "NodeStatsEvery", 25);
     P.nodeStatsUseArchive = (GetInt(cfg, "NodeStatsUseArchive", 0) != 0);
 
     if (m_HasSeedOverride) {

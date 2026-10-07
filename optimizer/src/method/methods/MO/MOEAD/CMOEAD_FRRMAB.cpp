@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cstddef>
 #include "CMOEAD_FRRMAB.h"
 #include "../../../../utils/random/CRandom.h"
 #include "../../../../utils/logger/ErrorUtils.h"
@@ -34,7 +35,7 @@ void CMOEAD_FRRMAB::RunOptimization()
     m_PopulationSize = m_Subproblems.size();
     m_Population.reserve(m_PopulationSize);
 
-    for (size_t i = 0; i < m_PopulationSize; ++i)
+    for (std::size_t i = 0; i < m_PopulationSize; ++i)
     {
         SProblemEncoding& problemEncoding = m_Problem->GetProblemEncoding();
         auto* newInd = m_Initialization->CreateMOIndividual(problemEncoding);
@@ -55,7 +56,7 @@ void CMOEAD_FRRMAB::RunOptimization()
 
         // TODO - use functions
         {
-            for (size_t i = 0; i < m_MultiMutation->GetOperatorCount(); ++i)
+            for (std::size_t i = 0; i < m_MultiMutation->GetOperatorCount(); ++i)
             {
                 std::vector<float> newRow = { (float)generation, (float)fet, (float)i };
                 newRow.push_back((float)m_MultiMutation->GetOperatorData(i).m_Credits);
@@ -93,13 +94,13 @@ void CMOEAD_FRRMAB::EvolveToNextGeneration()
 // Temp individual used for testing new child genes
     SMOIndividual* testIndividual = nullptr;
 
-    for (size_t i = 0; i < m_Population.size(); ++i)
+    for (std::size_t i = 0; i < m_Population.size(); ++i)
     {
         const SMOEADSubproblem& sp = m_Subproblems[i];
-        const size_t nhSize = sp.m_Neighborhood.size();
+        const std::size_t nhSize = sp.m_Neighborhood.size();
 
-        size_t firstParentIdx = sp.m_Neighborhood[CRandom::GetInt(0, nhSize)];
-        size_t secondParentIdx = sp.m_Neighborhood[CRandom::GetInt(0,nhSize)];
+        std::size_t firstParentIdx = sp.m_Neighborhood[CRandom::GetInt(0, nhSize)];
+        std::size_t secondParentIdx = sp.m_Neighborhood[CRandom::GetInt(0,nhSize)];
         SMOIndividual* firstParent = m_Population[firstParentIdx];
         SMOIndividual* secondParent = m_Population[secondParentIdx];
 
@@ -119,7 +120,7 @@ void CMOEAD_FRRMAB::EvolveToNextGeneration()
         mutation->Mutate(m_Problem->GetProblemEncoding(), *firstChild);
         atomicMutation->GetData().m_AccCalls += 1;
 
-        size_t operatorId = atomicMutation->GetId();
+        std::size_t operatorId = atomicMutation->GetId();
         float FIRop = 0.f;
         firstChild->m_MetaInfo = {
             (float)operatorId,
@@ -134,7 +135,7 @@ void CMOEAD_FRRMAB::EvolveToNextGeneration()
         m_Problem->Evaluate(*testIndividual);
 
         // Now check if any neighborhood solution is improved
-        for (size_t j : sp.m_Neighborhood)
+        for (std::size_t j : sp.m_Neighborhood)
         {
             float FIR = CalcFitnessImprovementRate(testIndividual, m_Population[j], m_Subproblems[j]);
             if (FIR > 0)
@@ -162,8 +163,8 @@ float CMOEAD_FRRMAB::CalcFitnessImprovementRate(SMOIndividual* newIndividual, SM
     // Simple weighted sum
     float newValue = 0.f;
     float oldValue = 0.f;
-    const size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
-    for (size_t i = 0; i < objCount; ++i)
+    const std::size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
+    for (std::size_t i = 0; i < objCount; ++i)
     {
         newValue += newIndividual->m_NormalizedEvaluation[i] * subproblem.m_WeightVector[i];
         oldValue += oldIndividual->m_NormalizedEvaluation[i] * subproblem.m_WeightVector[i];
@@ -174,7 +175,7 @@ float CMOEAD_FRRMAB::CalcFitnessImprovementRate(SMOIndividual* newIndividual, SM
 
 void CMOEAD_FRRMAB::UpdateMultiOperatorCredits()
 {
-    //size_t opCount = m_MultiMutation->GetOperatorCount();
+    //std::size_t opCount = m_MultiMutation->GetOperatorCount();
     m_MultiMutation->ResetAllOperatorDataButAccCalls();
     for (const auto& windowSlot : m_SlidingWindow)
     {

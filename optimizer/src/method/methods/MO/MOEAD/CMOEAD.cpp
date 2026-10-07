@@ -5,6 +5,7 @@
 #include "../../../../utils/logger/ErrorUtils.h"
 #include "utils/dataStructures/CCSV.h"
 #include "utils/logger/CExperimentLogger.h"
+#include <cstddef>
 
 CMOEAD::CMOEAD(
         AProblem* evaluator,
@@ -42,7 +43,7 @@ void CMOEAD::RunOptimization()
     m_PopulationSize = m_Subproblems.size();
     m_Population.reserve(m_PopulationSize);
 
-    for (size_t i = 0; i < m_PopulationSize; ++i)
+    for (std::size_t i = 0; i < m_PopulationSize; ++i)
     {
         SProblemEncoding& problemEncoding = m_Problem->GetProblemEncoding();
         auto* newInd = m_Initialization->CreateMOIndividual(problemEncoding);
@@ -84,9 +85,9 @@ void CMOEAD::RunOptimization()
     CExperimentLogger::LogResult(m_HVStats.ToStringStream().str().c_str(), "HVStats.csv");
 }
 
-void CMOEAD::ConstructSubproblems(size_t partitionsNumber, size_t neighborhoodSize)
+void CMOEAD::ConstructSubproblems(std::size_t partitionsNumber, std::size_t neighborhoodSize)
 {
-    size_t dimCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
+    std::size_t dimCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
 
     if (dimCount == 2)
     {
@@ -98,13 +99,13 @@ void CMOEAD::ConstructSubproblems(size_t partitionsNumber, size_t neighborhoodSi
     }
 }
 
-void CMOEAD::ConstructSubproblemsSimple2D(size_t partitionsNumber, size_t neighborhoodSize)
+void CMOEAD::ConstructSubproblemsSimple2D(std::size_t partitionsNumber, std::size_t neighborhoodSize)
 {
     m_Subproblems.clear();
 
     // Simple impl for 2dim problems only
     float stepVal = 1.f / (partitionsNumber - 1);
-    for (size_t i = 0; i < partitionsNumber; ++i)
+    for (std::size_t i = 0; i < partitionsNumber; ++i)
     {
         m_Subproblems.emplace_back();
         SMOEADSubproblem& sp = m_Subproblems.back();
@@ -112,32 +113,32 @@ void CMOEAD::ConstructSubproblemsSimple2D(size_t partitionsNumber, size_t neighb
     }
 
     // For 2 dim, we assume they are ordered
-    for (size_t i = 0; i < partitionsNumber; ++i)
+    for (std::size_t i = 0; i < partitionsNumber; ++i)
     {
         int leftIdx = (int)i - ((int)neighborhoodSize / 2);
         if (leftIdx < 0) leftIdx = 0;
-        size_t rightIdx = leftIdx + neighborhoodSize;
+        std::size_t rightIdx = leftIdx + neighborhoodSize;
         if (rightIdx >= partitionsNumber)
         {
             // We assume that neighborhood is always smaller than subproblems size
-            size_t excees = rightIdx - partitionsNumber;
+            std::size_t excees = rightIdx - partitionsNumber;
             leftIdx -= excees;
             rightIdx -= excees;
         }
-        for (size_t j = leftIdx; j < rightIdx; ++j)
+        for (std::size_t j = leftIdx; j < rightIdx; ++j)
         {
             m_Subproblems[i].m_Neighborhood.push_back(j);
         }
     }
 }
 
-void CMOEAD::ConstructSubproblemsMultiD(size_t partitionsNumber, size_t neighborhoodSize, size_t dimCount)
+void CMOEAD::ConstructSubproblemsMultiD(std::size_t partitionsNumber, std::size_t neighborhoodSize, std::size_t dimCount)
 {
     m_Subproblems.clear();
 
     // Generate subproblems
     DasDennis ddGenerator(partitionsNumber, dimCount);
-    size_t subVecCount = ddGenerator.GetPointsNumber();
+    std::size_t subVecCount = ddGenerator.GetPointsNumber();
     ddGenerator.GeneratePoints();
     std::vector<std::vector<float>> subproblemVectors = ddGenerator.GetPoints();
 
@@ -146,29 +147,29 @@ void CMOEAD::ConstructSubproblemsMultiD(size_t partitionsNumber, size_t neighbor
         m_Subproblems.emplace_back();
         SMOEADSubproblem& sp = m_Subproblems.back();
         sp.m_WeightVector = std::vector<float>(dimCount, 0.f);
-        for (size_t j = 0; j < dimCount; ++j)
+        for (std::size_t j = 0; j < dimCount; ++j)
         {
             sp.m_WeightVector[j] = subVec[j];
         }
     }
 
     // Calculate distances
-    using TNeighborhood = std::vector<std::pair<size_t, float>>;
+    using TNeighborhood = std::vector<std::pair<std::size_t, float>>;
     std::vector<TNeighborhood> neighborhood = std::vector<TNeighborhood>(subVecCount, TNeighborhood(subVecCount));
-    for (size_t i = 0; i < subVecCount; ++i)
+    for (std::size_t i = 0; i < subVecCount; ++i)
     {
         auto& weightVectorI = m_Subproblems[i].m_WeightVector;
-        size_t entryIdx = 0;
-        for (size_t j = 0; j < subVecCount; ++j)
+        std::size_t entryIdx = 0;
+        for (std::size_t j = 0; j < subVecCount; ++j)
         {
             auto& weightVectorJ = m_Subproblems[j].m_WeightVector;
-            std::pair<size_t, float>& entry = neighborhood[i][entryIdx];
+            std::pair<std::size_t, float>& entry = neighborhood[i][entryIdx];
             entry.first = j;
 
             float dist = 0.f;
             if (i != j)
             {
-                for (size_t d = 0; d < dimCount; ++d)
+                for (std::size_t d = 0; d < dimCount; ++d)
                 {
                     dist += powf(weightVectorI[d] - weightVectorJ[d], 2);
                 }
@@ -183,15 +184,15 @@ void CMOEAD::ConstructSubproblemsMultiD(size_t partitionsNumber, size_t neighbor
     for (TNeighborhood& nh : neighborhood)
     {
         // Sort ascending by distance, including distance to self
-        std::sort(nh.begin(), nh.end(), [](const std::pair<size_t, float>& a, const std::pair<size_t, float>& b) -> bool
+        std::sort(nh.begin(), nh.end(), [](const std::pair<std::size_t, float>& a, const std::pair<std::size_t, float>& b) -> bool
         {
             return a.second < b.second;
         });
     }
 
-    for (size_t i = 0; i < subVecCount; ++i)
+    for (std::size_t i = 0; i < subVecCount; ++i)
     {
-        for (size_t j = 0; j < neighborhoodSize; ++j)
+        for (std::size_t j = 0; j < neighborhoodSize; ++j)
         {
             m_Subproblems[i].m_Neighborhood.push_back(neighborhood[i][j].first);
         }
@@ -203,13 +204,13 @@ void CMOEAD::EvolveToNextGeneration()
 // Temp individual used for testing new child genes
     SMOIndividual* testIndividual = nullptr;
 
-    for (size_t i = 0; i < m_Population.size(); ++i)
+    for (std::size_t i = 0; i < m_Population.size(); ++i)
     {
         const SMOEADSubproblem& sp = m_Subproblems[i];
-        const size_t nhSize = sp.m_Neighborhood.size();
+        const std::size_t nhSize = sp.m_Neighborhood.size();
         
-        size_t firstParentIdx = sp.m_Neighborhood[CRandom::GetInt(0, nhSize)];
-        size_t secondParentIdx = sp.m_Neighborhood[CRandom::GetInt(0,nhSize)];
+        std::size_t firstParentIdx = sp.m_Neighborhood[CRandom::GetInt(0, nhSize)];
+        std::size_t secondParentIdx = sp.m_Neighborhood[CRandom::GetInt(0,nhSize)];
         SMOIndividual* firstParent = m_Population[firstParentIdx];
         SMOIndividual* secondParent = m_Population[secondParentIdx];
 
@@ -233,7 +234,7 @@ void CMOEAD::EvolveToNextGeneration()
         delete secondChild;
 
         // Now check if any neighborhood solution is improved
-        for (size_t j : sp.m_Neighborhood)
+        for (std::size_t j : sp.m_Neighborhood)
         {
             if (IsBetterInSubproblem(testIndividual, m_Population[j], m_Subproblems[j]))
             {
@@ -251,8 +252,8 @@ bool CMOEAD::IsBetterInSubproblem(SMOIndividual* newIndividual, SMOIndividual* o
     // Simple weighted sum
     float newValue = 0.f;
     float oldValue = 0.f;
-    const size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
-    for (size_t i = 0; i < objCount; ++i)
+    const std::size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
+    for (std::size_t i = 0; i < objCount; ++i)
     {
         newValue += newIndividual->m_NormalizedEvaluation[i] * subproblem.m_WeightVector[i];
         oldValue += oldIndividual->m_NormalizedEvaluation[i] * subproblem.m_WeightVector[i];

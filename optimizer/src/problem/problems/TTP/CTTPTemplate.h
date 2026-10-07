@@ -4,6 +4,7 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 
 #define USE_EOK 0
 
@@ -49,10 +50,10 @@ public:
     const std::vector<float> &GetMinDistVec() const
     { return m_MinDistanceVec; }
 
-    const std::vector<std::vector<size_t>> &GetCityItems() const
+    const std::vector<std::vector<std::size_t>> &GetCityItems() const
     { return m_CityItems; }
 
-    const std::vector<size_t> &GetProfitRatioSortedItems() const
+    const std::vector<std::size_t> &GetProfitRatioSortedItems() const
     { return m_ProfitRatioSortedItems; }
 
     int GetCapacity() const
@@ -67,10 +68,10 @@ public:
     float GetRentingRatio() const
     { return m_RentingRatio; }
 
-    size_t GetCitiesSize() const
+    std::size_t GetCitiesSize() const
     { return m_Cities.size(); }
 
-    size_t GetItemsSize() const
+    std::size_t GetItemsSize() const
     { return m_Items.size(); }
 
     float GetMaxTravelTime() const;
@@ -90,7 +91,7 @@ private:
     // File data
     std::vector<SCity> m_Cities;
     std::vector<SItem> m_Items;
-    std::vector<size_t> m_ProfitRatioSortedItems;
+    std::vector<std::size_t> m_ProfitRatioSortedItems;
     int m_Capacity;
     float m_MinSpeed;
     float m_MaxSpeed;
@@ -99,5 +100,5 @@ private:
     // Context data
     std::vector<std::vector<float>> m_DistanceMatrix;
     std::vector<float> m_MinDistanceVec;
-    std::vector<std::vector<size_t>> m_CityItems;
+    std::vector<std::vector<std::size_t>> m_CityItems;
 };

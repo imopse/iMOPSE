@@ -4,6 +4,7 @@
 #include <chrono>
 #include "method/methods/SO/ASOMethod.h"
 #include "method/configMap/SConfigMap.h"
+#include <cstddef>
 
 class AProblem;
 class AInitialization;
@@ -53,7 +54,7 @@ private:
     float m_pbestRate = 0.1f;
     std::vector<float> m_MF;
     std::vector<float> m_MCR;
-    size_t m_k = 0;
+    std::size_t m_k = 0;
     std::vector<float> m_SF;
     std::vector<float> m_SCR;
     std::vector<float> m_DeltaFitness;

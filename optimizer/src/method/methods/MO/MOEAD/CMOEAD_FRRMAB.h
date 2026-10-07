@@ -4,10 +4,11 @@
 #include <deque>
 #include "CMOEAD.h"
 #include "method/multiOperator/AMultiOperator.h"
+#include <cstddef>
 
 struct SMOEADWindowSlot
 {
-    size_t m_OperatorIdx = 0;
+    std::size_t m_OperatorIdx = 0;
     float m_OperatorFIR = 0.f;
 };
 
@@ -38,7 +39,7 @@ public:
 private:
     AMultiOperator<AMutation>* m_MultiMutation = nullptr;
     std::deque<SMOEADWindowSlot> m_SlidingWindow;
-    size_t m_SlidingWindowWidth = 0;
+    std::size_t m_SlidingWindowWidth = 0;
 
     void EvolveToNextGeneration();
     float CalcFitnessImprovementRate(SMOIndividual* newIndividual, SMOIndividual* oldIndividual, SMOEADSubproblem& subproblem);

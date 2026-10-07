@@ -3,6 +3,7 @@
 #include "../utils/DasDennis/CDasDennis.h"
 #include "../../../../utils/random/CRandom.h"
 #include "../../../../utils/logger/ErrorUtils.h"
+#include <cstddef>
 
 CSPEA2::CSPEA2(
         AProblem* evaluator,
@@ -34,7 +35,7 @@ void CSPEA2::RunOptimization()
 {
     int generation = 0;
 
-    for (size_t i = 0; i < m_PopulationSize; ++i)
+    for (std::size_t i = 0; i < m_PopulationSize; ++i)
     {
         SProblemEncoding& problemEncoding = m_Problem->GetProblemEncoding();
         auto* newInd = m_Initialization->CreateMOIndividual(problemEncoding);
@@ -80,10 +81,10 @@ void CSPEA2::RunOptimization()
 
 void CSPEA2::EvolveToNextGeneration()
 {
-    for (size_t i = 0; i < m_Population.size(); i += 2)
+    for (std::size_t i = 0; i < m_Population.size(); i += 2)
     {
-        size_t firstParentIdx = Spea2TournamentSelection(m_Archive);
-        size_t secondParentIdx = Spea2TournamentSelection(m_Archive);
+        std::size_t firstParentIdx = Spea2TournamentSelection(m_Archive);
+        std::size_t secondParentIdx = Spea2TournamentSelection(m_Archive);
         SMOIndividual* firstParent = m_Archive[firstParentIdx];
         SMOIndividual* secondParent = m_Archive[secondParentIdx];
 
@@ -114,12 +115,12 @@ void CSPEA2::EvolveToNextGeneration()
 void CSPEA2::BuildNeighborhood(std::vector<SMOIndividual *>& individuals, std::vector<TNeighborhood>& neighborhood)
 {
     neighborhood = std::vector<TNeighborhood>(individuals.size(), TNeighborhood(individuals.size() - 1));
-    size_t popSize = individuals.size();
+    std::size_t popSize = individuals.size();
 
-    for (size_t i = 0; i < popSize; ++i)
+    for (std::size_t i = 0; i < popSize; ++i)
     {
-        size_t entryIdx = 0;
-        for (size_t j = 0; j < popSize; ++j)
+        std::size_t entryIdx = 0;
+        for (std::size_t j = 0; j < popSize; ++j)
         {
             // just skip if self
             if (i == j)
@@ -127,7 +128,7 @@ void CSPEA2::BuildNeighborhood(std::vector<SMOIndividual *>& individuals, std::v
                 continue;
             }
 
-            std::pair<size_t, float>& entry = neighborhood[i][entryIdx];
+            std::pair<std::size_t, float>& entry = neighborhood[i][entryIdx];
             entry.first = j;
             entry.second = CalcDist(*individuals[i], *individuals[j]);
             ++entryIdx;
@@ -137,7 +138,7 @@ void CSPEA2::BuildNeighborhood(std::vector<SMOIndividual *>& individuals, std::v
     // Sort ascending by distance
     for (TNeighborhood& nh : neighborhood)
     {
-        std::sort(nh.begin(), nh.end(), [](const std::pair<size_t, float>& a, const std::pair<size_t, float>& b) -> bool
+        std::sort(nh.begin(), nh.end(), [](const std::pair<std::size_t, float>& a, const std::pair<std::size_t, float>& b) -> bool
         {
             return a.second < b.second;
         });
@@ -146,7 +147,7 @@ void CSPEA2::BuildNeighborhood(std::vector<SMOIndividual *>& individuals, std::v
 
 float CSPEA2::CalcDist(const SMOIndividual& leftInd, const SMOIndividual& rightInd)
 {
-    size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
+    std::size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
     float dist = 0.f;
     for (int i = 0; i < objCount; ++i)
     {
@@ -164,14 +165,14 @@ void CSPEA2::UpdateFineGrainedFitness(std::vector<SMOIndividual*>& individuals, 
 
 void CSPEA2::UpdateRawFitness(std::vector<SMOIndividual*>& individuals)
 {
-    size_t indSize = individuals.size();
-    std::vector<size_t> strengthVector(indSize, 0);
-    std::vector<std::vector<size_t>> dominators(indSize, std::vector<size_t>());
+    std::size_t indSize = individuals.size();
+    std::vector<std::size_t> strengthVector(indSize, 0);
+    std::vector<std::vector<std::size_t>> dominators(indSize, std::vector<std::size_t>());
 
     // R(i) -> rank
-    for (size_t i = 0; i < indSize; ++i)
+    for (std::size_t i = 0; i < indSize; ++i)
     {
-        for (size_t j = 0; j < indSize; ++j)
+        for (std::size_t j = 0; j < indSize; ++j)
         {
             if (i == j)
                 continue;
@@ -186,10 +187,10 @@ void CSPEA2::UpdateRawFitness(std::vector<SMOIndividual*>& individuals)
         }
     }
 
-    for (size_t i = 0; i < indSize; ++i)
+    for (std::size_t i = 0; i < indSize; ++i)
     {
-        size_t totalDominatorsStrength = 0;
-        for (size_t domIdx : dominators[i])
+        std::size_t totalDominatorsStrength = 0;
+        for (std::size_t domIdx : dominators[i])
         {
             totalDominatorsStrength += strengthVector[domIdx];
         }
@@ -200,9 +201,9 @@ void CSPEA2::UpdateRawFitness(std::vector<SMOIndividual*>& individuals)
 void CSPEA2::UpdateDensity(std::vector<SMOIndividual*>& individuals, const std::vector<TNeighborhood>& neighborhood)
 {
     // D(i) -> CrowdDist
-    size_t k = sqrtf(m_PopulationSize + m_ArchiveSize);
+    std::size_t k = sqrtf(m_PopulationSize + m_ArchiveSize);
 
-    for (size_t i = 0; i < individuals.size(); ++i)
+    for (std::size_t i = 0; i < individuals.size(); ++i)
     {
         individuals[i]->m_CrowdingDistance = neighborhood[i][k].second;
     }
@@ -260,12 +261,12 @@ void CSPEA2::SplitByDomination(std::vector<SMOIndividual*>& individuals, std::ve
     dominatedIndividuals.reserve(individuals.size());
     // For each new individual, check if not dominated
     // We don't have to check if the same solution, equal rewards are discarded
-    for (size_t p = 0; p < individuals.size(); ++p)
+    for (std::size_t p = 0; p < individuals.size(); ++p)
     {
         const SMOIndividual* newInd = individuals[p];
         bool isDominated = false;
         // Check other new individuals
-        size_t i = 0;
+        std::size_t i = 0;
         while (!isDominated && i < individuals.size())
         {
             if (p != i)
@@ -290,16 +291,16 @@ void CSPEA2::SplitByDomination(std::vector<SMOIndividual*>& individuals, std::ve
     }
 }
 
-void CSPEA2::TruncateByDistance(std::vector<const SMOIndividual*>& filteredIndividuals, size_t maxSize)
+void CSPEA2::TruncateByDistance(std::vector<const SMOIndividual*>& filteredIndividuals, std::size_t maxSize)
 {
     // also simplified - remove first closest point
     while (filteredIndividuals.size() > maxSize)
     {
         float maxDist = 0.f;
-        size_t toRemove = 0;
-        for (size_t i = 0; i < filteredIndividuals.size(); ++i)
+        std::size_t toRemove = 0;
+        for (std::size_t i = 0; i < filteredIndividuals.size(); ++i)
         {
-            for (size_t j = i + 1; j < filteredIndividuals.size(); ++j)
+            for (std::size_t j = i + 1; j < filteredIndividuals.size(); ++j)
             {
                 float d = CalcDist(*filteredIndividuals[i], *filteredIndividuals[j]);
                 if (d > maxDist)
@@ -314,19 +315,19 @@ void CSPEA2::TruncateByDistance(std::vector<const SMOIndividual*>& filteredIndiv
     }
 }
 
-size_t CSPEA2::Spea2TournamentSelection(const std::vector<SMOIndividual*>& population)
+std::size_t CSPEA2::Spea2TournamentSelection(const std::vector<SMOIndividual*>& population)
 {
     // binary selection
-    size_t tournamentSize = 2;
-    size_t popSize = population.size();
+    std::size_t tournamentSize = 2;
+    std::size_t popSize = population.size();
 
-    size_t bestIdx = CRandom::GetInt(0, popSize);
+    std::size_t bestIdx = CRandom::GetInt(0, popSize);
     // fitness to be minimized
     float bestFitness = (float)population[bestIdx]->m_Rank + population[bestIdx]->m_CrowdingDistance;
 
-    for (size_t i = 1; i < tournamentSize; ++i)
+    for (std::size_t i = 1; i < tournamentSize; ++i)
     {
-        size_t randomIdx = CRandom::GetInt(0, popSize);
+        std::size_t randomIdx = CRandom::GetInt(0, popSize);
         float fitness = (float)population[randomIdx]->m_Rank + population[randomIdx]->m_CrowdingDistance;
         if (fitness < bestFitness)
         {

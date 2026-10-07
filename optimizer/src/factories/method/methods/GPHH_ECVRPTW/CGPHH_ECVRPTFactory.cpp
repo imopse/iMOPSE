@@ -2,6 +2,7 @@
 #include "method/methods/SO/GPHH/CGPHH_ECVRP.h"
 #include "method/operators/selection/selections/CFitnessTournament.h"
 #include <sstream>
+#include <cstddef>
 #include "method/methods/SO/GPHH/constructive/CCVRPConstructive.h"
 #include "problem/problems/CVRP/CCVRP.h"
 
@@ -71,11 +72,11 @@ std::vector<std::string> CGPHH_ECVRPTWFactory::Split(const std::string& s, char 
 	std::istringstream tokenStream(s);
 	while (std::getline(tokenStream, token, delimiter)) {
 		// Trim whitespace
-		size_t first = token.find_first_not_of(' ');
+		std::size_t first = token.find_first_not_of(' ');
 		if (std::string::npos == first) {
 			continue;
 		}
-		size_t last = token.find_last_not_of(' ');
+		std::size_t last = token.find_last_not_of(' ');
 		tokens.push_back(token.substr(first, (last - first + 1)));
 	}
 	return tokens;

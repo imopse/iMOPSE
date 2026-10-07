@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <numeric>
+#include <cstddef>
 #include <sstream>
 #include "../../method/methods/SO/GPHH/SGPHHLogConfig.h"
 #include "../../method/methods/SO/GPHH/individual/CGPHHIndividual.h"
@@ -15,7 +16,7 @@ char* CExperimentLogger::m_OutputDirPath = nullptr;
 std::vector<std::string> CExperimentLogger::m_Data;
 std::string CExperimentLogger::m_OutputDataPathPrefix;
 int CExperimentLogger::m_LastProgressLogged;
-size_t CExperimentLogger::m_BufferSize = 10000;
+std::size_t CExperimentLogger::m_BufferSize = 10000;
 bool CExperimentLogger::m_GPHHHeaderLogged = false;
 bool CExperimentLogger::m_GPHHIndividualHeaderLogged = false;
 bool CExperimentLogger::m_OverrideFile = false;
@@ -218,15 +219,15 @@ void CExperimentLogger::LogGPHHGeneration(int generation, const std::vector<SSOI
         if (config.LogStdDevFitness) ss << ";" << stdDev;
         if (config.LogMedianFitness) ss << ";" << fitnesses[fitnesses.size() / 2];
         if (config.LogVarianceFitness) ss << ";" << variance;
-        if (config.LogP90Fitness) ss << ";" << fitnesses[static_cast<size_t>(fitnesses.size() * 0.9)];
-        if (config.LogP95Fitness) ss << ";" << fitnesses[static_cast<size_t>(fitnesses.size() * 0.95)];
+        if (config.LogP90Fitness) ss << ";" << fitnesses[static_cast<std::size_t>(fitnesses.size() * 0.9)];
+        if (config.LogP95Fitness) ss << ";" << fitnesses[static_cast<std::size_t>(fitnesses.size() * 0.95)];
         if (config.LogBestDistance) ss << ";" << bestInd->m_Evaluation[0];
         if (config.LogOptimalValue) ss << ";" << optimalValue;
         if (config.LogBestFormula) ss << ";" << (gphhBestInd && gphhBestInd->m_Root ? gphhBestInd->m_Root->ToString() : "N/A");
         if (config.LogBestSolution)
         {
             ss << ";";
-            for (size_t i = 0; i < bestInd->m_Genotype.m_IntGenotype.size(); ++i)
+            for (std::size_t i = 0; i < bestInd->m_Genotype.m_IntGenotype.size(); ++i)
                 ss << bestInd->m_Genotype.m_IntGenotype[i] << (i < bestInd->m_Genotype.m_IntGenotype.size() - 1 ? " " : "");
         }
         AddLine(ss.str().c_str());
@@ -246,11 +247,11 @@ void CExperimentLogger::LogGPHHGeneration(int generation, const std::vector<SSOI
         if (outFile.is_open())
         {
             std::stringstream ss;
-            for (size_t i = 0; i < population.size(); ++i)
+            for (std::size_t i = 0; i < population.size(); ++i)
             {
                 ss.str(""); ss.clear();
                 ss << generation << ";" << i << ";" << population[i]->m_Fitness << ";" << population[i]->m_Evaluation[0] << ";";
-                for (size_t j = 0; j < population[i]->m_Genotype.m_IntGenotype.size(); ++j)
+                for (std::size_t j = 0; j < population[i]->m_Genotype.m_IntGenotype.size(); ++j)
                     ss << population[i]->m_Genotype.m_IntGenotype[j] << (j < population[i]->m_Genotype.m_IntGenotype.size() - 1 ? " " : "");
                 outFile << ss.str() << std::endl;
             }

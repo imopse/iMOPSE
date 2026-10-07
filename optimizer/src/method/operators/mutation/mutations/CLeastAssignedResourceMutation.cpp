@@ -1,6 +1,7 @@
 #include "CLeastAssignedResourceMutation.h"
 #include "utils/random/CRandom.h"
 #include "problem/problems/MSRCPSP/CMSRCPSP_TA.h"
+#include <cstddef>
 
 CLeastAssignedResourceMutation::CLeastAssignedResourceMutation(float geneMutProb, const CMSRCPSP_TA& problemDefinition)
     : m_GeneMutProb(geneMutProb)
@@ -10,9 +11,9 @@ CLeastAssignedResourceMutation::CLeastAssignedResourceMutation(float geneMutProb
 void CLeastAssignedResourceMutation::Mutate(SProblemEncoding& problemEncoding, AIndividual& child)
 {
     // TODO - it seems MSRCPSP uses FloatGenotype and this operator is dedicated for MSRCPSP but we should have one genotype value type
-    std::vector<size_t> resourcesUsage = m_ProblemDefinition.FindNumberOfResourcesUse(child.m_Genotype.m_FloatGenotype);
-    const size_t sectionSize = problemEncoding.m_Encoding[0].m_SectionDescription.size();
-    for (size_t g = 0; g < sectionSize; ++g)
+    std::vector<std::size_t> resourcesUsage = m_ProblemDefinition.FindNumberOfResourcesUse(child.m_Genotype.m_FloatGenotype);
+    const std::size_t sectionSize = problemEncoding.m_Encoding[0].m_SectionDescription.size();
+    for (std::size_t g = 0; g < sectionSize; ++g)
     {
         if (CRandom::GetFloat(0, 1) < m_GeneMutProb)
         {

@@ -4,6 +4,7 @@
 #include "../../AProblem.h"
 #include "method/individual/SGenotype.h"
 #include <iterator>
+#include <cstddef>
 
 class CECVRPTW : public AProblem
 {
@@ -24,7 +25,7 @@ public:
     std::vector<int> GetRealPath(AIndividual& individual);
 
 protected:
-    std::vector<size_t> m_UpperBounds;
+    std::vector<std::size_t> m_UpperBounds;
     SProblemEncoding m_ProblemEncoding;
     CECVRPTWTemplate* m_ECVRPTWTemplate;
     std::vector<float> m_MaxObjectiveValues;

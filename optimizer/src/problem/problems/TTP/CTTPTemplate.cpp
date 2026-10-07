@@ -1,6 +1,7 @@
 #include "CTTPTemplate.h"
 #include <algorithm>
 #include <cfloat>
+#include <cstddef>
 #include "TTPJavaEvalData.h"
 
 #define USE_JAVA_MAXPROFIT 1
@@ -73,7 +74,7 @@ float CTTPTemplate::GetMaxProfit() const
 
     std::sort(itemsCopy.begin(), itemsCopy.end(), sortLambda);
 
-    size_t i = 0;
+    std::size_t i = 0;
     int cap = itemsCopy[0].m_Weight;
     int maxProfit = itemsCopy[0].m_Profit;
     while (cap < m_Capacity && i < itemsCopy.size())
@@ -105,11 +106,11 @@ float CTTPTemplate::CalculateMaxDistance() const
 float CTTPTemplate::CalculateMinDistance() const
 {
     float dist = 0.f;
-    size_t dim = m_DistanceMatrix.size();
-    for (size_t i = 0; i < dim; ++i)
+    std::size_t dim = m_DistanceMatrix.size();
+    for (std::size_t i = 0; i < dim; ++i)
     {
         float minDist = FLT_MAX;
-        for (size_t j = 0; j < dim; ++j)
+        for (std::size_t j = 0; j < dim; ++j)
         {
             if (i != j)
             {
@@ -123,11 +124,11 @@ float CTTPTemplate::CalculateMinDistance() const
 
 void CTTPTemplate::CalculateContextData()
 {
-    size_t dim = m_Cities.size();
+    std::size_t dim = m_Cities.size();
     m_DistanceMatrix = std::vector<std::vector<float>>(dim, std::vector<float>(dim, 0.f));
-    for (size_t i = 0; i < dim; ++i)
+    for (std::size_t i = 0; i < dim; ++i)
     {
-        for (size_t j = i + 1; j < dim; ++j)
+        for (std::size_t j = i + 1; j < dim; ++j)
         {
             // Use ceil distance
             float dist = ceilf(sqrtf(powf(m_Cities[i].m_PosX - m_Cities[j].m_PosX, 2) +
@@ -138,10 +139,10 @@ void CTTPTemplate::CalculateContextData()
 
     // Calculate minimum distance vector
     m_MinDistanceVec = std::vector<float>(dim, 0.f);
-    for (size_t i = 0; i < dim; ++i)
+    for (std::size_t i = 0; i < dim; ++i)
     {
         float minDist = FLT_MAX;
-        for (size_t j = 0; j < dim; ++j)
+        for (std::size_t j = 0; j < dim; ++j)
         {
             if (i != j)
             {
@@ -151,7 +152,7 @@ void CTTPTemplate::CalculateContextData()
         m_MinDistanceVec[i] = minDist;
     }
 
-    m_CityItems = std::vector<std::vector<size_t>>(dim, std::vector<size_t>());
+    m_CityItems = std::vector<std::vector<std::size_t>>(dim, std::vector<std::size_t>());
     for (const SItem &item: m_Items)
     {
 #if USE_EOK
@@ -162,9 +163,9 @@ void CTTPTemplate::CalculateContextData()
     }
 
     // Sort by best profit / weight to worst
-    std::vector<std::pair<float, size_t>> itemsRatio;
+    std::vector<std::pair<float, std::size_t>> itemsRatio;
     itemsRatio.reserve(m_Items.size());
-    for (size_t i = 0; i < m_Items.size(); ++i)
+    for (std::size_t i = 0; i < m_Items.size(); ++i)
     {
 #if USE_EOK
         if (m_Items[i].id == 0)
@@ -177,7 +178,7 @@ void CTTPTemplate::CalculateContextData()
         itemsRatio.emplace_back((float) item.m_Profit / (float) item.m_Weight, i);
     }
 
-    auto sortLambda = [](const std::pair<float, size_t> &lhv, const std::pair<float, size_t> &rhv) -> bool
+    auto sortLambda = [](const std::pair<float, std::size_t> &lhv, const std::pair<float, std::size_t> &rhv) -> bool
     {
         return rhv.first < lhv.first;
     };
@@ -186,7 +187,7 @@ void CTTPTemplate::CalculateContextData()
 
     m_ProfitRatioSortedItems.clear();
     m_ProfitRatioSortedItems.reserve(itemsRatio.size());
-    for (const std::pair<float, size_t> &itemRatio: itemsRatio)
+    for (const std::pair<float, std::size_t> &itemRatio: itemsRatio)
     {
         m_ProfitRatioSortedItems.push_back(itemRatio.second);
     }

@@ -1,6 +1,7 @@
 #include "CCVRPFactory.h"
 #include "utils/fileReader/CReadUtils.h"
 #include <regex>
+#include <cstddef>
 
 #define READ_CVRP 1
 
@@ -58,13 +59,13 @@ CCVRPTemplate *CCVRPFactory::ReadCVRPTemplate(const char *problemDefinitionPath)
 	std::vector<SCityCVRP> cities;
 	ReadCitiesAndDemand(readFileStream, dimension, cities);
 
-	std::vector<size_t> depotIndexes;
+	std::vector<std::size_t> depotIndexes;
 	ReadDepot(readFileStream, depotIndexes);
 
 	int trucks = 1;
 	std::string pathString(problemDefinitionPath);
-	size_t fileNameStartPos = pathString.rfind("/") + 1;
-	size_t fileNameEndPos = pathString.rfind(".");
+	std::size_t fileNameStartPos = pathString.rfind("/") + 1;
+	std::size_t fileNameEndPos = pathString.rfind(".");
 	result->SetFileName(pathString.substr(fileNameStartPos, fileNameEndPos - fileNameStartPos));
 #if READ_CVRP
 	result->SetData(cities, capacity, trucks, depotIndexes);
@@ -100,7 +101,7 @@ void CCVRPFactory::ReadCitiesAndDemand(std::ifstream &fileStream, int dimension,
 	}
 }
 
-void CCVRPFactory::ReadDepot(std::ifstream &fileStream, std::vector<size_t> &depotIndexes) {
+void CCVRPFactory::ReadDepot(std::ifstream &fileStream, std::vector<std::size_t> &depotIndexes) {
 	std::string line;
 
 	if (CReadUtils::GotoLineByKey(fileStream, s_DepotSectionKey, line)) {

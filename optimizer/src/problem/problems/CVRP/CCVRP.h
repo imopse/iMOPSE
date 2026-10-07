@@ -3,6 +3,7 @@
 #include "CCVRPTemplate.h"
 #include "../../AProblem.h"
 #include "../../../method/individual/SGenotype.h"
+#include <cstddef>
 
 class CCVRP : public AProblem {
 public:
@@ -21,10 +22,10 @@ public:
     float GetOptimalValue();
 
     CCVRPTemplate* GetCVRPTemplate() { return m_CVRPTemplate; }
-    size_t GetNearestDepotIdx(size_t cityIdx);
+    std::size_t GetNearestDepotIdx(std::size_t cityIdx);
 
 protected:
-    std::vector<size_t> m_UpperBounds;
+    std::vector<std::size_t> m_UpperBounds;
     SProblemEncoding m_ProblemEncoding;
     CCVRPTemplate* m_CVRPTemplate;
     std::vector<float> m_MaxObjectiveValues;

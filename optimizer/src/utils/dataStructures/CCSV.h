@@ -7,12 +7,13 @@
 #include <fstream>
 #include <algorithm>
 #include <sstream>
+#include <cstddef>
 
 template <typename T>
 class CCSV
 {
 public:
-    CCSV(size_t columnsCount)
+    CCSV(std::size_t columnsCount)
         : m_ColumnsCount(columnsCount)
     {}
 
@@ -31,7 +32,7 @@ public:
     {
         for (const auto& row: csvData)
         {
-            for (size_t i = 0; i < row.size(); ++i)
+            for (std::size_t i = 0; i < row.size(); ++i)
             {
                 ostringstream << row[i];
                 if (i < row.size() - 1)
@@ -44,6 +45,6 @@ public:
     }
 
 private:
-    size_t m_ColumnsCount;
+    std::size_t m_ColumnsCount;
     std::vector<std::vector<T>> m_Data;
 };

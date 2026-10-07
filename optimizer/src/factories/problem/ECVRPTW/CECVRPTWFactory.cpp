@@ -1,6 +1,7 @@
 #include "CECVRPTWFactory.h"
 #include "utils/fileReader/CReadUtils.h"
 #include <regex>
+#include <cstddef>
 #include <iostream>
 
 
@@ -55,9 +56,9 @@ CECVRPTWTemplate* CECVRPTWFactory::ReadECVRPTWTemplate(const char* problemDefini
 
     readFileStream.close();
 
-    std::vector<size_t> depotIndexes;
-    std::vector<size_t> chargingStationIndexes;
-    std::vector<size_t> customerIndexes;
+    std::vector<std::size_t> depotIndexes;
+    std::vector<std::size_t> chargingStationIndexes;
+    std::vector<std::size_t> customerIndexes;
 
     for (int i = 0; i < cities.size(); i++)
     {
@@ -77,8 +78,8 @@ CECVRPTWTemplate* CECVRPTWFactory::ReadECVRPTWTemplate(const char* problemDefini
     }
 
     std::string pathString(problemDefinitionPath);
-    size_t fileNameStartPos = pathString.rfind("/") + 1;
-    size_t fileNameEndPos = pathString.rfind(".");
+    std::size_t fileNameStartPos = pathString.rfind("/") + 1;
+    std::size_t fileNameEndPos = pathString.rfind(".");
     result->SetFileName(pathString.substr(fileNameStartPos, fileNameEndPos - fileNameStartPos));
     result->SetData(cities,
                     capacity,

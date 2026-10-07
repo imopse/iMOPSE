@@ -4,11 +4,12 @@
 #include <set>
 #include "../../../configMap/SConfigMap.h"
 #include "method/methods/MO/AMOMethod.h"
+#include <cstddef>
 
 struct SMOEADSubproblem
 {
     std::vector<float> m_WeightVector;
-    std::vector<size_t> m_Neighborhood;
+    std::vector<std::size_t> m_Neighborhood;
 };
 
 class CMOEAD : public AMOMethod
@@ -59,18 +60,18 @@ protected:
     std::vector<SMOIndividual*> m_NextPopulation;
     std::vector<SMOIndividual*> m_Archive;
 
-    size_t m_PopulationSize = 0;
-    size_t m_GenerationLimit = 0;
-    size_t m_PartitionsNumber = 0;
-    size_t m_NeighbourhoodSize = 0;
+    std::size_t m_PopulationSize = 0;
+    std::size_t m_GenerationLimit = 0;
+    std::size_t m_PartitionsNumber = 0;
+    std::size_t m_NeighbourhoodSize = 0;
     std::vector<SMOEADSubproblem> m_Subproblems;
 
-    void ConstructSubproblems(size_t number, size_t size);
+    void ConstructSubproblems(std::size_t number, std::size_t size);
     
 private:
     void EvolveToNextGeneration();
-    void ConstructSubproblemsSimple2D(size_t number, size_t size);
-    void ConstructSubproblemsMultiD(size_t number, size_t size, size_t count);
+    void ConstructSubproblemsSimple2D(std::size_t number, std::size_t size);
+    void ConstructSubproblemsMultiD(std::size_t number, std::size_t size, std::size_t count);
     bool IsBetterInSubproblem(SMOIndividual* newIndividual, SMOIndividual* oldIndividual, SMOEADSubproblem& subproblem);
 
     // TODO - copied from ParetoAnalyzer - remove it or move somewhere else

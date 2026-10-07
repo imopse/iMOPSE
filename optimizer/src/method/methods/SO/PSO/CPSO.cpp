@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cstddef>
 #include "CPSO.h"
 #include "../../../../utils/random/CRandom.h"
 #include "../../../../utils/logger/ErrorUtils.h"
@@ -37,7 +38,7 @@ void CPSO::RunOptimization()
     
     m_BestKnownFitness = std::numeric_limits<float>::max();
 
-    for (size_t i = 0; i < m_SwarmSize; ++i)
+    for (std::size_t i = 0; i < m_SwarmSize; ++i)
     {
         SParticle* prt = CreateParticle();
 
@@ -74,7 +75,7 @@ void CPSO::UpdatePosition(std::vector<float>& position, std::vector<float>& velo
 {
     std::vector<SEncodingDescriptor> sectionDescription = m_Problem->GetProblemEncoding().m_Encoding[0].m_SectionDescription;
 
-    for (size_t i = 0; i < position.size(); ++i)
+    for (std::size_t i = 0; i < position.size(); ++i)
     {
         float dimension = position[i] + velocity[i];
         dimension = std::max(dimension, sectionDescription[i].m_MinValue);
@@ -100,9 +101,9 @@ void CPSO::UpdateBests(SParticle* particle)
 
 void CPSO::Migrate()
 {
-    for (size_t i = 0; i < m_SwarmSize; ++i)
+    for (std::size_t i = 0; i < m_SwarmSize; ++i)
     {
-        for (size_t j = 0; j < m_Swarm[i]->m_Genotype.m_FloatGenotype.size(); ++j)
+        for (std::size_t j = 0; j < m_Swarm[i]->m_Genotype.m_FloatGenotype.size(); ++j)
         {
             float dimension = m_Problem->GetProblemEncoding().m_Encoding[0].m_SectionDescription[j].m_MaxValue * 0.9999999f - m_Swarm[i]->m_Genotype.m_FloatGenotype[j];
             m_Swarm[i]->m_Genotype.m_FloatGenotype[j] = dimension;
@@ -152,9 +153,9 @@ void CPSO::MoveParticles()
 {
     std::vector<SEncodingDescriptor> sectionDescription = m_Problem->GetProblemEncoding().m_Encoding[0].m_SectionDescription;
 
-    for (size_t i = 0; i < m_SwarmSize; ++i)
+    for (std::size_t i = 0; i < m_SwarmSize; ++i)
     {
-        for (size_t j = 0; j < m_Swarm[i]->m_Velocity.size(); ++j)
+        for (std::size_t j = 0; j < m_Swarm[i]->m_Velocity.size(); ++j)
         {
             float rp = CRandom::GetFloat(0, 1);
             float p = m_Swarm[i]->m_BestKnownPosition[j];

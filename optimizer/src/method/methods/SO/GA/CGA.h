@@ -7,6 +7,7 @@
 #include "../../../configMap/SConfigMap.h"
 #include "../../../operators/selection/selections/CFitnessTournament.h"
 #include "method/methods/SO/ASOMethod.h"
+#include <cstddef>
 
 class CGA : public ASOMethod
 {
@@ -48,8 +49,8 @@ private:
     
     std::vector<SSOIndividual*> m_Population;
     
-    size_t m_GenerationLimit = 0;
-    size_t m_PopulationSize = 0;
+    std::size_t m_GenerationLimit = 0;
+    std::size_t m_PopulationSize = 0;
 
     void CreateIndividual();
     void EvolveToNextGeneration();

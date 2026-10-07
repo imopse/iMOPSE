@@ -1,13 +1,14 @@
 #include "CTTP_OS_SX.h"
 #include "../../../../utils/random/CRandom.h"
 #include <algorithm>
+#include <cstddef>
 
 void CTTP_OS_SX::Crossover(const SProblemEncoding& problemEncoding, AIndividual &firstParent, AIndividual &secondParent,
                            AIndividual &firstChild, AIndividual &secondChild)
 {
     for (const SEncodingSection &encoding: problemEncoding.m_Encoding)
     {
-        const size_t sectionSize = encoding.m_SectionDescription.size();
+        const std::size_t sectionSize = encoding.m_SectionDescription.size();
         const auto &secondParentGenes = secondParent.m_Genotype;
         const auto &firstParentGenes = firstParent.m_Genotype;
         if (encoding.m_SectionType == EEncodingType::PERMUTATION)
@@ -23,10 +24,10 @@ void CTTP_OS_SX::Crossover(const SProblemEncoding& problemEncoding, AIndividual 
                 const auto &secParentA = secondParentGenes.m_IntGenotype.begin() + a;
                 const auto &secParentB = secondParentGenes.m_IntGenotype.begin() + b;
 
-                size_t firstSeekIdx = b;
-                size_t secSeekIdx = b;
+                std::size_t firstSeekIdx = b;
+                std::size_t secSeekIdx = b;
 
-                for (size_t i = b; i != a; i = (i + 1) % sectionSize)
+                for (std::size_t i = b; i != a; i = (i + 1) % sectionSize)
                 {
                     // Update first child
                     while (std::find(firstParentA, firstParentB, secondParentGenes.m_IntGenotype[secSeekIdx]) !=
@@ -54,9 +55,9 @@ void CTTP_OS_SX::Crossover(const SProblemEncoding& problemEncoding, AIndividual 
             // Knapsack Crossover
             if (CRandom::GetFloat(0, 1) < m_KnapCrProb)
             {
-                size_t point = CRandom::GetInt(0, int(sectionSize));
+                std::size_t point = CRandom::GetInt(0, int(sectionSize));
 
-                for (size_t g = 0; g < sectionSize; ++g)
+                for (std::size_t g = 0; g < sectionSize; ++g)
                 {
                     if (g < point)
                     {

@@ -1,6 +1,7 @@
 #include "CECVRPTWShawClientRemoval.h"
 #include "problem/problems/ECVRPTW/CECVRPTW.h"
 #include "utils/random/CRandom.h"
+#include <cstddef>
 
 #define DEMANDWEIGHT 0.1
 #define TIMEWINDOWWEIGHT 0.6
@@ -10,7 +11,7 @@ CECVRPTWShawClientRemoval::CECVRPTWShawClientRemoval(CECVRPTW& problemDefinition
     : m_ProblemDefinition(problemDefinition)
 {
     // TODO - verify whether "vehicle count - 1" should be in parenthesis
-    size_t indicesCount = m_ProblemDefinition.GetProblemEncoding().m_Encoding[0].m_SectionDescription.size() - m_ProblemDefinition.GetECVRPTWTemplate()->GetVehicleCount() - 1;
+    std::size_t indicesCount = m_ProblemDefinition.GetProblemEncoding().m_Encoding[0].m_SectionDescription.size() - m_ProblemDefinition.GetECVRPTWTemplate()->GetVehicleCount() - 1;
     m_CustomerIndexes.reserve(indicesCount);
 }
 
@@ -33,10 +34,10 @@ void CECVRPTWShawClientRemoval::Mutate(SProblemEncoding& problemEncoding, AIndiv
 
 	genotype.erase(genotype.begin() + firstCustomerIdx);
 	for (int i = 1; i < customersToRemove; i++) {
-		size_t customerToCompareIdx = CRandom::GetInt(0, m_CustomerIndexes.size());
+		std::size_t customerToCompareIdx = CRandom::GetInt(0, m_CustomerIndexes.size());
 		auto& customerToCompare = cities[m_CustomerIndexes[customerToCompareIdx]];
 		float minDistance = std::numeric_limits<float>::max();
-		size_t customerWithMinDistanceIdx = -1;
+		std::size_t customerWithMinDistanceIdx = -1;
 		for (int j = 0; j < genotype.size(); j++) {
 			if (genotype[j] != VEHICLE_DELIMITER) {
 				float distanceDemand = DEMANDWEIGHT * abs(cities[genotype[j]].m_Demand - customerToCompare.m_Demand);

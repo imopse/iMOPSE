@@ -2,6 +2,7 @@
 
 #include <vector>
 #include "CAtomicOperator.h"
+#include <cstddef>
 
 template <typename O>
 class AMultiOperator
@@ -42,14 +43,14 @@ public:
     {
         for (auto& atomicOperator : m_AtomicOperators)
         {
-            size_t accCalls = atomicOperator.GetData().m_AccCalls;
+            std::size_t accCalls = atomicOperator.GetData().m_AccCalls;
             atomicOperator.ResetData();
             atomicOperator.GetData().m_AccCalls = accCalls;
         }
     }
 
-    SAtomicOperatorData& GetOperatorData(size_t operatorId) { return m_AtomicOperators[operatorId].GetData(); }
-    size_t GetOperatorCount() const { return m_AtomicOperators.size(); }
+    SAtomicOperatorData& GetOperatorData(std::size_t operatorId) { return m_AtomicOperators[operatorId].GetData(); }
+    std::size_t GetOperatorCount() const { return m_AtomicOperators.size(); }
 
     std::vector<CAtomicOperator<O>>& GetAtomicOperators() { return m_AtomicOperators; }
 

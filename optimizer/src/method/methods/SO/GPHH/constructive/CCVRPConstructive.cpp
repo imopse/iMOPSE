@@ -3,6 +3,7 @@
 #include "../../../../../problem/problems/CVRP/CCVRP.h"
 #include <algorithm>
 #include <limits>
+#include <cstddef>
 
 void CCVRPConstructive::BuildSolution(CGPHHIndividual& individual, AProblem& problem) {
     CCVRP* cvrp = dynamic_cast<CCVRP*>(&problem);
@@ -19,9 +20,9 @@ void CCVRPConstructive::BuildSolution(CGPHHIndividual& individual, AProblem& pro
     std::vector<int> unvisited;
     unvisited.reserve(cities.size());
     std::vector<bool> isUnvisited(cities.size(), false);
-    for (size_t i = 0; i < cities.size(); ++i) {
+    for (std::size_t i = 0; i < cities.size(); ++i) {
         bool isDepot = false;
-        for (size_t d : depots) { if (cities[i].m_ID == d) { isDepot = true; break; } }
+        for (std::size_t d : depots) { if (cities[i].m_ID == d) { isDepot = true; break; } }
         if (!isDepot) { unvisited.push_back((int)i); isUnvisited[i] = true; }
     }
 
@@ -30,10 +31,10 @@ void CCVRPConstructive::BuildSolution(CGPHHIndividual& individual, AProblem& pro
     float currentLoad = 0;
 
     std::vector<float> nccCache(cities.size(), 0.0f);
-    std::vector<size_t> nccPointer(cities.size(), 0);
+    std::vector<std::size_t> nccPointer(cities.size(), 0);
     for (int idx : unvisited) {
         const auto& nearestNeighbors = cvrpTemplate->GetNearestNeighborsCache(idx);
-        for (size_t i = 0; i < nearestNeighbors.size(); ++i) {
+        for (std::size_t i = 0; i < nearestNeighbors.size(); ++i) {
             if (isUnvisited[nearestNeighbors[i]]) {
                 nccCache[idx] = distMtx[idx][nearestNeighbors[i]];
                 nccPointer[idx] = i;
@@ -62,10 +63,10 @@ void CCVRPConstructive::BuildSolution(CGPHHIndividual& individual, AProblem& pro
 
         for (int idx : unvisited) {
             const auto& nearestNeighbors = cvrpTemplate->GetNearestNeighborsCache(idx);
-            size_t& ptr = nccPointer[idx];
+            std::size_t& ptr = nccPointer[idx];
             if (ptr >= nearestNeighbors.size() || !isUnvisited[nearestNeighbors[ptr]]) {
                 nccCache[idx] = 0.0f;
-                for (size_t i = ptr + 1; i < nearestNeighbors.size(); ++i) {
+                for (std::size_t i = ptr + 1; i < nearestNeighbors.size(); ++i) {
                     if (isUnvisited[nearestNeighbors[i]]) { nccCache[idx] = distMtx[idx][nearestNeighbors[i]]; nccPointer[idx] = i; break; }
                 }
             }

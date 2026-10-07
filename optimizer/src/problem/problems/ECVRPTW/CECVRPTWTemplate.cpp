@@ -1,5 +1,6 @@
 #include <iostream>
 #include "CECVRPTWTemplate.h"
+#include <cstddef>
 
 SCityECVRPTW::SCityECVRPTW(const int& id
 	, const std::string& strId
@@ -44,9 +45,9 @@ void CECVRPTWTemplate::SetData(std::vector<SCityECVRPTW>& cities
 	, float fuelConsumptionRate
 	, float refuelingRate
 	, float averageVelocity
-	, std::vector<size_t>& chargingStationIndexes
-	, std::vector<size_t>& depotIndexes
-	, std::vector<size_t>& customerIndexes
+	, std::vector<std::size_t>& chargingStationIndexes
+	, std::vector<std::size_t>& depotIndexes
+	, std::vector<std::size_t>& customerIndexes
 	, int vehicleCount
 )
 {
@@ -68,11 +69,11 @@ void CECVRPTWTemplate::SetData(std::vector<SCityECVRPTW>& cities
 
 float CECVRPTWTemplate::GetMinDistance() const {
 	float dist = 0.f;
-	size_t dim = m_DistanceInfoMatrix.size();
-	for (size_t i = 0; i < dim; ++i)
+	std::size_t dim = m_DistanceInfoMatrix.size();
+	for (std::size_t i = 0; i < dim; ++i)
 	{
 		float minDist = FLT_MAX;
-		for (size_t j = 0; j < dim; ++j)
+		for (std::size_t j = 0; j < dim; ++j)
 		{
 			if (i != j)
 			{
@@ -86,11 +87,11 @@ float CECVRPTWTemplate::GetMinDistance() const {
 
 float CECVRPTWTemplate::GetMaxDistance() const {
 	float dist = 0.f;
-	size_t dim = m_DistanceInfoMatrix.size();
-	for (size_t i = 0; i < dim; ++i)
+	std::size_t dim = m_DistanceInfoMatrix.size();
+	for (std::size_t i = 0; i < dim; ++i)
 	{
 		float maxDist = FLT_MIN;
-		for (size_t j = 0; j < dim; ++j)
+		for (std::size_t j = 0; j < dim; ++j)
 		{
 			if (i != j)
 			{
@@ -104,8 +105,8 @@ float CECVRPTWTemplate::GetMaxDistance() const {
 
 float CECVRPTWTemplate::GetMaxTimeService() const {
 	float maxTime = FLT_MIN;
-	size_t dim = m_Cities.size();
-	for (size_t i = 0; i < dim; ++i)
+	std::size_t dim = m_Cities.size();
+	for (std::size_t i = 0; i < dim; ++i)
 	{
 		if (maxTime < m_Cities[i].m_ServiceTime) {
 			maxTime = m_Cities[i].m_ServiceTime;
@@ -114,17 +115,17 @@ float CECVRPTWTemplate::GetMaxTimeService() const {
 	return maxTime;
 }
 
-float CECVRPTWTemplate::GetRequiredFuel(size_t cityIdx, size_t nextCityIdx) const
+float CECVRPTWTemplate::GetRequiredFuel(std::size_t cityIdx, std::size_t nextCityIdx) const
 {
     return m_DistanceInfoMatrix[cityIdx][nextCityIdx].m_FuelConsumption;
 }
 
-size_t CECVRPTWTemplate::GetNearestDepotIdx(size_t cityIdx) const
+std::size_t CECVRPTWTemplate::GetNearestDepotIdx(std::size_t cityIdx) const
 {
     // TODO - cache
 
     float minDist = FLT_MAX;
-    size_t chosenIdx;
+    std::size_t chosenIdx;
     auto& distMtx = GetDistInfoMtx();
     auto& depotIndexes = GetDepots();
     auto& cities = GetCities();
@@ -149,12 +150,12 @@ size_t CECVRPTWTemplate::GetNearestDepotIdx(size_t cityIdx) const
     return chosenIdx;
 }
 
-size_t CECVRPTWTemplate::GetNearestChargingStationIdx(size_t cityIdx) const
+std::size_t CECVRPTWTemplate::GetNearestChargingStationIdx(std::size_t cityIdx) const
 {
     // TODO - cache
     
     float minDist = FLT_MAX;
-    size_t chosenIdx;
+    std::size_t chosenIdx;
     auto& distMtx = GetDistInfoMtx();
     auto& depotIndexes = GetChargingStations();
     auto& cities = GetCities();
@@ -182,11 +183,11 @@ size_t CECVRPTWTemplate::GetNearestChargingStationIdx(size_t cityIdx) const
 bool CECVRPTWTemplate::Validate() const
 {
     bool isValid = true;
-    for (size_t i = 0; i < m_DistanceInfoMatrix.size(); ++i)
+    for (std::size_t i = 0; i < m_DistanceInfoMatrix.size(); ++i)
     {
         if (m_Cities[i].m_Type == ENodeType::ChargingStation)
         {
-            size_t depotIdx = GetNearestDepotIdx(i);
+            std::size_t depotIdx = GetNearestDepotIdx(i);
             // depot can be reached from any charging station
             if (m_DistanceInfoMatrix[i][depotIdx].m_FuelConsumption > m_TankCapacity)
             {
@@ -194,7 +195,7 @@ bool CECVRPTWTemplate::Validate() const
                 isValid = false;
             }
         }
-        size_t chargingStationIdx = GetNearestChargingStationIdx(i);
+        std::size_t chargingStationIdx = GetNearestChargingStationIdx(i);
         // any city can be reached from the charging station and back
         if ((m_DistanceInfoMatrix[chargingStationIdx][i].m_FuelConsumption + m_DistanceInfoMatrix[i][chargingStationIdx].m_FuelConsumption) > m_TankCapacity)
         {
@@ -207,11 +208,11 @@ bool CECVRPTWTemplate::Validate() const
 
 void CECVRPTWTemplate::CalculateContextData()
 {
-	size_t dim = m_Cities.size();
+	std::size_t dim = m_Cities.size();
 	m_DistanceInfoMatrix = std::vector<std::vector<SDistanceInfo>>(dim, std::vector<SDistanceInfo>(dim, SDistanceInfo{0, 0, 0}));
-	for (size_t i = 0; i < dim; ++i)
+	for (std::size_t i = 0; i < dim; ++i)
 	{
-		for (size_t j = 0; j < dim; ++j)
+		for (std::size_t j = 0; j < dim; ++j)
 		{
 			float dist = sqrtf(powf(m_Cities[i].m_PosX - m_Cities[j].m_PosX, 2) + powf(m_Cities[i].m_PosY - m_Cities[j].m_PosY, 2));
 			float time = dist / m_AverageVelocity;
@@ -227,10 +228,10 @@ void CECVRPTWTemplate::CalculateContextData()
 
 	// Calculate minimum distance vector
 	m_MinDistanceVec = std::vector<float>(dim, 0.f);
-	for (size_t i = 0; i < dim; ++i)
+	for (std::size_t i = 0; i < dim; ++i)
 	{
 		float minDist = FLT_MAX;
-		for (size_t j = 0; j < dim; ++j)
+		for (std::size_t j = 0; j < dim; ++j)
 		{
 			if (i != j)
 			{

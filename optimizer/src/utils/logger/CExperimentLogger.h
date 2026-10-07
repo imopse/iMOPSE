@@ -5,6 +5,7 @@
 #include "../../method/individual/AIndividual.h"
 #include "../../method/individual/SO/SSOIndividual.h"
 #include <string>
+#include <cstddef>
 
 struct SGPHHLogConfig;
 
@@ -31,7 +32,7 @@ public:
 private:
     static bool m_GPHHHeaderLogged;
     static bool m_GPHHIndividualHeaderLogged;
-    static size_t m_BufferSize;
+    static std::size_t m_BufferSize;
     static std::vector<std::string> m_Data;
     static int m_LastProgressLogged;
     static void OpenFileForWriting(const char* filePath, std::ofstream& outFile);

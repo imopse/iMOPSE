@@ -2,6 +2,7 @@
 
 #include <map>
 #include <string>
+#include <cstddef>
 
 struct SConfigMap
 {
@@ -10,7 +11,7 @@ public:
     bool HasValue(const std::string &paramKey);
 
     bool TakeValue(const std::string &paramKey, int &outValue);
-    bool TakeValue(const std::string &paramKey, size_t &outValue);
+    bool TakeValue(const std::string &paramKey, std::size_t &outValue);
     bool TakeValue(const std::string &paramKey, float &outValue);
     bool TakeValue(const std::string &paramKey, double &outValue);
     bool TakeValue(const std::string &paramKey, std::string &outValue);

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include "method/operators/mutation/AMutation.h"
+#include <cstddef>
 
 class CECVRPTW;
 
@@ -11,7 +12,7 @@ public:
 	explicit CECVRPTWRandomClientRemoval(CECVRPTW& problemDefinition);
 	void Mutate(SProblemEncoding& problemEncoding, AIndividual& child) override;
 
-    size_t GetParamCount() const override { return 0; }
+    std::size_t GetParamCount() const override { return 0; }
     float* GetParamValue(int paramIdx) override { return nullptr; }
 
 private:

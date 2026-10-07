@@ -1,7 +1,8 @@
 #pragma once
+#include <cstddef>
 
 struct STask
 {
-	size_t m_Id;
+	std::size_t m_Id;
 	int m_ThreatValue;
 };

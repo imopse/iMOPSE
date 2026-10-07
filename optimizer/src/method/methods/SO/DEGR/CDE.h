@@ -2,6 +2,7 @@
 
 #include "../../../configMap/SConfigMap.h"
 #include "method/methods/SO/ASOMethod.h"
+#include <cstddef>
 
 class CDE : public ASOMethod
 {
@@ -29,8 +30,8 @@ private:
     std::vector<float>* m_ObjectiveWeights;
     
     std::vector<SSOIndividual*> m_Population;
-    size_t m_PopulationSize = 0;
-    size_t m_GenerationLimit = 0;
+    std::size_t m_PopulationSize = 0;
+    std::size_t m_GenerationLimit = 0;
     float m_Cr;
     float m_F;
 

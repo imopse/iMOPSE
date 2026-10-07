@@ -5,6 +5,7 @@
 #include "utils/dataStructures/CCSV.h"
 #include "utils/logger/CExperimentLogger.h"
 #include "factories/method/operators/mutation/CMutationFactory.h"
+#include <cstddef>
 
 CANTGA::CANTGA(
         AProblem* evaluator,
@@ -41,7 +42,7 @@ void CANTGA::RunOptimization()
 
     m_StartTime = std::chrono::steady_clock::now();
 
-    for (size_t i = 0; i < m_PopulationSize; ++i)
+    for (std::size_t i = 0; i < m_PopulationSize; ++i)
     {
         SProblemEncoding& problemEncoding = m_Problem->GetProblemEncoding();
         auto* newInd = m_Initialization->CreateMOIndividual(problemEncoding);
@@ -152,7 +153,7 @@ void CANTGA::LocalAdaptiveMutation(SMOIndividual* individual, SMOIndividual* par
     {
         individual->m_OperatorsData = std::vector<SAtomicOperatorData>(m_MultiMutation->GetOperatorCount());
     }
-    for (size_t i = 0; i < m_MultiMutation->GetOperatorCount(); ++i)
+    for (std::size_t i = 0; i < m_MultiMutation->GetOperatorCount(); ++i)
     {
         m_MultiMutation->GetOperatorData(i).m_Credits = individual->m_OperatorsData[i].m_Credits * decayFactor;
         m_MultiMutation->GetOperatorData(i).m_Calls = individual->m_OperatorsData[i].m_Calls * decayFactor;
@@ -167,14 +168,14 @@ void CANTGA::LocalAdaptiveMutation(SMOIndividual* individual, SMOIndividual* par
     m_Problem->Evaluate(*individual);
     atomicMutation->GetData().m_Credits += CalculateCredit(individual, parent, otherParent);
 
-    for (size_t i = 0; i < m_MultiMutation->GetOperatorCount(); ++i)
+    for (std::size_t i = 0; i < m_MultiMutation->GetOperatorCount(); ++i)
     {
         individual->m_OperatorsData[i].m_Credits = m_MultiMutation->GetOperatorData(i).m_Credits;
         individual->m_OperatorsData[i].m_AccCalls = m_MultiMutation->GetOperatorData(i).m_AccCalls;
         individual->m_OperatorsData[i].m_Calls = m_MultiMutation->GetOperatorData(i).m_Calls;
     }
 
-    size_t operatorId = atomicMutation->GetId();
+    std::size_t operatorId = atomicMutation->GetId();
     individual->m_MetaInfo = {
         (float)operatorId,
         parent->m_MutationIdx.has_value() ? (float)parent->m_MutationIdx.value() : -1.f,
@@ -192,7 +193,7 @@ void CANTGA::GlobalAdaptiveMutation(SMOIndividual* firstChild, SMOIndividual* se
     atomicMutation->GetData().m_Calls += 2;
     atomicMutation->GetData().m_AccCalls += 2;
 
-    size_t operatorId = atomicMutation->GetId();
+    std::size_t operatorId = atomicMutation->GetId();
     secondChild->m_MetaInfo = firstChild->m_MetaInfo = {
         (float)operatorId,
         firstParent->m_MutationIdx.has_value() ? (float)firstParent->m_MutationIdx.value() : -1.f,
@@ -263,7 +264,7 @@ void CANTGA::LogIndividualsToCSV(CCSV<float>& csv, const std::vector<SMOIndividu
 void CANTGA::LogOperatorStatsToCSV(CCSV<float>& csv) const
 {
     int fet = (m_Generation + 1) * int(m_PopulationSize);
-    for (size_t i = 0; i < m_MultiMutation->GetOperatorCount(); ++i)
+    for (std::size_t i = 0; i < m_MultiMutation->GetOperatorCount(); ++i)
     {
         std::vector<float> newRow = { (float)m_Generation, float(fet), (float)i };
         newRow.push_back((float)m_MultiMutation->GetOperatorData(i).m_Credits);
@@ -290,7 +291,7 @@ void CANTGA::ResetAllArchiveOperatorDataButAccCalls()
     {
         if (!individual->m_OperatorsData.empty())
         {
-            for (size_t i = 0; i < m_MultiMutation->GetOperatorCount(); ++i)
+            for (std::size_t i = 0; i < m_MultiMutation->GetOperatorCount(); ++i)
             {
                 individual->m_OperatorsData[i].m_Credits = 0;
                 individual->m_OperatorsData[i].m_Calls = 0;
@@ -417,8 +418,8 @@ float CANTGA::CalcFitnessImprovementRateVer1(SMOIndividual* newIndividual, SMOIn
     // Simple weighted sum
     float newValue = 0.f;
     float oldValue = 0.f;
-    const size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
-    for (size_t i = 0; i < objCount; ++i)
+    const std::size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
+    for (std::size_t i = 0; i < objCount; ++i)
     {
         newValue += newIndividual->m_NormalizedEvaluation[i];
         oldValue += oldIndividual->m_NormalizedEvaluation[i];
@@ -434,8 +435,8 @@ float CANTGA::CalcFitnessImprovementRateVer3(SMOIndividual* newIndividual, SMOIn
     // Simple weighted sum
     float newValue = 0.f;
     float oldValue = 0.f;
-    const size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
-    for (size_t i = 0; i < objCount; ++i)
+    const std::size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
+    for (std::size_t i = 0; i < objCount; ++i)
     {
         newValue += newIndividual->m_NormalizedEvaluation[i] * (oldIndividual->m_NormalizedEvaluation[i] - 1.0f);
         oldValue += oldIndividual->m_NormalizedEvaluation[i] * (oldIndividual->m_NormalizedEvaluation[i] - 1.0f);
@@ -452,8 +453,8 @@ float CANTGA::CalcFitnessImprovementRateVer4(SMOIndividual* newIndividual, SMOIn
     // Simple weighted sum
     float newValue = 0.f;
     float oldValue = 0.f;
-    const size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
-    for (size_t i = 0; i < objCount; ++i)
+    const std::size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
+    for (std::size_t i = 0; i < objCount; ++i)
     {
         newValue += (newIndividual->m_NormalizedEvaluation[i] - 1.f) * (oldIndividual->m_NormalizedEvaluation[i] - 1.0f);
         oldValue += (oldIndividual->m_NormalizedEvaluation[i] - 1.f) * (oldIndividual->m_NormalizedEvaluation[i] - 1.0f);
@@ -470,17 +471,17 @@ float CANTGA::CalcFitnessImprovementRateVer5(SMOIndividual* newIndividual, SMOIn
     // Simple weighted sum
     float newValue = 0.f;
     float oldValue = 0.f;
-    const size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
+    const std::size_t objCount = m_Problem->GetProblemEncoding().m_objectivesNumber;
 
     // calc vec normal
     float s = 0.f;
-    for (size_t i = 0; i < objCount; ++i)
+    for (std::size_t i = 0; i < objCount; ++i)
     {
         s += powf(oldIndividual->m_NormalizedEvaluation[i], 2);
     }
     s = sqrtf(s);
 
-    for (size_t i = 0; i < objCount; ++i)
+    for (std::size_t i = 0; i < objCount; ++i)
     {
         newValue += newIndividual->m_NormalizedEvaluation[i] * (1.f - oldIndividual->m_NormalizedEvaluation[i]) * s;
         oldValue += oldIndividual->m_NormalizedEvaluation[i] * (1.f - oldIndividual->m_NormalizedEvaluation[i]) * s;

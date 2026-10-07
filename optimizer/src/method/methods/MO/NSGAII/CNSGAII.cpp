@@ -3,6 +3,7 @@
 #include "CNSGAII.h"
 #include "../utils/clustering/CNonDominatedSorting.h"
 #include "../../../../utils/logger/ErrorUtils.h"
+#include <cstddef>
 
 CNSGAII::CNSGAII(
         AProblem* evaluator,
@@ -33,7 +34,7 @@ void CNSGAII::RunOptimization()
 {
     int generation = 0;
 
-    for (size_t i = 0; i < m_PopulationSize; ++i)
+    for (std::size_t i = 0; i < m_PopulationSize; ++i)
     {
         SProblemEncoding& problemEncoding = m_Problem->GetProblemEncoding();
         auto* newInd = m_Initialization->CreateMOIndividual(problemEncoding);
@@ -55,23 +56,23 @@ void CNSGAII::RunOptimization()
         combinedPop.insert(combinedPop.end(), m_NextPopulation.begin(), m_NextPopulation.end());
 
         CNonDominatedSorting nonDominatedSorting;
-        std::vector<std::vector<size_t>> combinedClusters;
+        std::vector<std::vector<std::size_t>> combinedClusters;
         nonDominatedSorting.Cluster(combinedPop, combinedClusters);
 
         std::vector<SMOIndividual *> tempPopulation;
         tempPopulation.reserve(m_PopulationSize);
-        for (size_t i = 0; tempPopulation.size() < m_PopulationSize; ++i)
+        for (std::size_t i = 0; tempPopulation.size() < m_PopulationSize; ++i)
         {
-            std::vector<size_t> &cluster = combinedClusters[i];
+            std::vector<std::size_t> &cluster = combinedClusters[i];
             // if this cluster exceeds the size
             if (tempPopulation.size() + cluster.size() > m_PopulationSize)
             {
                 CalcCrowdingDistance(combinedPop, cluster);
-                std::sort(cluster.begin(), cluster.end(), [combinedPop](const size_t &a, const size_t &b) -> bool
+                std::sort(cluster.begin(), cluster.end(), [combinedPop](const std::size_t &a, const std::size_t &b) -> bool
                 {
                     return combinedPop[a]->m_CrowdingDistance < combinedPop[b]->m_CrowdingDistance;
                 });
-                for (size_t idx: cluster)
+                for (std::size_t idx: cluster)
                 {
                     // deep copy individuals as they fill be the new population
                     tempPopulation.push_back(new SMOIndividual(*combinedPop[idx]));
@@ -81,7 +82,7 @@ void CNSGAII::RunOptimization()
             }
             else
             {
-                for (size_t idx: cluster)
+                for (std::size_t idx: cluster)
                 {
                     tempPopulation.push_back(new SMOIndividual(*combinedPop[idx]));
                 }
@@ -109,7 +110,7 @@ void CNSGAII::RunOptimization()
 void CNSGAII::EvolveToNextGeneration()
 {
 
-    for (size_t i = 0; i < m_PopulationSize; i += 2)
+    for (std::size_t i = 0; i < m_PopulationSize; i += 2)
     {
         auto *firstParent = m_RankedTournament->Select(m_Population);
         auto *secondParent = m_RankedTournament->Select(m_Population);
@@ -137,11 +138,11 @@ void CNSGAII::EvolveToNextGeneration()
     ArchiveUtils::CopyToArchiveWithFiltering(m_NextPopulation, m_Archive);
 }
 
-void CNSGAII::CalcCrowdingDistance(std::vector<SMOIndividual *> &population, std::vector<size_t> &indices)
+void CNSGAII::CalcCrowdingDistance(std::vector<SMOIndividual *> &population, std::vector<std::size_t> &indices)
 {
     for (int objIdx = 0; objIdx < m_Problem->GetProblemEncoding().m_objectivesNumber; ++objIdx)
     {
-        std::sort(indices.begin(), indices.end(), [objIdx, population](const size_t &a, const size_t &b) -> bool
+        std::sort(indices.begin(), indices.end(), [objIdx, population](const std::size_t &a, const std::size_t &b) -> bool
         {
             return population[a]->m_NormalizedEvaluation[objIdx] < population[b]->m_NormalizedEvaluation[objIdx];
         });
@@ -149,7 +150,7 @@ void CNSGAII::CalcCrowdingDistance(std::vector<SMOIndividual *> &population, std
         population[indices[0]]->m_CrowdingDistance = FLT_MAX;
         population[indices[indices.size() - 1]]->m_CrowdingDistance = FLT_MAX;
 
-        for (size_t i = 1; i < indices.size() - 1; ++i)
+        for (std::size_t i = 1; i < indices.size() - 1; ++i)
         {
             float currDist = population[indices[i]]->m_CrowdingDistance;
             float plusValue = population[indices[i + 1]]->m_NormalizedEvaluation[objIdx];

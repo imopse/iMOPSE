@@ -9,6 +9,7 @@
 #include "method/multiOperator/AMultiOperator.h"
 #include "method/multiOperator/CMultiOperatorRegion.h"
 #include "method/methods/MO/AMOMethod.h"
+#include <cstddef>
 
 template <typename T> class CCSV;
 
@@ -70,8 +71,8 @@ private:
     std::vector<SMOIndividual*> m_Archive;
     
     int m_Generation = 0;
-    size_t m_PopulationSize = 0;
-    size_t m_GenerationLimit = 0;
+    std::size_t m_PopulationSize = 0;
+    std::size_t m_GenerationLimit = 0;
 
     void EvolveToNextGeneration();
     void CrossoverAndMutate(SMOIndividual* firstParent, SMOIndividual* secondParent);

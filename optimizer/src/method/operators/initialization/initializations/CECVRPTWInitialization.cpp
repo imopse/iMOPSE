@@ -1,6 +1,7 @@
 #include <algorithm>
 #include "CECVRPTWInitialization.h"
 #include "utils/random/CRandom.h"
+#include <cstddef>
 
 SSOIndividual* CECVRPTWInitialization::CreateSOIndividual(SProblemEncoding &encoding)
 {
@@ -118,8 +119,8 @@ void CECVRPTWInitialization::InitGenotype(SProblemEncoding &encoding, SGenotype 
             }
             case EEncodingType::PERMUTATION:
             {
-                size_t sectionStart = genotype.m_IntGenotype.size();
-                size_t sectionSize = encodingSection.m_SectionDescription.size();
+                std::size_t sectionStart = genotype.m_IntGenotype.size();
+                std::size_t sectionSize = encodingSection.m_SectionDescription.size();
                 for (int i = 0; i < sectionSize; ++i)
                 {
                     genotype.m_IntGenotype.push_back(i);

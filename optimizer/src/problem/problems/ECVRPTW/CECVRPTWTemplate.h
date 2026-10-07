@@ -7,6 +7,7 @@
 #include <cfloat>
 #include <cstdint>
 #include "ENodeType.h"
+#include <cstddef>
 
 constexpr int VEHICLE_DELIMITER = INT32_MAX;
 constexpr int DEPOT_CITY_ID = 0;
@@ -51,18 +52,18 @@ public:
         , float fuelConsumptionRate
         , float refuelingRate
         , float averageVelocity
-        , std::vector<size_t>& chargingStationIndexes
-        , std::vector<size_t>& depotIndexes
-        , std::vector<size_t>& customerIndexes
+        , std::vector<std::size_t>& chargingStationIndexes
+        , std::vector<std::size_t>& depotIndexes
+        , std::vector<std::size_t>& customerIndexes
         , int vehicleCount
     );
 
     const std::vector<SCityECVRPTW>& GetCities() const { return m_Cities; }
     const std::vector<std::vector<SDistanceInfo>>& GetDistInfoMtx() const { return m_DistanceInfoMatrix; }
     const std::vector<float>& GetMinDistVec() const { return m_MinDistanceVec; }
-    const std::vector<size_t>& GetDepots() const { return m_DepotIndexes; }
-    const std::vector<size_t>& GetChargingStations() const { return m_ChargingStationIndexes; }
-    const std::vector<size_t>& GetCustomers() const { return m_CustomerIndexes; }
+    const std::vector<std::size_t>& GetDepots() const { return m_DepotIndexes; }
+    const std::vector<std::size_t>& GetChargingStations() const { return m_ChargingStationIndexes; }
+    const std::vector<std::size_t>& GetCustomers() const { return m_CustomerIndexes; }
 
     int GetCapacity() const { return m_Capacity; }
     float GetTankCapcity() const { return m_TankCapacity; }
@@ -71,16 +72,16 @@ public:
     float GetAverageVelociy() const { return m_AverageVelocity; }
     int GetVehicleCount() const { return m_VehicleCount; }
 
-    size_t GetCitiesSize() const { return m_Cities.size(); }
+    std::size_t GetCitiesSize() const { return m_Cities.size(); }
 
     float GetMinDistance() const;
     float GetMaxDistance() const;
     float GetMaxTimeService() const;
     float GetMaxDueTime() const { return m_Cities[0].m_DueTime; }
 
-    float GetRequiredFuel(size_t cityIdx, size_t nextCityIdx) const;
-    size_t GetNearestDepotIdx(size_t cityIdx) const;
-    size_t GetNearestChargingStationIdx(size_t cityIdx) const;
+    float GetRequiredFuel(std::size_t cityIdx, std::size_t nextCityIdx) const;
+    std::size_t GetNearestDepotIdx(std::size_t cityIdx) const;
+    std::size_t GetNearestChargingStationIdx(std::size_t cityIdx) const;
 
     bool Validate() const;
 
@@ -91,9 +92,9 @@ private:
 
     // File data
     std::vector<SCityECVRPTW> m_Cities;
-    std::vector<size_t> m_DepotIndexes;
-    std::vector<size_t> m_ChargingStationIndexes;
-    std::vector<size_t> m_CustomerIndexes;
+    std::vector<std::size_t> m_DepotIndexes;
+    std::vector<std::size_t> m_ChargingStationIndexes;
+    std::vector<std::size_t> m_CustomerIndexes;
     int m_Capacity;
     float m_TankCapacity;
     float m_FuelConsumptionRate;

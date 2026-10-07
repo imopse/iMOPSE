@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <sstream>
 #include "Resource.hpp"
+#include <cstddef>
 
 struct SkillRequirement {
     std::string skill;
@@ -114,7 +115,7 @@ struct Task {
             });
 
         std::ostringstream oss;
-        for (size_t i = 0; i < norm.size(); ++i) {
+        for (std::size_t i = 0; i < norm.size(); ++i) {
             if (i > 0) oss << "|";
             oss << norm[i].first << "#" << norm[i].second;
         }

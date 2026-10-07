@@ -2,6 +2,7 @@
 
 #include "../../../individual/MO/SMOIndividual.h"
 #include "ASelection.h"
+#include <cstddef>
 
 class CGapSelectionByRandomDim : public ASelection
 {
@@ -16,5 +17,5 @@ private:
     bool m_BNTGA;
 
     std::vector<float> CalculateGapValues(std::vector<SMOIndividual*>& parents, int objectiveNumber) const;
-    size_t SelectParentIdxByTournament(const std::vector<SMOIndividual*>& parents, const std::vector<float>& gapValues) const;
+    std::size_t SelectParentIdxByTournament(const std::vector<SMOIndividual*>& parents, const std::vector<float>& gapValues) const;
 };

@@ -4,6 +4,7 @@
 #include "utils/logger/ErrorUtils.h"
 #include "utils/dataStructures/CCSV.h"
 #include "utils/logger/CExperimentLogger.h"
+#include <cstddef>
 
 CFANGA::CFANGA(
         AProblem* evaluator,
@@ -38,7 +39,7 @@ void CFANGA::RunOptimization()
 
     m_StartTime =  std::chrono::steady_clock::now();
 
-    for (size_t i = 0; i < m_PopulationSize; ++i)
+    for (std::size_t i = 0; i < m_PopulationSize; ++i)
     {
         SProblemEncoding& problemEncoding = m_Problem->GetProblemEncoding();
         auto* newInd = m_Initialization->CreateMOIndividual(problemEncoding);

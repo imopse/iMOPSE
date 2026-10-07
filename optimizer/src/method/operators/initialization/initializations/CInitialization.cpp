@@ -1,6 +1,7 @@
 #include <algorithm>
 #include "CInitialization.h"
 #include "../../../../utils/random/CRandom.h"
+#include <cstddef>
 
 SSOIndividual* CInitialization::CreateSOIndividual(SProblemEncoding &encoding)
 {
@@ -95,8 +96,8 @@ void CInitialization::InitGenotype(SProblemEncoding &encoding, SGenotype &genoty
             }
             case EEncodingType::PERMUTATION:
             {
-                size_t sectionStart = genotype.m_IntGenotype.size();
-                size_t sectionSize = encodingSection.m_SectionDescription.size();
+                std::size_t sectionStart = genotype.m_IntGenotype.size();
+                std::size_t sectionSize = encodingSection.m_SectionDescription.size();
                 for (int i = 0; i < sectionSize; ++i)
                 {
                     genotype.m_IntGenotype.push_back(i);

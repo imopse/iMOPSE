@@ -3,6 +3,7 @@
 #include "../../../../utils/logger/ErrorUtils.h"
 #include "utils/dataStructures/CCSV.h"
 #include "utils/logger/CExperimentLogger.h"
+#include <cstddef>
 
 CBNTGA::CBNTGA(
         AProblem* evaluator,
@@ -37,7 +38,7 @@ void CBNTGA::RunOptimization()
     CCSV<float> m_OperatorStats(1);
     CCSV<float> m_HVStats(4);
 
-    for (size_t i = 0; i < m_PopulationSize; ++i)
+    for (std::size_t i = 0; i < m_PopulationSize; ++i)
     {
         SProblemEncoding& problemEncoding = m_Problem->GetProblemEncoding();
         auto* newInd = m_Initialization->CreateMOIndividual(problemEncoding);

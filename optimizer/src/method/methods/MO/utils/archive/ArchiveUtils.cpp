@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <sstream>
+#include <cstddef>
 
 #define USE_EVAL_DUPLICATE 1
 
@@ -15,12 +16,12 @@ void ArchiveUtils::CopyToArchiveWithFiltering(const std::vector<SMOIndividual*>&
 
     // For each new individual, check if not dominated or not dominating
     // We don't have to check if the same solution, equal rewards are discarded
-    for (size_t p = 0; p < individuals.size(); ++p)
+    for (std::size_t p = 0; p < individuals.size(); ++p)
     {
         const SMOIndividual* newInd = individuals[p];
         bool isDominated = false;
         // Check other new individuals
-        size_t i = 0;
+        std::size_t i = 0;
         while (!isDominated && i < individuals.size())
         {
             if (p != i)
@@ -91,7 +92,7 @@ void ArchiveUtils::CopyToArchiveWithFiltering(const SMOIndividual* individual, s
 {
     // Check if not dominated
     bool isDominated = false;
-    size_t i = 0;
+    std::size_t i = 0;
     // Check individuals in archive
     while (!isDominated && i < archive.size())
     {

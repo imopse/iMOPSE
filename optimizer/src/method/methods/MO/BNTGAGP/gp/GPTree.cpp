@@ -8,6 +8,7 @@
 #include <locale>
 #include <cmath>
 #include <functional>
+#include <cstddef>
 
 double GPTree::featureValue(FeatureId id, const Features& f) const {
     switch (id) {
@@ -130,7 +131,7 @@ double GPTree::evalAtCollect(int idx, const Features& f, std::vector<double>& va
 
     if (!std::isfinite(out)) out = 0.0;
 
-    if ((size_t)idx >= vals.size()) {
+    if ((std::size_t)idx >= vals.size()) {
         vals.resize(nodes.size(), 0.0);
     }
     vals[idx] = out;
@@ -624,7 +625,7 @@ int GPTree::nodeDepth(int nodeId) const {
     std::vector<int> q{ root };
     std::vector<int> d(nodes.size(), -1);
     d[root] = 0;
-    for (size_t i = 0; i < q.size(); ++i) {
+    for (std::size_t i = 0; i < q.size(); ++i) {
         int u = q[i];
         const GPNode& n = nodes[u];
         auto try_push = [&](int v) {
@@ -707,10 +708,10 @@ GPTree GPTree::extractSubtree(int nodeId) const {
     cloneSubtreeDFS(nodeId, order);
 
     std::vector<int> mapIdx(nodes.size(), -1);
-    for (size_t i = 0; i < order.size(); ++i) mapIdx[order[i]] = (int)i;
+    for (std::size_t i = 0; i < order.size(); ++i) mapIdx[order[i]] = (int)i;
 
     out.nodes.resize(order.size());
-    for (size_t i = 0; i < order.size(); ++i) {
+    for (std::size_t i = 0; i < order.size(); ++i) {
         int oldIdx = order[i];
         GPNode n = nodes[oldIdx];
         if (n.kind == NodeKind::UNARY) {

@@ -1,21 +1,22 @@
 #pragma once
 
 #include "../../../../individual/MO/SMOIndividual.h"
+#include <cstddef>
 
 class CNonDominatedSorting
 {
 public:
 
-    void Cluster(std::vector<SMOIndividual *> &population, std::vector<std::vector<size_t>> &clusters);
+    void Cluster(std::vector<SMOIndividual *> &population, std::vector<std::vector<std::size_t>> &clusters);
 
 private:
 
     struct SSolution
     {
-        SSolution(size_t i);
+        SSolution(std::size_t i);
 
-        size_t m_Idx;
+        std::size_t m_Idx;
         std::vector<SSolution *> m_DominatedSolutions;
-        size_t m_DominationCounter;
+        std::size_t m_DominationCounter;
     };
 };

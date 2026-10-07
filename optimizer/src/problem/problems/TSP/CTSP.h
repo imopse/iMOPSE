@@ -3,6 +3,7 @@
 #include "../../../method/individual/SGenotype.h"
 #include "../../AProblem.h"
 #include "CTSPTemplate.h"
+#include <cstddef>
 
 class CTSP : public AProblem {
 private:
@@ -20,12 +21,12 @@ public:
 
     void Evaluate(AIndividual& individual) {
         float totalDistance = 0.f;
-        size_t citiesSize = m_CTSPTemplate->GetCitiesSize();
+        std::size_t citiesSize = m_CTSPTemplate->GetCitiesSize();
         auto &distMtx = m_CTSPTemplate->GetDistMtx();
 
-        for (size_t i = 0; i < citiesSize; ++i) {
-            size_t cityIdx = individual.m_Genotype.m_IntGenotype[i];
-            size_t nextCityIdx = individual.m_Genotype.m_IntGenotype[(i + 1) % citiesSize];
+        for (std::size_t i = 0; i < citiesSize; ++i) {
+            std::size_t cityIdx = individual.m_Genotype.m_IntGenotype[i];
+            std::size_t nextCityIdx = individual.m_Genotype.m_IntGenotype[(i + 1) % citiesSize];
             totalDistance += distMtx[cityIdx][nextCityIdx];
         }
 
@@ -40,7 +41,7 @@ public:
     void LogAdditionalData() override {};
 
     void CreateProblemEncoding() {
-        size_t citiesSize = m_CTSPTemplate->GetCitiesSize();
+        std::size_t citiesSize = m_CTSPTemplate->GetCitiesSize();
 
         SEncodingSection citiesSection = SEncodingSection {
                 std::vector<SEncodingDescriptor>(citiesSize, SEncodingDescriptor{

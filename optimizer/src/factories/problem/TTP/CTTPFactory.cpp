@@ -2,6 +2,7 @@
 #include "utils/fileReader/CReadUtils.h"
 #include <string>
 #include <vector>
+#include <cstddef>
 
 #define READ_TTP 1
 
@@ -81,8 +82,8 @@ CTTPTemplate *CTTPFactory::ReadTTPTemplate(const char *problemDefinitionPath)
 #endif
 
     std::string pathString(problemDefinitionPath);
-    size_t fileNameStartPos = pathString.rfind('/') + 1;
-    size_t fileNameEndPos = pathString.rfind('.');
+    std::size_t fileNameStartPos = pathString.rfind('/') + 1;
+    std::size_t fileNameEndPos = pathString.rfind('.');
     result->SetFileName(pathString.substr(fileNameStartPos, fileNameEndPos - fileNameStartPos));
 #if READ_TTP
     result->SetData(cities, items, capacity, minSpeed, maxSpeed, rentRatio);

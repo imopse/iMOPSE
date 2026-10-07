@@ -3,6 +3,7 @@
 #include <queue>
 #include <algorithm>
 #include <unordered_set>
+#include <cstddef>
 
 namespace {
     const gp::CPMPrecalc* g_cpm_ptr = nullptr;
@@ -12,17 +13,17 @@ namespace gp {
 
     static std::vector<int> topoOrder(const Instance& I) {
         std::vector<int> indeg(I.tasks.size(), 0);
-        for (size_t v = 0; v < I.tasks.size(); ++v)
+        for (std::size_t v = 0; v < I.tasks.size(); ++v)
             for (int p : I.tasks[v].predecessors)
                 indeg[v]++;
 
         std::queue<int> q;
-        for (size_t i = 0;i < indeg.size();++i) if (!indeg[i]) q.push((int)i);
+        for (std::size_t i = 0;i < indeg.size();++i) if (!indeg[i]) q.push((int)i);
         std::vector<int> order;
         while (!q.empty()) {
             int v = q.front(); q.pop(); order.push_back(v);
             int idv = I.tasks[v].id;
-            for (size_t u = 0; u < I.tasks.size(); ++u) {
+            for (std::size_t u = 0; u < I.tasks.size(); ++u) {
                 for (int p : I.tasks[u].predecessors)
                     if (p == idv) { if (--indeg[u] == 0) q.push((int)u); }
             }
@@ -58,7 +59,7 @@ namespace gp {
         }
 
         std::vector<std::vector<int>> succ(N);
-        for (size_t u = 0; u < I.tasks.size(); ++u)
+        for (std::size_t u = 0; u < I.tasks.size(); ++u)
             for (int pid : I.tasks[u].predecessors)
                 succ[I.idToIndex.at(pid)].push_back((int)u);
 

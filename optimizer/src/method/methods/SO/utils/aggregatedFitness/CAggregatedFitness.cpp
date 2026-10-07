@@ -1,5 +1,6 @@
 
 #include "CAggregatedFitness.h"
+#include <cstddef>
 
 void CAggregatedFitness::CountFitness(SSOIndividual &individual, std::vector<float>& objectiveWeights)
 {
@@ -20,7 +21,7 @@ void CAggregatedFitness::CountFitness(SSOIndividual &individual, std::vector<flo
 double CAggregatedFitness::CalculateDelta(const SSOIndividual& newSolution, const SSOIndividual& currentSolution, std::vector<float>& objectiveWeights)
 {
     double delta = 0.0;
-    for (size_t i = 0; i < newSolution.m_NormalizedEvaluation.size(); ++i)
+    for (std::size_t i = 0; i < newSolution.m_NormalizedEvaluation.size(); ++i)
     {
         double weight = (i < objectiveWeights.size()) ? objectiveWeights[i] : 1.0;
         delta += weight * (newSolution.m_NormalizedEvaluation[i] - currentSolution.m_NormalizedEvaluation[i]);
