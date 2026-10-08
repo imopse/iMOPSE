@@ -18,38 +18,38 @@
 #include "methods/MO/ANTGA/CANTGAFactory.h"
 #include "methods/MO/BNTGA/CBNTGAFactory.h"
 #include "methods/MO/SPEA2/CSPEA2Factory.h"
-#include "methods/MO/BNTGAGP/CBNTGAGPFactory.h"
-#include "methods/SO/BNTGAGP/CBNTGAGPSOFactory.h"
+#include "methods/MO/BNTGP/CBNTGPFactory.h"
+#include "methods/SO/GPHH/CGPHHFactory.h"
 #include "../../utils/fileReader/CReadUtils.h"
 
-// Static members of CMethodFactory, initialized to nullptr. These will hold various components of an optimization method.
+// Static members of CMethodFactory, initialized to nullptr. These will hold various components of an optimization method.                                                                                                                          
 SConfigMap* CMethodFactory::configMap = nullptr;
 AInitialization* CMethodFactory::initialization = nullptr;
 ACrossover* CMethodFactory::crossover = nullptr;
 AMutation* CMethodFactory::mutation = nullptr;
 
-// Static method to create an optimization method based on a configuration file and a problem instance.
+// Static method to create an optimization method based on a configuration file and a problem instance.                                                                                                       
 AMethod* CMethodFactory::CreateMethod(
         const char* optimizerConfigPath,
         AProblem& problem
 )
 {
-    // Create a configuration map from the provided path using the CConfigFactory.
+    // Create a configuration map from the provided path using the CConfigFactory.                                                                              
     configMap = CConfigFactory::CreateConfigMap(optimizerConfigPath);
     if (configMap == nullptr) {
         throw std::runtime_error("Error while reading method configuration");
     }
 
     std::string methodName;
-    // Extract the method name from the configuration map. If it's not provided, throw an error.
+    // Extract the method name from the configuration map. If it's not provided, throw an error.                                                                                            
     if (!configMap->TakeValue("MethodName", methodName)) {
         throw std::runtime_error("MethodName not provided in method configuration");
     }
 
-    // Create initialization strategy based on the configuration map.
+    // Create initialization strategy based on the configuration map.                                                                 
     initialization = CInitializationFactory::Create(configMap, problem);
 
-    // Create and return a specific optimization method based on the method name.
+    // Create and return a specific optimization method based on the method name.                                                                             
     if (strcmp(methodName.c_str(), "ACO") == 0)
         return CACOFactory::CreateACO(configMap, problem, initialization, optimizerConfigPath);
     if (strcmp(methodName.c_str(), "SA") == 0)
@@ -60,12 +60,12 @@ AMethod* CMethodFactory::CreateMethod(
         return CDEFactory::CreateDE(configMap, problem, initialization);
     if (strcmp(methodName.c_str(), "PSO") == 0)
         return CPSOFactory::CreatePSO(configMap, problem, initialization);
-    if (strcmp(methodName.c_str(), "bNTGA-GP") == 0)
-        return CBNTGAGPFactory::CreateBNTGAGP(configMap, problem, initialization);
-    if (strcmp(methodName.c_str(), "bNTGA-GP-SO") == 0)
-        return CBNTGAGPSOFactory::CreateBNTGAGPSO(configMap, problem, initialization);
+    if (strcmp(methodName.c_str(), "BNTGP") == 0)
+        return CBNTGPFactory::CreateBNTGP(configMap, problem, initialization);
+    if (strcmp(methodName.c_str(), "GP-HH") == 0)
+        return CGPHHFactory::CreateGPHH(configMap, problem, initialization);
 
-    // Create crossover and mutation strategies based on the configuration map.
+    // Create crossover and mutation strategies based on the configuration map.                                                                           
     crossover = CCrossoverFactory::Create(configMap, "Crossover", problem);
     if (crossover == nullptr) {
         throw std::runtime_error("Error while reading crossover configuration");
@@ -101,13 +101,13 @@ AMethod* CMethodFactory::CreateMethod(
         );
     }
     
-    // If the method name is not supported, throw an error.
+    // If the method name is not supported, throw an error.                                                       
     throw std::runtime_error("Method name: " + std::string(methodName) + " not supported");
 }
 
-// Static method to delete the objects created by the factory.
+// Static method to delete the objects created by the factory.                                                              
 void CMethodFactory::DeleteObjects() {
-    // Delete the created objects (configMap, initialization, crossover, mutation)
+    // Delete the created objects (configMap, initialization, crossover, mutation)                                                                              
     delete configMap;
     delete initialization;
     if (crossover != nullptr)
@@ -115,7 +115,7 @@ void CMethodFactory::DeleteObjects() {
     if (mutation != nullptr)
         delete mutation;
 
-    // Call the DeleteObjects methods of other factories involved in creating the method components.
+    // Call the DeleteObjects methods of other factories involved in creating the method components.                                                                                                
     CGAFactory::DeleteObjects();
     CSAFactory::DeleteObjects();
     CTSFactory::DeleteObjects();

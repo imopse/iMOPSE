@@ -51,4 +51,5 @@ optimizer/CMakeSettings.json
 **/*.ninja
 **/*.ninja_deps
 **/*.ninja_log
-**/compile_commands.json
+**/compile_commands.json/experiments/
+/results/
