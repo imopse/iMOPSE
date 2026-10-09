@@ -4,7 +4,8 @@
 #include "operators/crossover/CCrossoverFactory.h"
 #include "operators/mutation/CMutationFactory.h"
 #include "utils/fileReader/CReadUtils.h"
-#include "method/methods/MO/BNTGAGP/CBNTGAGP.h"
+#include "method/methods/SO/GPHH_MSRCPSP/CGPHH_MSRCPSP.h"
+#include "factories/method/methods/MO/BNTGP/CBNTGPFactory.h"
 #include "factories/method/operators/selection/CSelectionFactory.h"
 #include "method/methods/SO/ACO/TSP-BASED/CACO_TSP.h"
 #include "factories/method/methods/GPHH_ECVRPTW/CGPHH_ECVRPTWFactory.h"
@@ -38,6 +39,9 @@ AMethod* CMethodFactory::CreateMethod( const char* optimizerConfigPath, AProblem
 	}
 
 	auto* initialization = CInitializationFactory::Create(configMap, problem);
+
+	if (methodName == "BNTGP")
+        return CBNTGPFactory::CreateBNTGP(configMap, problem, initialization);
 
 	if (methodName == "GPHH_ECVRPTW")
 		return CGPHH_ECVRPTWFactory::CreateGPHH(configMap, problem);
@@ -91,8 +95,8 @@ AMethod* CMethodFactory::CreateMethod( const char* optimizerConfigPath, AProblem
 				configMap,
 				CMethodFactory::ProcessObjectiveWeights(configMap)
 		);
-	if (methodName == "bNTGA-GP")
-		return new CBNTGAGP(problem, initialization, configMap);
+	if (methodName == "GPHH_MSRCPSP")
+		return new CGPHH_MSRCPSP(problem, initialization, configMap);
 
 	auto* crossover = CCrossoverFactory::Create(configMap, problem);
 	if (crossover == nullptr) {

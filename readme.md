@@ -38,7 +38,8 @@ pages: 170–184
   - Strength Pareto Evolutionary Algorithm 2 (SPEA2)
   - Balancing Non-dominated Tournament Genetic Algorithm (BNTGA)
   - Adaptive Non-dominated Tournament Genetic Algorithm (ANTGA)
-  - BNTGA based on Genetic Programming-based Hyper-heuristic (bNTGA-GP)
+  - BNTGP based on Genetic Programming for MS-RCPSP (BNTGP)
+  - Genetic Programming Hyper-heuristic for MS-RCPSP (GPHH_MSRCPSP)
 - **NP-hard Problems** with ready-to-use **instances**:
   - Multi-Skill Resource-Constrained Project Scheduling Problem (MSRPCP)
   - Traveling Salesman Problem (TSP)

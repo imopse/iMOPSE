@@ -8,6 +8,7 @@
 class AMethod
 {
 public:
+    virtual ~AMethod() = default;
     static int m_ExperimentRunCounter;
     
     virtual void RunOptimization() = 0;
