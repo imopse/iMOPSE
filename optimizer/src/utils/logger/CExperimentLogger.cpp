@@ -113,47 +113,74 @@ void CExperimentLogger::OpenFileForWriting(const char* filePath, std::ofstream& 
 
 bool CExperimentLogger::WriteSchedulerToFile(const CScheduler* schedule, const AIndividual& solution)
 {
-    // TODO - generic logger should not contain Scheduler logic
-    char archive_filename[256];
-    std::string outputDataPath = m_OutputDataPathPrefix + "/best_solution.sol";
-    snprintf(archive_filename, 256, "%s",outputDataPath.c_str());
-    std::ofstream arch_file(archive_filename);
-    
-    arch_file << "Time;Resource assignments (resource ID - task ID) " << std::endl;
+    if (schedule == nullptr)
+        return false;
 
-    std::vector<int> startTimes = std::vector<int>();
-    for (CTask task : schedule->GetTasks())
-    {
-        int startTime = task.GetStart();
-        if (!std::count(startTimes.begin(), startTimes.end(), startTime))
-            startTimes.push_back(startTime);
-    }
-
-    std::sort(startTimes.begin(), startTimes.end());
-
-    for (int startTime : startTimes)
-    {
-        arch_file << startTime + 1 << ";";
-
-        int taskId = 1;
-
-        for (CTask task : schedule->GetTasks())
-        {
-            if (task.GetStart() == startTime)
-            {
-                TResourceID resourceID = task.GetResourceID();
-
-                arch_file << resourceID << "-" << taskId;
-            }
-
-            taskId++;
+    const auto writeSchedule = [&](const std::filesystem::path& path, bool legacyFormat) -> bool {
+        std::ofstream out(path);
+        if (!out.is_open()) {
+            std::cerr << "Unable to open file: " << path.string() << std::endl;
+            return false;
         }
 
-        arch_file << std::endl;
-    }
+        if (legacyFormat) {
+            out << "Time;Resource assignments (resource ID - task ID) " << '\n';
+        } else {
+            const int makespan = solution.m_Evaluation.size() > 0 ? static_cast<int>(solution.m_Evaluation[0]) : -1;
+            const int cost = solution.m_Evaluation.size() > 1 ? static_cast<int>(solution.m_Evaluation[1]) : -1;
+            out << "Meta Instance=" << schedule->GetInstanceName()
+                << " Makespan=" << makespan
+                << " Cost=" << cost << '\n';
+            out << "Hour Resource-Task" << '\n';
+        }
 
-    arch_file.close();
-    return true;
+        std::vector<int> startTimes;
+        for (const CTask& task : schedule->GetTasks()) {
+            const int startTime = task.GetStart();
+            if (std::find(startTimes.begin(), startTimes.end(), startTime) == startTimes.end())
+                startTimes.push_back(startTime);
+        }
+        std::sort(startTimes.begin(), startTimes.end());
+
+        for (int startTime : startTimes) {
+            out << (startTime + 1);
+            if (legacyFormat)
+                out << ';';
+
+            int taskIndex = 1;
+            for (const CTask& task : schedule->GetTasks()) {
+                if (task.GetStart() == startTime) {
+                    if (legacyFormat)
+                        out << task.GetResourceID() << "-" << taskIndex;
+                    else
+                        out << " " << task.GetResourceID() << "-" << task.GetTaskID();
+                }
+                ++taskIndex;
+            }
+            out << '\n';
+        }
+
+        out.close();
+        return out.good();
+    };
+
+    const bool legacyWritten = writeSchedule(std::filesystem::path(m_OutputDataPathPrefix) / "best_solution.sol", true);
+
+    std::string instanceName = schedule->GetInstanceName();
+    for (char& c : instanceName) {
+        const bool safe = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+            (c >= '0' && c <= '9') || c == '_' || c == '-' || c == '.';
+        if (!safe)
+            c = '_';
+    }
+    if (instanceName.empty())
+        instanceName = "instance";
+
+    const int makespan = solution.m_Evaluation.size() > 0 ? static_cast<int>(solution.m_Evaluation[0]) : -1;
+    const int cost = solution.m_Evaluation.size() > 1 ? static_cast<int>(solution.m_Evaluation[1]) : -1;
+    const std::string filename = "sol_" + instanceName + "_m" + std::to_string(makespan) + "_c" + std::to_string(cost) + ".sol";
+    const bool namedWritten = writeSchedule(std::filesystem::path(m_OutputDataPathPrefix) / filename, false);
+    return legacyWritten && namedWritten;
 }
 
 void CExperimentLogger::LogGPHHGeneration(int generation, const std::vector<SSOIndividual*>& population, const SGPHHLogConfig& config, long long durationMs, float optimalValue)
