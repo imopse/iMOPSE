@@ -197,6 +197,16 @@ Using the generated files, we can compare Pareto Front Approximations from each 
 
 On plot we can visually compare quality of each method result.
 
+# Running tests
+
+Currently, only `optimizer` module supports unit tests with usage of Catch2 library. To build tests run:
+
+```
+cmake -S optimizer -B optimizer/build-tests -DBUILD_TESTS=ON
+cmake --build optimizer/build-tests
+optimizer/build-tests/tests/tests
+```
+
 # Support
 For support, feature requests, or bug reports, please file an issue through the GitHub issue tracker associated with the project.
 
